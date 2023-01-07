@@ -1,5 +1,6 @@
 .DS_Store
 node_modules
 /simulator/js
+/simulator/lib
 /index.html
 /deploy-*.sh
