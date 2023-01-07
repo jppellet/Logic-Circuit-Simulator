@@ -794,7 +794,7 @@ export class WireManager {
     }
 
     addNode(newNode: Node): Wire | undefined {
-        let completedWire = undefined
+        let completedWire: Wire | undefined = undefined
         if (!this.isAddingWire) {
             // start drawing a new wire
             const wire = new Wire(newNode)

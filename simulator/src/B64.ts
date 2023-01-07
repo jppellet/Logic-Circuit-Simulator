@@ -14,7 +14,7 @@ export const B64 = {
         let position = -1,
             nan0, nan1, nan2
         if (B64.ie) {
-            const result = []
+            const result: Array<string> = []
             while (++position < len) {
                 nan0 = buffer[position]
                 nan1 = buffer[++position]
@@ -54,7 +54,7 @@ export const B64 = {
         const len = buffer.length
         let position = 0
         if (B64.ieo) {
-            const result = []
+            const result: Array<string> = []
             while (position < len) {
                 if (buffer[position] < 128) { result.push(String.fromCharCode(buffer[position++])) }
                 else if (buffer[position] > 191 && buffer[position] < 224) { result.push(String.fromCharCode(((buffer[position++] & 31) << 6) | (buffer[position++] & 63))) }
@@ -74,7 +74,7 @@ export const B64 = {
 
     toUtf8: function (s: string) {
         const len = s.length
-        const buffer = []
+        const buffer: Array<number> = []
         let position = -1
         // eslint-disable-next-line no-control-regex
         if (/^[\x00-\x7f]*$/.test(s)) {
@@ -93,7 +93,7 @@ export const B64 = {
     fromUtf8: function (s: string) {
         let position = -1
         let len
-        const buffer = []
+        const buffer: Array<number> = []
         const enc = [NaN, NaN, NaN, NaN]
 
         if (B64.lookup === null) {
