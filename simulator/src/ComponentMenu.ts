@@ -39,8 +39,8 @@ import { RectangleDef } from "./components/Rectangle"
 import { RegisterDef } from "./components/Register"
 import { ShiftDisplayDef } from "./components/ShiftDisplay"
 import { ShiftRegisterDef } from "./components/ShiftRegister"
-import { TristateBufferDef } from "./components/TristateBuffer"
-import { TristateBufferArrayDef } from "./components/TristateBufferArray"
+import { TristateBufferDef } from "./components/TriStateBuffer"
+import { TristateBufferArrayDef } from "./components/TriStateBufferArray"
 import { a, button, cls, div, emptyMod, raw, span, style, title, type } from "./htmlgen"
 import { ImageName, makeImage, makeSvgHolder } from "./images"
 import { S, Strings } from "./strings"
@@ -461,3 +461,4 @@ function componentIdsFor(item: LibraryItem): string[] {
 
     return ids
 }
+

@@ -93,31 +93,31 @@ import Rectangle from '../img/Rectangle.svg'; // @ts-ignore
 import Register from '../img/Register.svg'; // @ts-ignore
 import ShiftDisplay from '../img/ShiftDisplay.svg'; // @ts-ignore
 import ShiftRegister from '../img/ShiftRegister.svg'; // @ts-ignore
-import TristateBufferArray from '../img/TristateBufferArray.svg'; // @ts-ignore
-import and from '../img/and.svg'; // @ts-ignore
-import and3 from '../img/and3.svg'; // @ts-ignore
-import and4 from '../img/and4.svg'; // @ts-ignore
-import buf from '../img/buf.svg'; // @ts-ignore
-import imply from '../img/imply.svg'; // @ts-ignore
-import nand from '../img/nand.svg'; // @ts-ignore
-import nand3 from '../img/nand3.svg'; // @ts-ignore
-import nand4 from '../img/nand4.svg'; // @ts-ignore
-import nimply from '../img/nimply.svg'; // @ts-ignore
-import nor from '../img/nor.svg'; // @ts-ignore
-import nor3 from '../img/nor3.svg'; // @ts-ignore
-import nor4 from '../img/nor4.svg'; // @ts-ignore
-import not from '../img/not.svg'; // @ts-ignore
-import or from '../img/or.svg'; // @ts-ignore
-import or3 from '../img/or3.svg'; // @ts-ignore
-import or4 from '../img/or4.svg'; // @ts-ignore
-import tri from '../img/tri.svg'; // @ts-ignore
-import txa from '../img/txa.svg'; // @ts-ignore
-import xnor from '../img/xnor.svg'; // @ts-ignore
-import xnor3 from '../img/xnor3.svg'; // @ts-ignore
-import xnor4 from '../img/xnor4.svg'; // @ts-ignore
-import xor from '../img/xor.svg'; // @ts-ignore
-import xor3 from '../img/xor3.svg'; // @ts-ignore
-import xor4 from '../img/xor4.svg'; // @ts-ignore
+import TristateBufferArray from '../img/TriStateBufferArray.svg'; // @ts-ignore
+import and from '../img/AND.svg'; // @ts-ignore
+import and3 from '../img/AND3.svg'; // @ts-ignore
+import and4 from '../img/AND4.svg'; // @ts-ignore
+import buf from '../img/BUF.svg'; // @ts-ignore
+import imply from '../img/IMPLY.svg'; // @ts-ignore
+import nand from '../img/NAND.svg'; // @ts-ignore
+import nand3 from '../img/NAND3.svg'; // @ts-ignore
+import nand4 from '../img/NAND4.svg'; // @ts-ignore
+import nimply from '../img/NIMPLY.svg'; // @ts-ignore
+import nor from '../img/NOR.svg'; // @ts-ignore
+import nor3 from '../img/NOR3.svg'; // @ts-ignore
+import nor4 from '../img/NOR4.svg'; // @ts-ignore
+import not from '../img/NOT.svg'; // @ts-ignore
+import or from '../img/OR.svg'; // @ts-ignore
+import or3 from '../img/OR3.svg'; // @ts-ignore
+import or4 from '../img/OR4.svg'; // @ts-ignore
+import tri from '../img/TRI.svg'; // @ts-ignore
+import txa from '../img/TXA.svg'; // @ts-ignore
+import xnor from '../img/XNOR.svg'; // @ts-ignore
+import xnor3 from '../img/XNOR3.svg'; // @ts-ignore
+import xnor4 from '../img/XNOR4.svg'; // @ts-ignore
+import xor from '../img/XOR.svg'; // @ts-ignore
+import xor3 from '../img/XOR3.svg'; // @ts-ignore
+import xor4 from '../img/XOR4.svg'; // @ts-ignore
 import { Modifier, applyModifierTo, raw } from './htmlgen';
 
 
@@ -277,5 +277,6 @@ function inlineSvgFor<TImages extends Record<string, string>>(svgData: TImages, 
 export function inlineIconSvgFor(name: IconName): string {
     return inlineSvgFor(icons, name)
 }
+
 
 
