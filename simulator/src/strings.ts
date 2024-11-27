@@ -167,6 +167,7 @@ const Strings_fr = {
         showDisconnectedPins: tuple("Toujours montrer les pattes", "Si non coché, les pattes non connectées des composants sont masquées dans les modes où les connexions du circuit ne peuvent pas être modifiées (et restent visibles sinon)."),
         hideTooltips: tuple("Désactiver tooltips", "Si coché, les informations supplémentaires des tooltips (comme les tables de vérité) ne seront pas affichées."),
         groupParallelWires: tuple("Grouper les fils parallèles", "Si coché, les fils parralèles allant d'un composant à un autre seront regroupés en un seul fil plus épais."),
+        showHiddenWires: tuple("Montrer les fils cachés", "Si coché, les fils cachés seront quand même affichés."),
         propagationDelay: "Un 1 ou un 0 imposé sur une connexion sera répercuté à l’autre bout de la connexion après ce délai de propagation.",
         propagationDelayField: tuple("Propagation en", "ms"),
         zoomLevel: "Le niveau de zoom sur les composants du circuit.",
@@ -751,6 +752,8 @@ const Strings_fr = {
                 WireStyleAuto: "Automatique",
                 WireStyleStraight: "Ligne droite",
                 WireStyleCurved: "Courbe",
+
+                HiddenWire: "Masquer le fil",
             },
             timeline: {
                 PropagatingValue: template("Propagation de la valeur ${val} sur le fil"),
@@ -906,6 +909,7 @@ const Strings_en: Strings = {
         showDisconnectedPins: tuple("Always show pins", "If unchecked, disconnected component pins are hidden in modes where new connections can’t be made (but stay visible otherwise)."),
         hideTooltips: tuple("Disable tooltips", "If checked, additional information in component tooltips (such as truth tables) won’t be shown."),
         groupParallelWires: tuple("Group parallel wires", "If checked, parallel wires from one component to another will be grouped together as a thicker wire."),
+        showHiddenWires: tuple("Show hidden wires", "If checked, hidden wires will still be shown."),
         propagationDelay: "A 1 or 0 output on some wire will propagate to the other end of the wire after this propagation delay.",
         propagationDelayField: tuple("Propagation in", "ms"),
         zoomLevel: "The zoom level on the circuit components.",
@@ -1490,6 +1494,8 @@ const Strings_en: Strings = {
                 WireStyleAuto: "Automatic",
                 WireStyleStraight: "Straight Line",
                 WireStyleCurved: "Curve",
+
+                HiddenWire: "Hide Wire",
             },
             timeline: {
                 PropagatingValue: template("Propagation of value ${val} on wire"),

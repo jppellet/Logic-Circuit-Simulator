@@ -117,6 +117,7 @@ export const WireStyles = {
 export type WireStyle = keyof typeof WireStyles
 
 type WireRepr = t.TypeOf<typeof Wire.Repr>
+type WireOptions = Exclude<WireRepr[2], undefined>
 
 export class Wire extends Drawable {
 
@@ -130,6 +131,7 @@ export class Wire extends Drawable {
                 via: typeOrUndefined(t.array(Waypoint.Repr)),
                 propagationDelay: typeOrUndefined(t.number),
                 style: typeOrUndefined(t.keyof(WireStyles)),
+                hidden: typeOrUndefined(t.boolean),
             }),
         ])
         return t.union([fullRepr, simpleRepr], "Wire")
@@ -139,6 +141,7 @@ export class Wire extends Drawable {
     private _endNode: NodeIn
     private _waypoints: Waypoint[] = []
     private _style: WireStyle | undefined = undefined
+    private _isHidden = false
     private _propagatingValues: [LogicValue, Timestamp][] = []
     private _waypointBeingDragged: Waypoint | undefined = undefined
     public customPropagationDelay: number | undefined = undefined
@@ -158,9 +161,26 @@ export class Wire extends Drawable {
         this.setEndNode(endNode)
     }
 
+    // called immediately after construction by Serialization
+    public setOptions(wireOptions: WireOptions) {
+        this.doSetValidatedId(wireOptions.ref)
+        if (wireOptions.via !== undefined) {
+            this.setWaypoints(wireOptions.via)
+        }
+        if (wireOptions.propagationDelay !== undefined) {
+            this.customPropagationDelay = wireOptions.propagationDelay
+        }
+        if (wireOptions.style !== undefined) {
+            this.doSetStyle(wireOptions.style)
+        }
+        if (wireOptions.hidden !== undefined) {
+            this.doSetHidden(wireOptions.hidden)
+        }
+    }
+
     public toJSON(): WireRepr {
         const endID = this._endNode.id
-        if (this._waypoints.length === 0 && this.customPropagationDelay === undefined && this.ref === undefined && this.style === undefined) {
+        if (this._waypoints.length === 0 && this.customPropagationDelay === undefined && this.ref === undefined && this.style === undefined && !this.isHidden) {
             // no need for node options
             return [this._startNode.id, endID]
 
@@ -172,6 +192,7 @@ export class Wire extends Drawable {
                 via: (waypoints.length === 0) ? undefined : waypoints,
                 propagationDelay: this.customPropagationDelay,
                 style: this.style,
+                hidden: this.isHidden,
             }]
         }
     }
@@ -203,6 +224,19 @@ export class Wire extends Drawable {
     public doSetStyle(style: WireStyle | undefined) {
         this._style = style
         this.setNeedsRedraw("style changed")
+    }
+
+    public get isHidden() {
+        return this._isHidden
+    }
+
+    private get behavesHidden() {
+        return this._isHidden && !this.parent.editor.options.showHiddenWires
+    }
+
+    public doSetHidden(hidden: boolean) {
+        this._isHidden = hidden
+        this.setNeedsRedraw("hidden changed")
     }
 
     public setStartNode(startNode: NodeOut, now?: Timestamp) {
@@ -372,6 +406,10 @@ export class Wire extends Drawable {
         const drawTime = ctx.drawParams.drawTime
         this.prunePropagatingValues(drawTime, propagationDelay)
 
+        if (this.behavesHidden) {
+            return
+        }
+
         let prevX = this.startNode.posX
         let prevY = this.startNode.posY
         let prevProlong = this.startNode.wireProlongDirection
@@ -446,7 +484,7 @@ export class Wire extends Drawable {
     }
 
     public isOver(x: number, y: number): boolean {
-        if (this.parent.mode < Mode.CONNECT || !this.startNode.isAlive || !this.endNode.isAlive) {
+        if (this.parent.mode < Mode.CONNECT || !this.startNode.isAlive || !this.endNode.isAlive || this.behavesHidden) {
             return false
         }
         return this.indexOfNextWaypointIfMouseover(x, y) !== undefined
@@ -523,6 +561,10 @@ export class Wire extends Drawable {
             return MenuData.item(icon, desc, action)
         }
 
+        const hiddenMenuItem =
+            MenuData.item(this.isHidden ? "check" : "none", s.HiddenWire, () => {
+                this.doSetHidden(!this.isHidden)
+            })
 
         const setWireOptionsItems =
             this.parent.mode < Mode.DESIGN ? [] : [
@@ -558,6 +600,9 @@ export class Wire extends Drawable {
                     makeItemDisplayStyle(s.WireStyleStraight, WireStyles.straight),
                     makeItemDisplayStyle(s.WireStyleCurved, WireStyles.bezier),
                 ]),
+
+                MenuData.sep(),
+                hiddenMenuItem,
             ]
 
         const setRefItems =

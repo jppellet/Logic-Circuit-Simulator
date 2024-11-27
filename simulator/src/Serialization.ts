@@ -288,18 +288,8 @@ class _Serialization {
                 const completedWire = wireMgr.addWire(node1, node2, false)
                 if (completedWire !== undefined) {
                     if (wireOptions !== undefined) {
-                        completedWire.doSetValidatedId(wireOptions.ref)
-                        if (wireOptions.via !== undefined) {
-                            completedWire.setWaypoints(wireOptions.via)
-                        }
-                        if (wireOptions.propagationDelay !== undefined) {
-                            completedWire.customPropagationDelay = wireOptions.propagationDelay
-                        }
-                        if (wireOptions.style !== undefined) {
-                            completedWire.doSetStyle(wireOptions.style)
-                        }
+                        completedWire.setOptions(wireOptions)
                     }
-
                     if (immediateWirePropagation) {
                         completedWire.customPropagationDelay = 0
                     }

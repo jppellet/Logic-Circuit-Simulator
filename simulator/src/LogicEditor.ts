@@ -92,6 +92,7 @@ const DEFAULT_EDITOR_OPTIONS = {
     hideMemoryContent: false,
     hideTooltips: false,
     groupParallelWires: false,
+    showHiddenWires: false,
     propagationDelay: 100,
     allowPausePropagation: false,
     zoom: 100,
@@ -218,6 +219,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         hideMemoryContentCheckbox: HTMLInputElement,
         hideTooltipsCheckbox: HTMLInputElement,
         groupParallelWiresCheckbox: HTMLInputElement,
+        showHiddenWiresCheckbox: HTMLInputElement,
         propagationDelayField: HTMLInputElement,
         showUserDataLinkContainer: HTMLDivElement,
     } | undefined = undefined
@@ -319,6 +321,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             optionsHtml.showDisconnectedPinsCheckbox.checked = newOptions.showDisconnectedPins
             optionsHtml.hideTooltipsCheckbox.checked = newOptions.hideTooltips
             optionsHtml.groupParallelWiresCheckbox.checked = newOptions.groupParallelWires
+            optionsHtml.showHiddenWiresCheckbox.checked = newOptions.showHiddenWires
             optionsHtml.propagationDelayField.valueAsNumber = newOptions.propagationDelay
 
             this.setWindowTitleFrom(newOptions.name)
@@ -782,6 +785,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const showDisconnectedPinsCheckbox = makeCheckbox("showDisconnectedPins", S.Settings.showDisconnectedPins)
         const hideTooltipsCheckbox = makeCheckbox("hideTooltips", S.Settings.hideTooltips)
         const groupParallelWiresCheckbox = makeCheckbox("groupParallelWires", S.Settings.groupParallelWires, true)
+        const showHiddenWiresCheckbox = makeCheckbox("showHiddenWires", S.Settings.showHiddenWires)
         // 
         const wireStylePopup = select(
             option(attr("value", WireStyles.auto), S.Settings.WireStyleAuto),
@@ -836,6 +840,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             showDisconnectedPinsCheckbox,
             hideTooltipsCheckbox,
             groupParallelWiresCheckbox,
+            showHiddenWiresCheckbox,
             propagationDelayField,
             showUserDataLinkContainer,
         }

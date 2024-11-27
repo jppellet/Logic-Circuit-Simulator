@@ -117,7 +117,7 @@ export class UndoManager {
             for (let i = stack.length - 1; i >= 0; i--) {
                 const snapshot = stack[i]
                 const timeStr = new Date(snapshot.time).toISOString()
-                console.log(timeStr)
+                console.log(timeStr + "\t" + snapshot.circuitStr)
             }
             console.groupEnd()
         }
