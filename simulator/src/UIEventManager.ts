@@ -607,7 +607,9 @@ export class UIEventManager {
                 }
             }
 
-            if (this._currentMouseDownData?.fireMouseClickedOnFinish ?? false) {
+            const mouseDownData = this._currentMouseDownData
+            const fireMouseClicked = mouseDownData === null ? false : mouseDownData.fireMouseClickedOnFinish && !mouseDownData.triggeredContextMenu
+            if (fireMouseClicked) {
                 let newChange
                 if (this.isDoubleClick(mouseUpTarget, e)) {
                     newChange = this._currentHandlers.mouseDoubleClickedOn(mouseUpTarget, e)
