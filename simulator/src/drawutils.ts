@@ -1,6 +1,6 @@
-import { Component, ComponentName, isNodeArray, ReadonlyGroupedNodeArray } from "./components/Component"
+import { Component, ComponentBase, ComponentName, isNodeArray, ReadonlyGroupedNodeArray } from "./components/Component"
 import { LedColor } from "./components/DisplayBar"
-import { DrawContext, DrawContextExt, GraphicsRendering, HasPosition, Orientation } from "./components/Drawable"
+import { DrawableWithPosition, DrawContext, DrawContextExt, GraphicsRendering, HasPosition, Orientation } from "./components/Drawable"
 import { Node, WireColor } from "./components/Node"
 import { RectangleColor } from "./components/Rectangle"
 import { LogicEditor } from "./LogicEditor"
@@ -771,11 +771,40 @@ export function drawComponentName(g: GraphicsRendering, ctx: DrawContextExt, nam
     g.textBaseline = "middle" // restore
 }
 
+export function drawAnchorToComponent(g: GraphicsRendering, comp: DrawableWithPosition) {
+    const anchor = comp.anchor
+    if (anchor !== undefined) {
+        drawAnchorTo(g, comp.posX, comp.posY, anchor.posX, anchor.posY)
+    }
+    if (comp instanceof ComponentBase) {
+        for (const anchoredComp of comp.anchoredDrawables) {
+            drawAnchorTo(g, anchoredComp.posX, anchoredComp.posY, comp.posX, comp.posY)
+        }
+    }
+}
+
+export function drawAnchorTo(g: GraphicsRendering, x1: number, y1: number, x2: number, y2: number) {
+    const [[t1, t2], [a1, a2], [b1, b2]] = arrowheadPoints(x1, y1, x2, y2, 18, 10, 5)
+    g.beginPath()
+    g.moveTo(x1, y1)
+    g.lineTo(t1, t2)
+    g.lineTo(a1, a2)
+    g.lineTo(b1, b2)
+    g.lineTo(t1, t2)
+    g.closePath()
+    g.lineWidth = 4
+    g.strokeStyle = "rgba(100, 100, 100, 0.5)"
+    g.lineCap = "round"
+    g.stroke()
+}
+
+
 export function arrowheadPoints(
     x1: number, y1: number,
     x2: number, y2: number,
+    d: number,
     h: number, w: number
-): [[number, number], [number, number]] {
+): [[number, number], [number, number], [number, number]] {
     // Calculate the direction vector
     const dx = x2 - x1
     const dy = y2 - y1
@@ -789,7 +818,13 @@ export function arrowheadPoints(
     const perpX = -udy
     const perpY = udx
 
-    // Calculate the two points for the arrowhead
+    // Calculate the points for the arrowhead
+    const tip: [number, number] = [
+        x2 - d * udx,
+        y2 - d * udy,
+    ]
+
+    h += d
     const point1: [number, number] = [
         x2 - h * udx + w * perpX,
         y2 - h * udy + w * perpY,
@@ -800,7 +835,7 @@ export function arrowheadPoints(
         y2 - h * udy - w * perpY,
     ]
 
-    return [point1, point2]
+    return [tip, point1, point2]
 }
 
 

@@ -2,7 +2,7 @@ import { Bezier, Offset } from "bezier-js"
 import * as t from "io-ts"
 import { DrawParams } from "../LogicEditor"
 import { Timestamp } from "../Timeline"
-import { COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, NodeStyle, WAYPOINT_DIAMETER, WIRE_WIDTH, arrowheadPoints, colorForLogicValue, dist, drawStraightWireLine, drawWaypoint, isOverWaypoint, strokeAsWireLine } from "../drawutils"
+import { COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, NodeStyle, WAYPOINT_DIAMETER, WIRE_WIDTH, colorForLogicValue, dist, drawAnchorTo, drawStraightWireLine, drawWaypoint, isOverWaypoint, strokeAsWireLine } from "../drawutils"
 import { span, style, title } from "../htmlgen"
 import { S } from "../strings"
 import { InteractionResult, LogicValue, Mode, isArray, toLogicValueRepr, typeOrUndefined } from "../utils"
@@ -935,8 +935,6 @@ export class WireManager {
     }
 
     private drawAnchorBeingSet(g: GraphicsRendering) {
-        // TODO have a way to show all anchors graphically and make this call it
-        // TODO when moving a component that has an anchor set, show the anchor
         const drawable = this._anchorBeingSetFrom
         if (drawable !== undefined) {
             const x1 = drawable.posX
@@ -945,17 +943,7 @@ export class WireManager {
             const zoomFactor = editor.options.zoom / 100
             const x2 = editor.mouseX / zoomFactor
             const y2 = editor.mouseY / zoomFactor
-            const [[a1, a2], [b1, b2]] = arrowheadPoints(x1, y1, x2, y2, 10, 5)
-            g.beginPath()
-            g.moveTo(x1, y1)
-            g.lineTo(x2, y2)
-            g.lineTo(a1, a2)
-            g.lineTo(b1, b2)
-            g.lineTo(x2, y2)
-            g.closePath()
-            g.lineWidth = 4
-            g.strokeStyle = "rgba(100, 100, 100, 0.5)"
-            g.stroke()
+            drawAnchorTo(g, x1, y1, x2, y2)
         }
     }
 

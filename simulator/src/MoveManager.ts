@@ -26,6 +26,17 @@ export class MoveManager {
         return undefined
     }
 
+    public getSingleMovingComponentWithAnchors(): DrawableWithPosition | undefined {
+        if (this._movingDrawables.size === 1) {
+            const drawable = this._movingDrawables.values().next().value
+            if ((drawable instanceof DrawableWithPosition && drawable.anchor !== undefined) ||
+                (drawable instanceof ComponentBase && drawable.anchoredDrawables.length !== 0)) {
+                return drawable
+            }
+        }
+        return undefined
+    }
+
     public setDrawableMoving(comp: DrawableWithPosition, e?: MouseEvent | TouchEvent) {
         this.changeMovingDrawables(() => {
             this._movingDrawables.add(comp)
