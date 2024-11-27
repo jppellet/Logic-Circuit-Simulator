@@ -2,7 +2,7 @@ import { Bezier, Offset } from "bezier-js"
 import * as t from "io-ts"
 import { DrawParams } from "../LogicEditor"
 import { Timestamp } from "../Timeline"
-import { COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, NodeStyle, WAYPOINT_DIAMETER, WIRE_WIDTH, colorForLogicValue, dist, drawStraightWireLine, drawWaypoint, isOverWaypoint, strokeAsWireLine } from "../drawutils"
+import { COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, NodeStyle, WAYPOINT_DIAMETER, WIRE_WIDTH, arrowheadPoints, colorForLogicValue, dist, drawStraightWireLine, drawWaypoint, isOverWaypoint, strokeAsWireLine } from "../drawutils"
 import { span, style, title } from "../htmlgen"
 import { S } from "../strings"
 import { InteractionResult, LogicValue, Mode, isArray, toLogicValueRepr, typeOrUndefined } from "../utils"
@@ -18,7 +18,7 @@ export class Waypoint extends DrawableWithDraggablePosition {
     public static get Repr() {
         return t.union([
             // alternatives with more fields first
-            t.tuple([t.number, t.number, t.keyof(Orientations_), t.partial({ lockPos: t.boolean })]),
+            t.tuple([t.number, t.number, t.keyof(Orientations_), t.partial({ lockPos: t.boolean, anchor: t.string })]),
             t.tuple([t.number, t.number, t.keyof(Orientations_)]),
             t.tuple([t.number, t.number]),
         ], "Wire")
@@ -30,6 +30,7 @@ export class Waypoint extends DrawableWithDraggablePosition {
         }
         return {
             pos: [saved[0], saved[1]],
+            anchor: saved[3]?.anchor,
             lockPos: saved[3]?.lockPos,
             orient: saved[2],
             ref: undefined,
@@ -44,8 +45,11 @@ export class Waypoint extends DrawableWithDraggablePosition {
     }
 
     public toJSON(): WaypointRepr {
-        if (this.lockPos) {
-            return [this.posX, this.posY, this.orient, { lockPos: true }]
+        if (this.lockPos || this.anchor !== undefined) {
+            return [this.posX, this.posY, this.orient, {
+                lockPos: this.lockPos === false ? undefined : this.lockPos,
+                anchor: this.anchor?.ref,
+            }]
         }
         if (this.orient !== Orientation.default) {
             return [this.posX, this.posY, this.orient]
@@ -162,10 +166,10 @@ export class Wire extends Drawable {
     }
 
     // called immediately after construction by Serialization
-    public setOptions(wireOptions: WireOptions) {
+    public setOptions(wireOptions: WireOptions, componentsByRef: Record<string, Component>) {
         this.doSetValidatedId(wireOptions.ref)
         if (wireOptions.via !== undefined) {
-            this.setWaypoints(wireOptions.via)
+            this.setWaypoints(wireOptions.via, componentsByRef)
         }
         if (wireOptions.propagationDelay !== undefined) {
             this.customPropagationDelay = wireOptions.propagationDelay
@@ -192,7 +196,7 @@ export class Wire extends Drawable {
                 via: (waypoints.length === 0) ? undefined : waypoints,
                 propagationDelay: this.customPropagationDelay,
                 style: this.style,
-                hidden: this.isHidden,
+                hidden: this.isHidden === false ? undefined : this.isHidden,
             }]
         }
     }
@@ -213,8 +217,18 @@ export class Wire extends Drawable {
         return this._waypoints
     }
 
-    public setWaypoints(reprs: WaypointRepr[]) {
-        this._waypoints = reprs.map(repr => new Waypoint(this, repr))
+    public setWaypoints(reprs: WaypointRepr[], componentsByRef: Record<string, Component>) {
+        this._waypoints = reprs.map(repr => {
+            const wp = new Waypoint(this, repr)
+            const anchorRef = repr[3]?.anchor
+            if (anchorRef !== undefined) {
+                const anchor = componentsByRef[anchorRef]
+                if (anchor !== undefined) {
+                    wp.anchor = anchor
+                }
+            }
+            return wp
+        })
     }
 
     public get style() {
@@ -845,6 +859,7 @@ export class WireManager {
     private readonly _wires: Wire[] = []
     private readonly _ribbons: Ribbon[] = []
     private _wireBeingAddedFrom: Node | undefined = undefined
+    private _anchorBeingSetFrom: DrawableWithDraggablePosition | undefined = undefined
 
     public constructor(parent: DrawableParent) {
         this.parent = parent
@@ -860,6 +875,10 @@ export class WireManager {
 
     public get isAddingWire() {
         return this._wireBeingAddedFrom !== undefined
+    }
+
+    public get isSettingAnchor() {
+        return this._anchorBeingSetFrom !== undefined
     }
 
     public draw(g: GraphicsRendering, drawParams: DrawParams) {
@@ -880,6 +899,7 @@ export class WireManager {
             }
         }
         this.drawWireBeingAdded(g, drawParams)
+        this.drawAnchorBeingSet(g)
     }
 
     private drawWireBeingAdded(g: GraphicsRendering, drawParams: DrawParams) {
@@ -914,6 +934,31 @@ export class WireManager {
         }
     }
 
+    private drawAnchorBeingSet(g: GraphicsRendering) {
+        // TODO have a way to show all anchors graphically and make this call it
+        // TODO when moving a component that has an anchor set, show the anchor
+        const drawable = this._anchorBeingSetFrom
+        if (drawable !== undefined) {
+            const x1 = drawable.posX
+            const y1 = drawable.posY
+            const editor = this.parent.editor
+            const zoomFactor = editor.options.zoom / 100
+            const x2 = editor.mouseX / zoomFactor
+            const y2 = editor.mouseY / zoomFactor
+            const [[a1, a2], [b1, b2]] = arrowheadPoints(x1, y1, x2, y2, 10, 5)
+            g.beginPath()
+            g.moveTo(x1, y1)
+            g.lineTo(x2, y2)
+            g.lineTo(a1, a2)
+            g.lineTo(b1, b2)
+            g.lineTo(x2, y2)
+            g.closePath()
+            g.lineWidth = 4
+            g.strokeStyle = "rgba(100, 100, 100, 0.5)"
+            g.stroke()
+        }
+    }
+
     private removeDeadWires() {
         let i = 0
         while (i < this._wires.length) {
@@ -943,7 +988,46 @@ export class WireManager {
         return wire
     }
 
-    public startDraggingFrom(node: Node) {
+    public startSettingAnchorFrom(drawable: DrawableWithDraggablePosition) {
+        if (this._anchorBeingSetFrom !== undefined) {
+            console.warn("WireManager.startSettingAnchorFrom: already setting anchor from a drawable")
+        }
+        this._anchorBeingSetFrom = drawable
+        this.parent.ifEditing?.setToolCursor("alias")
+    }
+
+    public stopSettingAnchorOn(comp: Component): InteractionResult {
+        const anchorBeingSetFrom = this._anchorBeingSetFrom
+        if (anchorBeingSetFrom) {
+            this._anchorBeingSetFrom = undefined
+            this.parent.ifEditing?.setToolCursor(null)
+
+            if (comp.ref === undefined) {
+                console.warn("WireManager.stopSettingAnchorOn: component has no ref")
+            }
+            if (comp !== anchorBeingSetFrom) {
+                let forbidden = false
+                let current = comp
+                while (current.anchor !== undefined) {
+                    current = current.anchor
+                    if (current === anchorBeingSetFrom) {
+                        forbidden = true
+                        break
+                    }
+                }
+                if (forbidden) {
+                    this.parent.editor.showMessage(S.Messages.CircularAnchorsForbidden)
+                } else {
+                    anchorBeingSetFrom.anchor = comp
+                    this.parent.editor.showMessage(S.Messages.AnchorAdded)
+                    return InteractionResult.SimpleChange
+                }
+            }
+        }
+        return InteractionResult.NoChange
+    }
+
+    public startDraggingWireFrom(node: Node) {
         if (this._wireBeingAddedFrom !== undefined) {
             console.warn("WireManager.startDraggingFrom: already dragging from a node")
         }
@@ -954,8 +1038,8 @@ export class WireManager {
         this.parent.ifEditing?.setToolCursor("crosshair")
     }
 
-    public stopDraggingOn(newNode: Node): Wire | undefined {
-        const nodes = this.getOutInNodes(newNode)
+    public stopDraggingWireOn(newNode: Node): Wire | undefined {
+        const nodes = this.getOutInNodesForNewWire(newNode)
         this._wireBeingAddedFrom = undefined
         if (nodes === undefined) {
             return undefined
@@ -963,11 +1047,11 @@ export class WireManager {
         return this.addWire(nodes[0], nodes[1], true)
     }
 
-    public isValidMouseUp(node: Node): boolean {
-        return this.getOutInNodes(node) !== undefined
+    public isValidNodeToConnect(node: Node): boolean {
+        return this.getOutInNodesForNewWire(node) !== undefined
     }
 
-    private getOutInNodes(newNode: Node): [NodeOut, NodeIn] | undefined {
+    private getOutInNodesForNewWire(newNode: Node): [NodeOut, NodeIn] | undefined {
         const otherNode = this._wireBeingAddedFrom
         if (otherNode === undefined) {
             return undefined
@@ -1006,9 +1090,14 @@ export class WireManager {
         }
     }
 
-    public tryCancelWire(): boolean {
+    public tryCancelWireOrAnchor(): boolean {
         if (this._wireBeingAddedFrom !== undefined) {
             this._wireBeingAddedFrom = undefined
+            this.parent.ifEditing?.setToolCursor(null)
+            return true
+        }
+        if (this._anchorBeingSetFrom !== undefined) {
+            this._anchorBeingSetFrom = undefined
             this.parent.ifEditing?.setToolCursor(null)
             return true
         }

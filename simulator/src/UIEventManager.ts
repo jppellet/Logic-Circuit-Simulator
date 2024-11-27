@@ -171,13 +171,16 @@ export class UIEventManager {
         return this.currentSelection === undefined || this.currentSelection.previouslySelectedElements.size === 0
     }
 
-    public updateMouseOver([x, y]: [number, number], pullingWire: boolean) {
+    public updateMouseOver([x, y]: [number, number], pullingWire: boolean, settingAnchor: boolean) {
         const findMouseOver: () => Drawable | null = () => {
             // easy optimization: maybe we're still over the
             // same component as before, so quickly check this
             if (this._currentMouseOverComp !== null && this._currentMouseOverComp.drawZIndex !== 0) {
                 // second condition says: always revalidate the mouseover of background components (with z index 0)
-                if (this._currentMouseOverComp.isOver(x, y)) {
+
+                // if we're setting an anchor, we only want components, not drawables
+                const rejectThis = settingAnchor && !(this._currentMouseOverComp instanceof ComponentBase)
+                if (!rejectThis && this._currentMouseOverComp.isOver(x, y)) {
                     return this._currentMouseOverComp
                 }
             }
@@ -195,13 +198,16 @@ export class UIEventManager {
             // normal components or their nodes
             for (const comp of root.components.withZIndex(DrawZIndex.Normal)) {
                 let nodeOver: Node | null = null
-                for (const node of comp.allNodes()) {
-                    if (node.isOver(x, y)) {
-                        nodeOver = node
-                        break
+                if (!settingAnchor) {
+                    // check nodes
+                    for (const node of comp.allNodes()) {
+                        if (node.isOver(x, y)) {
+                            nodeOver = node
+                            break
+                        }
                     }
                 }
-                if (nodeOver !== null && (!pullingWire || root.wireMgr.isValidMouseUp(nodeOver))) {
+                if (nodeOver !== null && (!pullingWire || root.wireMgr.isValidNodeToConnect(nodeOver))) {
                     return nodeOver
                 }
                 if (!pullingWire && comp.isOver(x, y)) {
@@ -209,7 +215,7 @@ export class UIEventManager {
                 }
             }
 
-            if (!pullingWire) {
+            if (!pullingWire && !settingAnchor) {
                 // wires
                 for (const wire of root.wireMgr.wires) {
                     for (const waypoint of wire.waypoints) {
@@ -378,7 +384,7 @@ export class UIEventManager {
         canvas.addEventListener("mouseup", editor.wrapHandler((e) => {
             // console.log("mouseup %o, composedPath = %o", e, e.composedPath())
             this._mouseUpTouchEnd(e)
-            this.updateMouseOver(this.editor.offsetXY(e), false)
+            this.updateMouseOver(this.editor.offsetXY(e), false, false)
             this.editor.updateCursor(e)
             this.editor.focus()
         }))
@@ -400,7 +406,7 @@ export class UIEventManager {
                     let handled: boolean
                     handled = editor.eventMgr.tryDeleteComponentsWhere(comp => comp.state === ComponentState.SPAWNING, false) > 0
                     if (!handled) {
-                        handled = editor.wireMgr.tryCancelWire()
+                        handled = editor.wireMgr.tryCancelWireOrAnchor()
                     }
                     if (!handled && this.editor.editorRoot instanceof CustomComponent) {
                         handled = this.editor.tryCloseCustomComponentEditor()
@@ -515,7 +521,7 @@ export class UIEventManager {
         this.clearPopperIfNecessary()
         if (this._currentMouseDownData === null) {
             const xy = this.editor.offsetXY(e)
-            this.updateMouseOver(xy, false)
+            this.updateMouseOver(xy, false, false)
             if (this._currentMouseOverComp !== null) {
                 // mouse down on component
                 const { wantsDragEvents } = this._currentHandlers.mouseDownOn(this._currentMouseOverComp, e)
@@ -585,7 +591,8 @@ export class UIEventManager {
             }
         } else {
             // moving mouse or dragging without a locked component
-            this.updateMouseOver(this.editor.offsetXY(e), this.editor.editorRoot.wireMgr.isAddingWire)
+            const wireMgr = this.editor.editorRoot.wireMgr
+            this.updateMouseOver(this.editor.offsetXY(e), wireMgr.isAddingWire, wireMgr.isSettingAnchor)
         }
     }
 
@@ -823,7 +830,7 @@ class EditHandlers extends ToolHandlers {
     }
     public override mouseUpOn(comp: Drawable, e: MouseEvent | TouchEvent) {
         const change = comp.mouseUp(e)
-        this.editor.editorRoot.wireMgr.tryCancelWire()
+        this.editor.editorRoot.wireMgr.tryCancelWireOrAnchor()
         return change
     }
     public override mouseClickedOn(comp: Drawable, e: MouseEvent | TouchEvent) {
@@ -887,7 +894,7 @@ class EditHandlers extends ToolHandlers {
 
     public override mouseUpOnBackground(__e: MouseEvent | TouchEvent) {
         const editor = this.editor
-        editor.wireMgr.tryCancelWire()
+        editor.wireMgr.tryCancelWireOrAnchor()
 
         const eventMgr = editor.eventMgr
         const currentSelection = eventMgr.currentSelection

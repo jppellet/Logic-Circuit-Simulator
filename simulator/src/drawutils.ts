@@ -771,6 +771,39 @@ export function drawComponentName(g: GraphicsRendering, ctx: DrawContextExt, nam
     g.textBaseline = "middle" // restore
 }
 
+export function arrowheadPoints(
+    x1: number, y1: number,
+    x2: number, y2: number,
+    h: number, w: number
+): [[number, number], [number, number]] {
+    // Calculate the direction vector
+    const dx = x2 - x1
+    const dy = y2 - y1
+    const magnitude = Math.sqrt(dx * dx + dy * dy)
+
+    // Unit vector in the direction of the arrow
+    const udx = dx / magnitude
+    const udy = dy / magnitude
+
+    // Perpendicular vector for the width of the arrow
+    const perpX = -udy
+    const perpY = udx
+
+    // Calculate the two points for the arrowhead
+    const point1: [number, number] = [
+        x2 - h * udx + w * perpX,
+        y2 - h * udy + w * perpY,
+    ]
+
+    const point2: [number, number] = [
+        x2 - h * udx - w * perpX,
+        y2 - h * udy - w * perpY,
+    ]
+
+    return [point1, point2]
+}
+
+
 //
 // DATA CONVERSIONS FOR DISPLAY PURPOSES
 //

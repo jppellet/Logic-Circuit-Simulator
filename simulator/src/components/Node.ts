@@ -61,6 +61,14 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         return this as unknown as Node
     }
 
+    public get anchor(): Component | undefined {
+        return undefined
+    }
+
+    public set anchor(__: Component | undefined) {
+        throw new Error("Node does not support anchoring")
+    }
+
     public isOutput(): this is NodeOut {
         return Node.isOutput(this.asNode)
     }
@@ -231,12 +239,12 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
     }
 
     public override mouseDown(__: MouseEvent | TouchEvent) {
-        this.parent.wireMgr.startDraggingFrom(this.asNode)
+        this.parent.wireMgr.startDraggingWireFrom(this.asNode)
         return { wantsDragEvents: false }
     }
 
     public override mouseUp(__: MouseEvent | TouchEvent) {
-        const newWire = this.parent.wireMgr.stopDraggingOn(this.asNode)
+        const newWire = this.parent.wireMgr.stopDraggingWireOn(this.asNode)
         if (newWire === undefined) {
             return InteractionResult.NoChange
         }

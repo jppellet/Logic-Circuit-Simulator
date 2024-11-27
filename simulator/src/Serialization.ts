@@ -124,9 +124,9 @@ class _Serialization {
             return "invalid JSON: 'components' must be an array or an object"
         }
 
-        const { nodeMapping, createdComponents } = this.makeComponents(parent, compReprs, offsetPos)
-        this.makeWires(parent, parsed.wires, nodeMapping, false)
-        return createdComponents
+        const { nodeMapping, components, componentsByRef } = this.makeComponents(parent, compReprs, offsetPos)
+        this.makeWires(parent, parsed.wires, nodeMapping, componentsByRef, false)
+        return components
     }
 
 
@@ -176,11 +176,11 @@ class _Serialization {
         }
 
         const compReprs = parsed.components
-        const { nodeMapping } = this.makeComponents(parent, compReprs, undefined)
+        const { nodeMapping, componentsByRef } = this.makeComponents(parent, compReprs, undefined)
         delete parsed.components
 
         const immediateWirePropagation = opts?.immediateWirePropagation ?? false
-        this.makeWires(parent, parsed.wires, nodeMapping, immediateWirePropagation)
+        this.makeWires(parent, parsed.wires, nodeMapping, componentsByRef, immediateWirePropagation)
         delete parsed.wires
 
         if (parent.isMainEditor()) {
@@ -232,12 +232,21 @@ class _Serialization {
         return undefined // meaning no error
     }
 
-    private makeComponents(parent: DrawableParent, compReprs: unknown, offsetPos: [number, number] | undefined): { nodeMapping: NodeMapping, createdComponents: Component[] } {
+    private makeComponents(parent: DrawableParent, compReprs: unknown, offsetPos: [number, number] | undefined): { nodeMapping: NodeMapping, components: Component[], componentsByRef: Record<string, Component> } {
         // TODO also return a mapping for renamed component ids according to the same principle
-        const createdComponents: Component[] = []
-        const add = (c: Component | undefined) => {
+        const components: Component[] = []
+        const componentsByRef: Record<string, Component> = {}
+        const anchorsToSet: Array<[Component, string]> = []
+        const add = (c: Component | undefined, repr: unknown) => {
             if (c !== undefined) {
-                createdComponents.push(c)
+                components.push(c)
+                if (c.ref !== undefined) {
+                    componentsByRef[c.ref] = c
+                }
+                let anchor
+                if (isRecord(repr) && "anchor" in repr && isString(anchor = repr.anchor)) {
+                    anchorsToSet.push([c, anchor])
+                }
             }
         }
 
@@ -246,14 +255,14 @@ class _Serialization {
             if (isArray(compReprs)) {
                 // parse using ids from attributes
                 for (const compRepr of compReprs as unknown[]) {
-                    add(factory.makeFromJSON(parent, compRepr, offsetPos))
+                    add(factory.makeFromJSON(parent, compRepr, offsetPos), compRepr)
                 }
             } else if (isRecord(compReprs)) {
                 // parse using ids from keys
                 for (const [id, compRepr] of Object.entries(compReprs)) {
                     if (isRecord(compRepr)) {
                         compRepr.ref = id
-                        add(factory.makeFromJSON(parent, compRepr, offsetPos))
+                        add(factory.makeFromJSON(parent, compRepr, offsetPos), compRepr)
                     } else {
                         console.error(`Invalid non-object component repr: '${compRepr}'`)
                     }
@@ -261,11 +270,20 @@ class _Serialization {
             }
         })
 
-        return { nodeMapping, createdComponents }
+        for (const [comp, anchorRef] of anchorsToSet) {
+            const anchor = componentsByRef[anchorRef]
+            if (anchor !== undefined) {
+                comp.anchor = anchor
+            } else {
+                console.warn(`Anchor '${anchorRef}' not found for component '${comp.ref}'`)
+            }
+        }
+
+        return { nodeMapping, components, componentsByRef }
     }
 
 
-    private makeWires(parent: DrawableParent, wires: unknown, nodeMapping: NodeMapping, immediateWirePropagation: boolean) {
+    private makeWires(parent: DrawableParent, wires: unknown, nodeMapping: NodeMapping, componentsByRef: Record<string, Component>, immediateWirePropagation: boolean) {
         const wireMgr = parent.wireMgr
         const nodeMgr = parent.nodeMgr
 
@@ -288,7 +306,7 @@ class _Serialization {
                 const completedWire = wireMgr.addWire(node1, node2, false)
                 if (completedWire !== undefined) {
                     if (wireOptions !== undefined) {
-                        completedWire.setOptions(wireOptions)
+                        completedWire.setOptions(wireOptions, componentsByRef)
                     }
                     if (immediateWirePropagation) {
                         completedWire.customPropagationDelay = 0

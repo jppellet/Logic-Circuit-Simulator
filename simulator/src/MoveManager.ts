@@ -62,7 +62,7 @@ export class MoveManager {
                 // class name of drawable
                 const className = drawable.constructor.name
                 if (drawable instanceof ComponentBase) {
-                    console.log(className + " - " + drawable.outputs._all[0]?.id ?? "?")
+                    console.log(className + " - " + (drawable.outputs._all[0]?.id ?? "?"))
                 } else {
                     console.log(className)
                 }

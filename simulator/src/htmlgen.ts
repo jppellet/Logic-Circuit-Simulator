@@ -160,3 +160,5 @@ export function tooltipContent(title: Modifier | undefined, body: Modifier, maxW
         div(body)
     )
 }
+
+export const fixedWidthInContextMenu = style("font-family: monospace; font-weight: bolder; font-size: 90%")

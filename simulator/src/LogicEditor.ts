@@ -1235,7 +1235,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this._highlightedItems = undefined
         this.eventMgr.currentSelection = undefined
         this.eventMgr.clearPopperIfNecessary()
-        this.eventMgr.updateMouseOver([this.mouseX, this.mouseY], false)
+        this.eventMgr.updateMouseOver([this.mouseX, this.mouseY], false, false)
         this.editTools.moveMgr.clear()
         this.editTools.redrawMgr.addReason("editor context changed", null)
 
@@ -1588,8 +1588,9 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const __recalculated = this.recalcMgr.recalcAndPropagateIfNeeded()
 
         const redrawMgr = this.editTools.redrawMgr
-        if (this._editorRoot.wireMgr.isAddingWire) {
-            redrawMgr.addReason("adding a wire", null)
+        const wireMgr = this._editorRoot.wireMgr
+        if (wireMgr.isAddingWire || wireMgr.isSettingAnchor) {
+            redrawMgr.addReason("adding a wire/setting anchor", null)
         }
 
         const animateWires = this._options.animateWires

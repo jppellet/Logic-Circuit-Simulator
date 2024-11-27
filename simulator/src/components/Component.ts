@@ -6,7 +6,7 @@ import { COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, Drawi
 import { IconName, ImageName } from "../images"
 import { S, Template } from "../strings"
 import { ArrayFillUsing, ArrayOrDirect, EdgeTrigger, Expand, FixedArrayMap, HasField, HighImpedance, InteractionResult, LogicValue, LogicValueRepr, Mode, Unknown, brand, deepEquals, isArray, isBoolean, isNumber, isRecord, isString, mergeWhereDefined, toLogicValueRepr, typeOrUndefined, validateJson } from "../utils"
-import { DrawContext, DrawContextExt, DrawableParent, DrawableWithDraggablePosition, GraphicsRendering, MenuData, MenuItem, MenuItemPlacement, MenuItems, Orientation, PositionSupportRepr } from "./Drawable"
+import { DrawContext, DrawContextExt, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, GraphicsRendering, MenuData, MenuItem, MenuItemPlacement, MenuItems, Orientation, PositionSupportRepr } from "./Drawable"
 import { DEFAULT_WIRE_COLOR, Node, NodeBase, NodeIn, NodeOut, WireColor } from "./Node"
 
 
@@ -265,6 +265,7 @@ export abstract class ComponentBase<
 > extends DrawableWithDraggablePosition {
 
     public readonly def: InstantiatedComponentDef<TRepr, TValue>
+    private _anchoredDrawables: DrawableWithDraggablePosition[] = []
     private _width: number
     private _height: number
     private _state!: ComponentState
@@ -658,6 +659,20 @@ export abstract class ComponentBase<
         ) as NodeIDsRepr<THasIn, THasOut>
     }
 
+    public get anchoredDrawables(): readonly DrawableWithPosition[] {
+        return this._anchoredDrawables
+    }
+
+    // only called by Drawable when setting/clearing anchor
+    public addAnchoredDrawable(drawable: DrawableWithDraggablePosition) {
+        this._anchoredDrawables.push(drawable)
+    }
+
+    // only called by Drawable when setting/clearing anchor
+    public removeAnchoredDrawable(drawable: DrawableWithPosition) {
+        this._anchoredDrawables = this._anchoredDrawables.filter(d => d !== drawable)
+    }
+
     public get unrotatedWidth() {
         return this._width
     }
@@ -1011,19 +1026,19 @@ export abstract class ComponentBase<
     public override mouseDown(e: MouseEvent | TouchEvent) {
         if (this.parent.mode >= Mode.CONNECT && !e.shiftKey) {
             // try clearing selection
-            const mvtMgr = this.parent.editor.eventMgr
+            const eventMgr = this.parent.editor.eventMgr
             let elems
-            if (mvtMgr.currentSelection !== undefined
-                && (elems = mvtMgr.currentSelection.previouslySelectedElements).size > 0
+            if (eventMgr.currentSelection !== undefined
+                && (elems = eventMgr.currentSelection.previouslySelectedElements).size > 0
                 && !elems.has(this)) {
-                mvtMgr.currentSelection = undefined
+                eventMgr.currentSelection = undefined
             }
         }
 
         return super.mouseDown(e)
     }
 
-    public override mouseUp(e: MouseEvent | TouchEvent) {
+    public override mouseUp(e: MouseEvent | TouchEvent): InteractionResult {
         let wasSpawning = false
         if (this._state === ComponentState.SPAWNING) {
             this._state = ComponentState.SPAWNED
@@ -1038,6 +1053,10 @@ export abstract class ComponentBase<
             this.parent.ifEditing?.setDirty("moved component")
             return InteractionResult.SimpleChange
         }
+        const wireMgr = this.parent.editor.wireMgr
+        if (wireMgr.isSettingAnchor) {
+            return wireMgr.stopSettingAnchorOn(this)
+        }
         return InteractionResult.NoChange
     }
 
@@ -1045,15 +1064,20 @@ export abstract class ComponentBase<
         // by default, do nothing
     }
 
-    protected override updateSelfPositionIfNeeded(x: number, y: number, snapToGrid: boolean, e: MouseEvent | TouchEvent): undefined | [number, number] {
+    protected override updateSelfPositionIfNeeded(x: number, y: number, snapToGrid: boolean, e: MouseEvent | TouchEvent): undefined | { pos: [number, number], delta: [number, number] } {
         if (this._state === ComponentState.SPAWNING) {
             return this.trySetPosition(x, y, snapToGrid)
         }
         return super.updateSelfPositionIfNeeded(x, y, snapToGrid, e)
     }
 
-    protected override positionChanged() {
+    protected override positionChanged(delta: [number, number]) {
+        super.positionChanged(delta)
         this.updateNodePositions()
+
+        for (const anchored of this._anchoredDrawables) {
+            anchored.setPosition(anchored.posX + delta[0], anchored.posY + delta[1], false)
+        }
     }
 
     public override mouseClicked(e: MouseEvent | TouchEvent): InteractionResult {

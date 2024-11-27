@@ -208,6 +208,8 @@ const Strings_fr = {
         UnsupportedFileType: template("Type de fichier non pris en charge: ${type}."),
         LoadedDefinitions: template("${n} composant$s{n} personnalisé$s{n} chargé$s{n}"),
         SavedToUrl: "Circuit enregistré dans l’URL",
+        AnchorAdded: "Ancrage ajouté",
+        CircularAnchorsForbidden: "Les ancrages circulaires ne sont pas pris en charge.",
         NotImplemented: "Cette fonctionnalité n’est pas encore implémentée.",
         ReallyCloseWindow: "Voulez-vous vraiment fermer la fenêtre sans prendre en compte les derniers changements?",
         DevelopedBy: "Développé par ",
@@ -232,6 +234,8 @@ const Strings_fr = {
                 SetIdentifierPrompt: "Choisissez l’identifiant unique à attribuer à ce composant:",
                 IdentifierCannotBeEmpty: "L’identifiant ne peut pas être vide.",
                 IdentifierAlreadyInUseShouldSwap: "L’identifiant est déjà utilisé par un autre composant. Voulez-vous inverser les identifiants?",
+
+                ClearAnchor: tuple("Supprimer l’ancrage (", ")"),
 
                 Orientation: "Orientation",
                 ChangeOrientationDesc: "Changez l’orientation avec Commande + double-clic sur le composant",
@@ -956,6 +960,8 @@ const Strings_en: Strings = {
         UnsupportedFileType: template("Unsupported file type: ${type}."),
         LoadedDefinitions: template("Loaded ${n} custom component definition$s{n}"),
         SavedToUrl: "Circuit saved to URL",
+        AnchorAdded: "Anchor added",
+        CircularAnchorsForbidden: "Circular anchors are not supported.",
         NotImplemented: "This feature is not implemented yet.",
         ReallyCloseWindow: "Do you really want to close the window without saving the changes?",
         DevelopedBy: "Developed by",
@@ -980,6 +986,8 @@ const Strings_en: Strings = {
                 SetIdentifierPrompt: "Choose the unique identifier to use for this component:",
                 IdentifierCannotBeEmpty: "The identifier cannot be empty.",
                 IdentifierAlreadyInUseShouldSwap: "The identifier is already in use. Do you want to swap the component identifiers?",
+
+                ClearAnchor: tuple("Remove anchor (", ")"),
 
                 Orientation: "Orientation",
                 ChangeOrientationDesc: "Change the orientation with Command + double click on the component",
