@@ -1,8 +1,13 @@
 # TODO List for Logic System Simulator
 
+Au niveau pratique, c’est l’alternance entre les modes création/modification et déplacement/zoom dans le simulateur qui est ennuyeuse, ainsi que l’ajout des points/broches intermédiaires qui se fait parfois à l’opposé de l’endroit souhaité. Il y a aussi le fait que les broches ne sont pas adaptées aux signaux d’horloge.
+
+Dans les petits plus, mettre en couleur les composants pourrait être intéressant pour illustrer un groupe logique.
+
 
 ## High priority
 
+ * New custom components should show up in library even with showonly
  * Fix moving: ctr-click then drag -> shouldn't starts moving; long click -> should start moving
  * Take undo snapshot after key events too
  * Adder orientation

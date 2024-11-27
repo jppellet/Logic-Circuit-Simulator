@@ -71,7 +71,7 @@ export class Decoder16Seg extends ComponentBase<Decoder16SegRepr> {
         const input = this.inputValues(this.inputs.In)
         const [__, value] = displayValuesFromArray(input, false)
 
-        let output
+        let output: FixedArray<LogicValue, 17>
         if (isUnknown(value)) {
             output = FixedArrayFillWith(Unknown, 17)
         } else if (value < 32) {
@@ -121,7 +121,7 @@ Decoder16SegDef.impl = Decoder16Seg
 
 
 // Taken and modified from https://github.com/dmadison/LED-Segment-ASCII
-const DECODER_MAPPING = [
+const DECODER_MAPPING = [ // starts at space, which is 32
     "00000000000000000", /* (space) */
     "00110000000000001", /* ! */
     "00100000000100000", /* " */
