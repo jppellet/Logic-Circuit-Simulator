@@ -211,6 +211,12 @@ const Strings_fr = {
         NotImplemented: "Cette fonctionnalité n’est pas encore implémentée.",
         ReallyCloseWindow: "Voulez-vous vraiment fermer la fenêtre sans prendre en compte les derniers changements?",
         DevelopedBy: "Développé par ",
+
+        DidUndo: "Annuler",
+        DidRedo: "Rétablir",
+        DidRepeat: "Répéter",
+        NothingToUndo: "Rien à annuler",
+        NothingToRedo: "Rien à rétablir ou répéter",
     },
     Components: {
         Generic: {
@@ -953,6 +959,12 @@ const Strings_en: Strings = {
         NotImplemented: "This feature is not implemented yet.",
         ReallyCloseWindow: "Do you really want to close the window without saving the changes?",
         DevelopedBy: "Developed by",
+
+        DidUndo: "Undo",
+        DidRedo: "Redo",
+        DidRepeat: "Repeat",
+        NothingToUndo: "Nothing to undo",
+        NothingToRedo: "Nothing to redo or repeat",
     },
     Components: {
         Generic: {

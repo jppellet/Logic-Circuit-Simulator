@@ -1,5 +1,6 @@
 import { LogicEditor } from "./LogicEditor"
 import { Serialization } from "./Serialization"
+import { S } from "./strings"
 import { InteractionResult, RepeatFunction } from "./utils"
 
 const MAX_UNDO_SNAPSHOTS = 100
@@ -78,32 +79,35 @@ export class UndoManager {
 
     public undo() {
         if (!this.canUndo()) {
-            console.log("Nothing to undo")
+            this.editor.showMessage(S.Messages.NothingToUndo)
             return
         }
         const stateNow = this._undoSnapshots.pop()!
         const prevState = this._undoSnapshots[this._undoSnapshots.length - 1]
         this._redoSnapshots.push(stateNow)
         this.loadSnapshot(prevState)
+        this.editor.showMessage(S.Messages.DidUndo)
         // this.dump()
         this.fireStateChangedIfNeeded()
     }
 
     public redoOrRepeat() {
         if (!this.canRedoOrRepeat()) {
-            console.log("Nothing to redo or repeat")
+            this.editor.showMessage(S.Messages.NothingToRedo)
             return
         }
         const snapshot = this._redoSnapshots.pop()
         if (snapshot !== undefined) {
             this._undoSnapshots.push(snapshot)
             this.loadSnapshot(snapshot)
+            this.editor.showMessage(S.Messages.DidRedo)
         } else {
             const repeatAction = this._undoSnapshots[this._undoSnapshots.length - 1].repeatAction
             if (repeatAction !== undefined) {
                 const result = repeatAction()
                 const newRepeatAction = result === false ? undefined : result === true ? repeatAction : result
                 this.doTakeSnapshot(newRepeatAction)
+                this.editor.showMessage(S.Messages.DidRepeat)
             }
         }
         // this.dump()
