@@ -114,6 +114,9 @@ export let COLOR_EMPTY_ALT: ColorString
 export let COLOR_UNKNOWN: ColorString
 export let COLOR_UNKNOWN_ALT: ColorString
 export let COLOR_HIGH_IMPEDANCE: ColorString
+export let COLOR_ANCHOR_IN: ColorString
+export let COLOR_ANCHOR_OUT: ColorString
+export let COLOR_ANCHOR_NEW: ColorString
 export let COLOR_GATE_NAMES: ColorString
 export let COLOR_LED_ON: { [C in LedColor]: ColorString }
 export let COLOR_WIRE: { [C in WireColor]: ColorString }
@@ -246,6 +249,9 @@ function doSetColors(darkMode: boolean) {
     COLOR_FULL_ALT = ligherColor(COLOR_FULL, 40)
     COLOR_EMPTY_ALT = ligherColor(COLOR_EMPTY, 80)
     COLOR_UNKNOWN_ALT = ligherColor(COLOR_UNKNOWN, 50)
+    COLOR_ANCHOR_IN = ColorString([200, 100, 100, 0.5])
+    COLOR_ANCHOR_OUT = ColorString([100, 100, 200, 0.5])
+    COLOR_ANCHOR_NEW = ColorString([100, 100, 100, 0.5])
 
     _currentModeIsDark = darkMode
 }
@@ -771,19 +777,24 @@ export function drawComponentName(g: GraphicsRendering, ctx: DrawContextExt, nam
     g.textBaseline = "middle" // restore
 }
 
-export function drawAnchorToComponent(g: GraphicsRendering, comp: DrawableWithPosition) {
+export function drawAnchorsToComponent(g: GraphicsRendering, comp: DrawableWithPosition) {
     const anchor = comp.anchor
     if (anchor !== undefined) {
-        drawAnchorTo(g, comp.posX, comp.posY, anchor.posX, anchor.posY)
+        drawAnchorTo(g, comp.posX, comp.posY, anchor.posX, anchor.posY, COLOR_ANCHOR_IN)
     }
-    if (comp instanceof ComponentBase) {
-        for (const anchoredComp of comp.anchoredDrawables) {
-            drawAnchorTo(g, anchoredComp.posX, anchoredComp.posY, comp.posX, comp.posY)
+    drawAllTo(comp)
+
+    function drawAllTo(drawable: DrawableWithPosition) {
+        if (drawable instanceof ComponentBase) {
+            for (const anchoredComp of drawable.anchoredDrawables) {
+                drawAnchorTo(g, anchoredComp.posX, anchoredComp.posY, drawable.posX, drawable.posY, COLOR_ANCHOR_OUT)
+                drawAllTo(anchoredComp)
+            }
         }
     }
 }
 
-export function drawAnchorTo(g: GraphicsRendering, x1: number, y1: number, x2: number, y2: number) {
+export function drawAnchorTo(g: GraphicsRendering, x1: number, y1: number, x2: number, y2: number, color: string) {
     const [[t1, t2], [a1, a2], [b1, b2]] = arrowheadPoints(x1, y1, x2, y2, 18, 10, 5)
     g.beginPath()
     g.moveTo(x1, y1)
@@ -793,7 +804,7 @@ export function drawAnchorTo(g: GraphicsRendering, x1: number, y1: number, x2: n
     g.lineTo(t1, t2)
     g.closePath()
     g.lineWidth = 4
-    g.strokeStyle = "rgba(100, 100, 100, 0.5)"
+    g.strokeStyle = color
     g.lineCap = "round"
     g.stroke()
 }

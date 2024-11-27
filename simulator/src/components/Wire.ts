@@ -2,7 +2,7 @@ import { Bezier, Offset } from "bezier-js"
 import * as t from "io-ts"
 import { DrawParams } from "../LogicEditor"
 import { Timestamp } from "../Timeline"
-import { COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, NodeStyle, WAYPOINT_DIAMETER, WIRE_WIDTH, colorForLogicValue, dist, drawAnchorTo, drawStraightWireLine, drawWaypoint, isOverWaypoint, strokeAsWireLine } from "../drawutils"
+import { COLOR_ANCHOR_NEW, COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, NodeStyle, WAYPOINT_DIAMETER, WIRE_WIDTH, colorForLogicValue, dist, drawAnchorTo, drawStraightWireLine, drawWaypoint, isOverWaypoint, strokeAsWireLine } from "../drawutils"
 import { span, style, title } from "../htmlgen"
 import { S } from "../strings"
 import { InteractionResult, LogicValue, Mode, isArray, toLogicValueRepr, typeOrUndefined } from "../utils"
@@ -943,7 +943,7 @@ export class WireManager {
             const zoomFactor = editor.options.zoom / 100
             const x2 = editor.mouseX / zoomFactor
             const y2 = editor.mouseY / zoomFactor
-            drawAnchorTo(g, x1, y1, x2, y2)
+            drawAnchorTo(g, x1, y1, x2, y2, COLOR_ANCHOR_NEW)
         }
     }
 

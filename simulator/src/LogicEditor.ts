@@ -35,7 +35,7 @@ import { CustomComponent } from "./components/CustomComponent"
 import { Drawable, DrawableParent, DrawableWithPosition, EditTools, GraphicsRendering, Orientation } from "./components/Drawable"
 import { Rectangle, RectangleDef } from "./components/Rectangle"
 import { Wire, WireManager, WireStyle, WireStyles } from "./components/Wire"
-import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, GRID_STEP, USER_COLORS, clampZoom, drawAnchorToComponent as drawAnchorsForComponent, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine } from "./drawutils"
+import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, GRID_STEP, USER_COLORS, clampZoom, drawAnchorsToComponent as drawAnchorsForComponent, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine } from "./drawutils"
 import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, option, select, span, style, target, title, type } from "./htmlgen"
 import { inlineIconSvgFor, isIconName, makeIcon } from "./images"
