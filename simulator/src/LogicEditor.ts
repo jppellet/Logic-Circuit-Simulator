@@ -55,12 +55,14 @@ enum Mode {
 const MAX_MODE_WHEN_SINGLETON = Mode.FULL
 const MAX_MODE_WHEN_EMBEDDED = Mode.DESIGN
 const DEFAULT_MODE = Mode.DESIGN
+const DEFAULT_EXPORT_FORMAT= "myst"
 
 const ATTRIBUTE_NAMES = {
     lang: "lang",
     singleton: "singleton", // whether this is the only editor in the page
     mode: "mode",
     hidereset: "hidereset",
+    exportformat: "exportformat", // differences between MyST and pymarkdown
 
     // these are mirrored in the display options
     name: "name",
@@ -173,7 +175,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     private _initialData: InitialData | undefined = undefined
     private _options: EditorOptions = { ...DEFAULT_EDITOR_OPTIONS }
     private _hideResetButton = false
-
+    private _exportformat = DEFAULT_EXPORT_FORMAT
+    
     private _menu: ComponentMenu | undefined = undefined
     private _topBar: TopBar | undefined = undefined
     private _messageBar: MessageBar | undefined = undefined
@@ -440,6 +443,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const singletonAttr = this.getAttribute(ATTRIBUTE_NAMES.singleton)
         this._isSingleton = !this._isEmbedded && singletonAttr !== null && !isFalsyString(singletonAttr)
         this._maxInstanceMode = this._isSingleton && !this._isEmbedded ? MAX_MODE_WHEN_SINGLETON : MAX_MODE_WHEN_EMBEDDED
+        this._exportformat = this.getAttribute(ATTRIBUTE_NAMES.exportformat)
 
         // Transfer from URL param to attributes if we are in singleton mode
         if (this._isSingleton || this._isEmbedded) {
@@ -1415,8 +1419,13 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const modeParam = mode === MAX_MODE_WHEN_EMBEDDED ? "" : `:mode: ${modeStr}\n`
         const embedHeight = this.guessAdequateCanvasSize(true)[1]
 
-        const markdownBlock = `\`\`\`{logic}\n:height: ${embedHeight}\n${modeParam}\n${fullJson}\n\`\`\``
-        this.html.embedMarkdown.value = markdownBlock
+        if (this._exportformat == "superfence") {
+            const markdownBlock = `\`\`\`{.logic height=${embedHeight} mode=${modeStr}}\n${fullJson}\n\`\`\``
+            this.html.embedMarkdown.value = markdownBlock
+        } else if (this._exportformat == "myst") {
+            const markdownBlock = `\`\`\`{logic}\n:height: ${embedHeight}\n${modeParam}\n${fullJson}\n\`\`\``
+            this.html.embedMarkdown.value = markdownBlock
+        }
 
         const iframeEmbed = `<iframe style="width: 100%; height: ${embedHeight}px; border: 0" src="${fullUrl}"></iframe>`
         this.html.embedIframe.value = iframeEmbed
