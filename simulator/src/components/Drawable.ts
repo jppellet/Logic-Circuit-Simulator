@@ -12,7 +12,7 @@ import { IconName } from "../images"
 import { S } from "../strings"
 import { Expand, FixedArray, InteractionResult, Mode, RichStringEnum, typeOrUndefined } from "../utils"
 import { Component, ComponentBase } from "./Component"
-import { type WireManager } from "./Wire"
+import { type LinkManager } from "./Wire"
 
 export type GraphicsRendering =
     | CanvasRenderingContext2D & {
@@ -127,7 +127,7 @@ export interface DrawableParent {
     // implemented as one per (editor + instantiated custom component)
     readonly components: ComponentList
     readonly nodeMgr: NodeManager
-    readonly wireMgr: WireManager
+    readonly linkMgr: LinkManager
     readonly recalcMgr: RecalcManager
 
     // defined only when editing the main circuit or a custom comp
@@ -674,7 +674,7 @@ export abstract class DrawableWithDraggablePosition extends DrawableWithPosition
     public override mouseDown(e: MouseEvent | TouchEvent) {
         if (this.parent.mode >= Mode.CONNECT) {
             if (e.metaKey) {
-                this.parent.wireMgr.startSettingAnchorFrom(this)
+                this.parent.linkMgr.startSettingAnchorFrom(this)
                 return { wantsDragEvents: false }
             }
             this.tryStartMoving(e)

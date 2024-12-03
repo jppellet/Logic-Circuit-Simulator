@@ -169,7 +169,7 @@ class _Serialization {
             elem.destroy()
         }
         componentList.clearAll()
-        parent.wireMgr.clearAll()
+        parent.linkMgr.clearAll()
         parent.nodeMgr.clearAll()
         if (parent.isMainEditor()) {
             parent.timeline.reset()
@@ -284,7 +284,7 @@ class _Serialization {
 
 
     private makeWires(parent: DrawableParent, wires: unknown, nodeMapping: NodeMapping, componentsByRef: Record<string, Component>, immediateWirePropagation: boolean) {
-        const wireMgr = parent.wireMgr
+        const linkMgr = parent.linkMgr
         const nodeMgr = parent.nodeMgr
 
         // recalculating all the unconnected gates here allows
@@ -303,7 +303,7 @@ class _Serialization {
             const node1 = nodeMgr.findNode(nodeID1, nodeMapping)
             const node2 = nodeMgr.findNode(nodeID2, nodeMapping)
             if (node1 !== undefined && node2 !== undefined && node1.isOutput() && !node2.isOutput()) {
-                const completedWire = wireMgr.addWire(node1, node2, false)
+                const completedWire = linkMgr.addWire(node1, node2, false)
                 if (completedWire !== undefined) {
                     if (wireOptions !== undefined) {
                         completedWire.setOptions(wireOptions, componentsByRef)
@@ -333,11 +333,11 @@ class _Serialization {
             const scratch: Scratch = {
                 id: customComp.ref ?? "n/a",
             }
-            this.buildComponentAndWireReprsInto(scratch, editorRoot.components.all(), editorRoot.wireMgr.wires)
+            this.buildComponentAndWireReprsInto(scratch, editorRoot.components.all(), editorRoot.linkMgr.wires)
             dataObject.scratch = scratch
         }
 
-        this.buildComponentAndWireReprsInto(dataObject, editor.components.all(), editor.wireMgr.wires)
+        this.buildComponentAndWireReprsInto(dataObject, editor.components.all(), editor.linkMgr.wires)
         return dataObject
     }
 

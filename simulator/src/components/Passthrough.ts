@@ -102,10 +102,10 @@ export class Passthrough extends ParametrizedComponentBase<PassthroughRepr> {
         super.destroy()
 
         if (savedWireEnds.length > 0) {
-            const wireMgr = this.parent.wireMgr
+            const linkMgr = this.parent.linkMgr
             for (const [nodeOut, nodeIns] of savedWireEnds) {
                 for (const [nodeIn, style] of nodeIns) {
-                    const wire = wireMgr.addWire(nodeOut, nodeIn, false)
+                    const wire = linkMgr.addWire(nodeOut, nodeIn, false)
                     if (wire === undefined) {
                         console.error("Failed to add wire back")
                         continue

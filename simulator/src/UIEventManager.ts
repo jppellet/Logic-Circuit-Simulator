@@ -45,7 +45,7 @@ export class EditorSelection {
                 }
             }
 
-            for (const wire of editor.wireMgr.wires) {
+            for (const wire of editor.linkMgr.wires) {
                 for (const point of wire.waypoints) {
                     if (point.isInRect(rect)) {
                         this.toggle(point)
@@ -207,7 +207,7 @@ export class UIEventManager {
                         }
                     }
                 }
-                if (nodeOver !== null && (!pullingWire || root.wireMgr.isValidNodeToConnect(nodeOver))) {
+                if (nodeOver !== null && (!pullingWire || root.linkMgr.isValidNodeToConnect(nodeOver))) {
                     return nodeOver
                 }
                 if (!pullingWire && comp.isOver(x, y)) {
@@ -217,7 +217,7 @@ export class UIEventManager {
 
             if (!pullingWire && !settingAnchor) {
                 // wires
-                for (const wire of root.wireMgr.wires) {
+                for (const wire of root.linkMgr.wires) {
                     for (const waypoint of wire.waypoints) {
                         if (waypoint.isOver(x, y)) {
                             return waypoint
@@ -227,7 +227,9 @@ export class UIEventManager {
                         return wire
                     }
                 }
+            }
 
+            if (!pullingWire) {
                 // background elems
                 for (const comp of root.components.withZIndex(DrawZIndex.Background)) {
                     if (comp.isOver(x, y)) {
@@ -249,7 +251,7 @@ export class UIEventManager {
         for (const comp of root.components.all()) {
             sel.previouslySelectedElements.add(comp)
         }
-        for (const wire of root.wireMgr.wires) {
+        for (const wire of root.linkMgr.wires) {
             for (const waypoint of wire.waypoints) {
                 sel.previouslySelectedElements.add(waypoint)
             }
@@ -406,7 +408,7 @@ export class UIEventManager {
                     let handled: boolean
                     handled = editor.eventMgr.tryDeleteComponentsWhere(comp => comp.state === ComponentState.SPAWNING, false) > 0
                     if (!handled) {
-                        handled = editor.wireMgr.tryCancelWireOrAnchor()
+                        handled = editor.linkMgr.tryCancelWireOrAnchor()
                     }
                     if (!handled && this.editor.editorRoot instanceof CustomComponent) {
                         handled = this.editor.tryCloseCustomComponentEditor()
@@ -508,6 +510,13 @@ export class UIEventManager {
                         e.preventDefault()
                     }
                     return
+                case "g":
+                    if (ctrlOrCommand && editor.mode >= Mode.CONNECT) {
+                        editor.makeGroupWithSelection()
+                        e.preventDefault()
+                    }
+                    return
+
             }
 
             if (this._currentMouseOverComp !== null) {
@@ -591,8 +600,8 @@ export class UIEventManager {
             }
         } else {
             // moving mouse or dragging without a locked component
-            const wireMgr = this.editor.editorRoot.wireMgr
-            this.updateMouseOver(this.editor.offsetXY(e), wireMgr.isAddingWire, wireMgr.isSettingAnchor)
+            const linkMgr = this.editor.editorRoot.linkMgr
+            this.updateMouseOver(this.editor.offsetXY(e), linkMgr.isAddingWire, linkMgr.isSettingAnchor)
         }
     }
 
@@ -728,7 +737,7 @@ export class UIEventManager {
             const numDeleted = this.tryDeleteComponentsWhere(c => c === comp, true)
             return InteractionResult.fromBoolean(numDeleted !== 0)
         } else if (comp instanceof Wire) {
-            return this.editor.editorRoot.wireMgr.deleteWire(comp)
+            return this.editor.editorRoot.linkMgr.deleteWire(comp)
         } else if (comp instanceof Waypoint) {
             comp.removeFromParent()
             return InteractionResult.SimpleChange
@@ -737,7 +746,7 @@ export class UIEventManager {
     }
 
     public tryDeleteComponentsWhere(cond: (e: Component) => boolean, onlyOne: boolean) {
-        const numDeleted = this.editor.editorRoot.components.tryDeleteWhere(cond, onlyOne)
+        const numDeleted = this.editor.editorRoot.components.tryDeleteWhere(cond, onlyOne).length
         if (numDeleted > 0) {
             this.clearPopperIfNecessary()
             this.editor.editTools.redrawMgr.addReason("component(s) deleted", null)
@@ -830,7 +839,7 @@ class EditHandlers extends ToolHandlers {
     }
     public override mouseUpOn(comp: Drawable, e: MouseEvent | TouchEvent) {
         const change = comp.mouseUp(e)
-        this.editor.editorRoot.wireMgr.tryCancelWireOrAnchor()
+        this.editor.editorRoot.linkMgr.tryCancelWireOrAnchor()
         return change
     }
     public override mouseClickedOn(comp: Drawable, e: MouseEvent | TouchEvent) {
@@ -894,7 +903,7 @@ class EditHandlers extends ToolHandlers {
 
     public override mouseUpOnBackground(__e: MouseEvent | TouchEvent) {
         const editor = this.editor
-        editor.wireMgr.tryCancelWireOrAnchor()
+        editor.linkMgr.tryCancelWireOrAnchor()
 
         const eventMgr = editor.eventMgr
         const currentSelection = eventMgr.currentSelection
@@ -1024,7 +1033,28 @@ class DeleteHandlers extends ToolHandlers {
     }
 }
 
+
+class SetAnchorHandlers extends ToolHandlers {
+
+    public static mainCursor() { return "grab" }
+    public mouseOverIsDanger() { return false }
+
+    private _from: DrawableWithDraggablePosition
+
+    public constructor(editor: LogicEditor, from: DrawableWithDraggablePosition) {
+        super(editor)
+        this._from = from
+    }
+
+    public override mouseClickedOn(comp: Drawable, __: MouseEvent) {
+        return this.editor.eventMgr.tryDeleteDrawable(comp)
+    }
+}
+
 class MoveHandlers extends ToolHandlers {
+
+    public static mainCursor() { return "move" }
+    public mouseOverIsDanger() { return false }
 
     public constructor(editor: LogicEditor) {
         super(editor)
@@ -1034,7 +1064,7 @@ class MoveHandlers extends ToolHandlers {
         for (const comp of this.editor.components.all()) {
             comp.mouseDown(e)
         }
-        for (const wire of this.editor.wireMgr.wires) {
+        for (const wire of this.editor.linkMgr.wires) {
             for (const waypoint of wire.waypoints) {
                 waypoint.mouseDown(e)
             }
@@ -1044,7 +1074,7 @@ class MoveHandlers extends ToolHandlers {
         for (const comp of this.editor.components.all()) {
             comp.mouseDragged(e)
         }
-        for (const wire of this.editor.wireMgr.wires) {
+        for (const wire of this.editor.linkMgr.wires) {
             for (const waypoint of wire.waypoints) {
                 waypoint.mouseDragged(e)
             }
@@ -1054,7 +1084,7 @@ class MoveHandlers extends ToolHandlers {
         for (const comp of this.editor.components.all()) {
             comp.mouseUp(e)
         }
-        for (const wire of this.editor.wireMgr.wires) {
+        for (const wire of this.editor.linkMgr.wires) {
             for (const waypoint of wire.waypoints) {
                 waypoint.mouseUp(e)
             }

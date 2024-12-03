@@ -1,15 +1,16 @@
 import { Bezier, Offset } from "bezier-js"
 import * as t from "io-ts"
-import { DrawParams } from "../LogicEditor"
-import { Timestamp } from "../Timeline"
 import { COLOR_ANCHOR_NEW, COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, NodeStyle, WAYPOINT_DIAMETER, WIRE_WIDTH, colorForLogicValue, dist, drawAnchorTo, drawStraightWireLine, drawWaypoint, isOverWaypoint, strokeAsWireLine } from "../drawutils"
 import { span, style, title } from "../htmlgen"
+import { DrawParams } from "../LogicEditor"
 import { S } from "../strings"
+import { Timestamp } from "../Timeline"
 import { InteractionResult, LogicValue, Mode, isArray, toLogicValueRepr, typeOrUndefined } from "../utils"
 import { Component, NodeGroup } from "./Component"
 import { DrawContext, Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, GraphicsRendering, MenuData, Orientation, Orientations_, PositionSupportRepr } from "./Drawable"
 import { Node, NodeIn, NodeOut, WireColor, tryMakeRepeatableNodeAction } from "./Node"
 import { Passthrough, PassthroughDef } from "./Passthrough"
+
 
 type WaypointRepr = t.TypeOf<typeof Waypoint.Repr>
 
@@ -323,12 +324,13 @@ export class Wire extends Drawable {
         const passthrough = PassthroughDef.make<Passthrough>(parent, { bits: 1 })
         passthrough.setSpawned()
         passthrough.setPosition(x, y, false)
+        passthrough.anchor = this.startNode.component
 
         // modify this wire to go to the passthrough
         this.setEndNode(passthrough.inputs.In[0])
 
         // create a new wire from the passthrough to the end node
-        const newWire = parent.wireMgr.addWire(passthrough.outputs.Out[0], endNode, false)
+        const newWire = parent.linkMgr.addWire(passthrough.outputs.Out[0], endNode, false)
         if (newWire === undefined) {
             console.warn("Couldn't create new wire")
             return
@@ -377,6 +379,7 @@ export class Wire extends Drawable {
         }
 
         const waypoint = new Waypoint(this, [x, y, orient])
+        waypoint.anchor = this.startNode.component
         this._waypoints.splice(i, 0, waypoint)
         return waypoint
     }
@@ -636,24 +639,11 @@ export class Wire extends Drawable {
             ...setRefItems,
             MenuData.sep(),
             MenuData.item("trash", S.Components.Generic.contextMenu.Delete, () => {
-                return this.parent.wireMgr.deleteWire(this)
+                return this.parent.linkMgr.deleteWire(this)
             }, "⌫", true),
         ]
     }
 
-}
-
-function bezierAnchorForWire(wireProlongDirection: Orientation, x: number, y: number, distX: number, distY: number): [number, number] {
-    switch (wireProlongDirection) {
-        case "e": // going east, so anchor point is before on X
-            return [x - distX, y]
-        case "w": // going west, so anchor point is after on X
-            return [x + distX, y]
-        case "s":// going south, so anchor point is before on Y
-            return [x, y - distY]
-        case "n":// going north, so anchor point is after on Y
-            return [x, y + distY]
-    }
 }
 
 export class Ribbon extends Drawable {
@@ -853,12 +843,20 @@ export class Ribbon extends Drawable {
 }
 
 
-export class WireManager {
+
+/**
+ * Manages links between components, i.e., wires and ribbons, and the anchor being set.
+ */
+export class LinkManager {
 
     public readonly parent: DrawableParent
+
+    // wires and ribbons
     private readonly _wires: Wire[] = []
     private readonly _ribbons: Ribbon[] = []
     private _wireBeingAddedFrom: Node | undefined = undefined
+
+    // anchors
     private _anchorBeingSetFrom: DrawableWithDraggablePosition | undefined = undefined
 
     public constructor(parent: DrawableParent) {
@@ -943,7 +941,7 @@ export class WireManager {
             const zoomFactor = editor.options.zoom / 100
             const x2 = editor.mouseX / zoomFactor
             const y2 = editor.mouseY / zoomFactor
-            drawAnchorTo(g, x1, y1, x2, y2, COLOR_ANCHOR_NEW)
+            drawAnchorTo(g, x1, y1, x2, y2, 6, COLOR_ANCHOR_NEW, undefined)
         }
     }
 
@@ -978,7 +976,7 @@ export class WireManager {
 
     public startSettingAnchorFrom(drawable: DrawableWithDraggablePosition) {
         if (this._anchorBeingSetFrom !== undefined) {
-            console.warn("WireManager.startSettingAnchorFrom: already setting anchor from a drawable")
+            console.warn("LinkManager.startSettingAnchorFrom: already setting anchor from a drawable")
         }
         this._anchorBeingSetFrom = drawable
         this.parent.ifEditing?.setToolCursor("alias")
@@ -991,7 +989,7 @@ export class WireManager {
             this.parent.ifEditing?.setToolCursor(null)
 
             if (comp.ref === undefined) {
-                console.warn("WireManager.stopSettingAnchorOn: component has no ref")
+                console.warn("LinkManager.stopSettingAnchorOn: component has no ref")
             }
             if (comp !== anchorBeingSetFrom) {
                 let forbidden = false
@@ -1017,7 +1015,7 @@ export class WireManager {
 
     public startDraggingWireFrom(node: Node) {
         if (this._wireBeingAddedFrom !== undefined) {
-            console.warn("WireManager.startDraggingFrom: already dragging from a node")
+            console.warn("LinkManager.startDraggingFrom: already dragging from a node")
         }
         if (!node.acceptsMoreConnections) {
             return
@@ -1208,4 +1206,18 @@ export class WireManager {
         this.parent.ifEditing?.redrawMgr.addReason("deleted wires", null)
     }
 
+}
+
+
+function bezierAnchorForWire(wireProlongDirection: Orientation, x: number, y: number, distX: number, distY: number): [number, number] {
+    switch (wireProlongDirection) {
+        case "e": // going east, so anchor point is before on X
+            return [x - distX, y]
+        case "w": // going west, so anchor point is after on X
+            return [x + distX, y]
+        case "s":// going south, so anchor point is before on Y
+            return [x, y - distY]
+        case "n":// going north, so anchor point is after on Y
+            return [x, y + distY]
+    }
 }

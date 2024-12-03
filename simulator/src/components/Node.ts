@@ -239,17 +239,17 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
     }
 
     public override mouseDown(__: MouseEvent | TouchEvent) {
-        this.parent.wireMgr.startDraggingWireFrom(this.asNode)
+        this.parent.linkMgr.startDraggingWireFrom(this.asNode)
         return { wantsDragEvents: false }
     }
 
     public override mouseUp(__: MouseEvent | TouchEvent) {
-        const newWire = this.parent.wireMgr.stopDraggingWireOn(this.asNode)
+        const newWire = this.parent.linkMgr.stopDraggingWireOn(this.asNode)
         if (newWire === undefined) {
             return InteractionResult.NoChange
         }
         return tryMakeRepeatableNodeAction(newWire.startNode, newWire.endNode, (startNode, endNode) => {
-            const newWire = this.parent.wireMgr.addWire(startNode, endNode, true)
+            const newWire = this.parent.linkMgr.addWire(startNode, endNode, true)
             return newWire !== undefined
         })
     }
@@ -279,7 +279,7 @@ export class NodeIn extends NodeBase<NodeIn> {
 
     protected preDestroy() {
         if (this._incomingWire !== null) {
-            this.parent.wireMgr.deleteWire(this._incomingWire)
+            this.parent.linkMgr.deleteWire(this._incomingWire)
         }
     }
 
@@ -343,7 +343,7 @@ export class NodeOut extends NodeBase<NodeOut> {
     protected preDestroy() {
         // we need to make a copy of the array because the wires will remove themselves from the array
         for (const wire of [...this._outgoingWires]) {
-            this.parent.wireMgr.deleteWire(wire)
+            this.parent.linkMgr.deleteWire(wire)
         }
     }
 

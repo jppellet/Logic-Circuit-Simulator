@@ -15,7 +15,7 @@ import { DrawContext, DrawableParent, EditTools, GraphicsRendering, MenuData, Me
 import { Input, InputRepr } from "./Input"
 import { NodeIn, NodeOut } from "./Node"
 import { Output, OutputRepr } from "./Output"
-import { Wire, WireManager } from "./Wire"
+import { LinkManager, Wire } from "./Wire"
 
 type CustomComponentNodeSpec = {
     isIn: boolean,
@@ -301,7 +301,7 @@ export class CustomComponent extends ComponentBase<CustomComponentRepr, LogicVal
 
     public readonly components = new ComponentList()
     public readonly nodeMgr = new NodeManager()
-    public readonly wireMgr: WireManager = new WireManager(this)
+    public readonly linkMgr: LinkManager = new LinkManager(this)
     public readonly recalcMgr = new RecalcManager()
 
     private _ifEditing: EditTools | undefined = undefined

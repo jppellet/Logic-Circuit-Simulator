@@ -1559,5 +1559,7 @@ export function getLang(): Lang {
 }
 
 export const DefaultLang: Lang = "en"
+
+/** The current language strings. */
 export let S: Strings = langs[DefaultLang]
 let _lang: Lang = DefaultLang

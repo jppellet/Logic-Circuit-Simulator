@@ -32,10 +32,10 @@ import { EditorSelection, UIEventManager } from "./UIEventManager"
 import { UndoManager } from './UndoManager'
 import { Component, ComponentBase } from "./components/Component"
 import { CustomComponent } from "./components/CustomComponent"
-import { Drawable, DrawableParent, DrawableWithPosition, EditTools, GraphicsRendering, Orientation } from "./components/Drawable"
+import { Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, EditTools, GraphicsRendering, Orientation } from "./components/Drawable"
 import { Rectangle, RectangleDef } from "./components/Rectangle"
-import { Wire, WireManager, WireStyle, WireStyles } from "./components/Wire"
-import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, GRID_STEP, USER_COLORS, clampZoom, drawAnchorsToComponent as drawAnchorsForComponent, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine } from "./drawutils"
+import { LinkManager, Wire, WireStyle, WireStyles } from "./components/Wire"
+import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, GRID_STEP, USER_COLORS, clampZoom, drawAnchorsToComponent as drawAnchorsForComponent, isDarkMode, parseColorToRGBA, setColorMouseOverIsDanger, setDarkMode, strokeSingleLine } from "./drawutils"
 import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, option, select, span, style, target, title, type } from "./htmlgen"
 import { inlineIconSvgFor, isIconName, makeIcon } from "./images"
@@ -156,7 +156,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     public readonly components = new ComponentList()
     public readonly nodeMgr = new NodeManager()
-    public readonly wireMgr: WireManager = new WireManager(this)
+    public readonly linkMgr: LinkManager = new LinkManager(this)
     public readonly recalcMgr = new RecalcManager()
 
     private _ifEditing: EditTools | undefined = this.editTools
@@ -648,19 +648,10 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             }
         } else {
             groupButton.addEventListener("mousedown", this.wrapHandler(e => {
-                const selectedComps = this.eventMgr.currentSelection?.previouslySelectedElements || new Set()
-                if (selectedComps.size !== 0) {
+                const success = this.makeGroupWithSelection()
+                if (success) {
                     e.preventDefault()
                     e.stopImmediatePropagation()
-
-                    const newGroup = RectangleDef.make<Rectangle>(this)
-                    newGroup.setSpawned()
-
-                    if (newGroup instanceof Rectangle) {
-                        newGroup.wrapContents(selectedComps)
-                    } else {
-                        console.log("ERROR: created component is not a LabelRect")
-                    }
                 }
             }))
         }
@@ -1198,6 +1189,29 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         )(jsonStringOrObject)
     }
 
+    public makeGroupWithSelection(): boolean {
+        const selectedComps = this.eventMgr.currentSelection?.previouslySelectedElements || new Set()
+        if (selectedComps.size === 0) {
+            return false
+        }
+
+        const newGroup = RectangleDef.make<Rectangle>(this)
+        newGroup.setSpawned()
+
+        if (newGroup instanceof Rectangle) {
+            newGroup.wrapContents(selectedComps)
+            for (const comp of selectedComps) {
+                if (comp instanceof DrawableWithDraggablePosition && comp.anchor === undefined) {
+                    comp.anchor = newGroup
+                }
+            }
+        } else {
+            console.log("ERROR: created component is not a Rectangle")
+        }
+
+        return true
+    }
+
     public setDirty(__reason: string) {
         if (this.mode >= Mode.CONNECT) {
             // other modes can't be dirty
@@ -1368,7 +1382,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         let rightmostX = Number.NEGATIVE_INFINITY, leftmostX = Number.POSITIVE_INFINITY
         let lowestY = Number.NEGATIVE_INFINITY, highestY = Number.POSITIVE_INFINITY
         const drawables: DrawableWithPosition[] = [...this.components.all()]
-        for (const wire of this.wireMgr.wires) {
+        for (const wire of this.linkMgr.wires) {
             drawables.push(...wire.waypoints)
         }
         for (const comp of drawables) {
@@ -1588,8 +1602,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const __recalculated = this.recalcMgr.recalcAndPropagateIfNeeded()
 
         const redrawMgr = this.editTools.redrawMgr
-        const wireMgr = this._editorRoot.wireMgr
-        if (wireMgr.isAddingWire || wireMgr.isSettingAnchor) {
+        const linkMgr = this._editorRoot.linkMgr
+        if (linkMgr.isAddingWire || linkMgr.isSettingAnchor) {
             redrawMgr.addReason("adding a wire/setting anchor", null)
         }
 
@@ -1629,7 +1643,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
 
         const highlightWires: Wire[] = []
-        for (const wire of this.wireMgr.wires) {
+        for (const wire of this.linkMgr.wires) {
             if (wire.ref !== undefined && refs.includes(wire.ref)) {
                 highlightWires.push(wire)
             }
@@ -1846,7 +1860,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         // draw wires
         g.beginGroup("wires")
-        root.wireMgr.draw(g, drawParams) // never show wires as selected
+        root.linkMgr.draw(g, drawParams) // never show wires as selected
         g.endGroup()
 
         // draw normal components

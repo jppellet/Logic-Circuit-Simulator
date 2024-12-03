@@ -3,6 +3,7 @@ import { LedColor } from "./components/DisplayBar"
 import { DrawableWithPosition, DrawContext, DrawContextExt, GraphicsRendering, HasPosition, Orientation } from "./components/Drawable"
 import { Node, WireColor } from "./components/Node"
 import { RectangleColor } from "./components/Rectangle"
+import { Waypoint } from "./components/Wire"
 import { LogicEditor } from "./LogicEditor"
 import { EdgeTrigger, FixedArray, FixedArrayAssert, InBrowser, isArray, isHighImpedance, isNumber, isString, isUnknown, LogicValue, Mode, Unknown } from "./utils"
 
@@ -780,75 +781,164 @@ export function drawComponentName(g: GraphicsRendering, ctx: DrawContextExt, nam
 export function drawAnchorsToComponent(g: GraphicsRendering, comp: DrawableWithPosition) {
     const anchor = comp.anchor
     if (anchor !== undefined) {
-        drawAnchorTo(g, comp.posX, comp.posY, anchor.posX, anchor.posY, COLOR_ANCHOR_IN)
+        drawAnchorTo(g, comp.posX, comp.posY, anchor.posX, anchor.posY, [anchor.width, anchor.height], COLOR_ANCHOR_IN, undefined)
     }
     drawAllTo(comp)
 
     function drawAllTo(drawable: DrawableWithPosition) {
-        if (drawable instanceof ComponentBase) {
-            for (const anchoredComp of drawable.anchoredDrawables) {
-                drawAnchorTo(g, anchoredComp.posX, anchoredComp.posY, drawable.posX, drawable.posY, COLOR_ANCHOR_OUT)
-                drawAllTo(anchoredComp)
+        if (!(drawable instanceof ComponentBase)) {
+            return
+        }
+
+        for (const anchoredComp of drawable.anchoredDrawables) {
+            if (anchoredComp instanceof Waypoint) {
+                continue
             }
+            drawAnchorTo(g, anchoredComp.posX, anchoredComp.posY, drawable.posX, drawable.posY, [drawable.width, drawable.height], COLOR_ANCHOR_OUT, comp)
+            drawAllTo(anchoredComp)
         }
     }
 }
 
-export function drawAnchorTo(g: GraphicsRendering, x1: number, y1: number, x2: number, y2: number, color: string) {
-    const [[t1, t2], [a1, a2], [b1, b2]] = arrowheadPoints(x1, y1, x2, y2, 18, 10, 5)
-    g.beginPath()
-    g.moveTo(x1, y1)
-    g.lineTo(t1, t2)
-    g.lineTo(a1, a2)
-    g.lineTo(b1, b2)
-    g.lineTo(t1, t2)
-    g.closePath()
-    g.lineWidth = 4
-    g.strokeStyle = color
-    g.lineCap = "round"
-    g.stroke()
-}
-
-
-export function arrowheadPoints(
+export function adjustLineEndpoint(
     x1: number, y1: number,
     x2: number, y2: number,
-    d: number,
-    h: number, w: number
-): [[number, number], [number, number], [number, number]] {
-    // Calculate the direction vector
+    w: number, h: number
+): [number, number] {
+    // Half dimensions of the square
+    const halfW = w / 2
+    const halfH = h / 2
+
+    // Line direction
     const dx = x2 - x1
     const dy = y2 - y1
-    const magnitude = Math.sqrt(dx * dx + dy * dy)
 
-    // Unit vector in the direction of the arrow
-    const udx = dx / magnitude
-    const udy = dy / magnitude
+    // Calculate t for intersections
+    const tValues: number[] = []
 
-    // Perpendicular vector for the width of the arrow
-    const perpX = -udy
-    const perpY = udx
+    // Left edge (x = x2 - halfW)
+    if (dx !== 0) {
+        const tLeft = (x2 - halfW - x1) / dx
+        const yAtLeft = y1 + tLeft * dy
+        if (tLeft >= 0 && tLeft <= 1 && yAtLeft >= y2 - halfH && yAtLeft <= y2 + halfH) {
+            tValues.push(tLeft)
+        }
+    }
 
-    // Calculate the points for the arrowhead
-    const tip: [number, number] = [
-        x2 - d * udx,
-        y2 - d * udy,
-    ]
+    // Right edge (x = x2 + halfW)
+    if (dx !== 0) {
+        const tRight = (x2 + halfW - x1) / dx
+        const yAtRight = y1 + tRight * dy
+        if (tRight >= 0 && tRight <= 1 && yAtRight >= y2 - halfH && yAtRight <= y2 + halfH) {
+            tValues.push(tRight)
+        }
+    }
 
-    h += d
-    const point1: [number, number] = [
-        x2 - h * udx + w * perpX,
-        y2 - h * udy + w * perpY,
-    ]
+    // Top edge (y = y2 - halfH)
+    if (dy !== 0) {
+        const tTop = (y2 - halfH - y1) / dy
+        const xAtTop = x1 + tTop * dx
+        if (tTop >= 0 && tTop <= 1 && xAtTop >= x2 - halfW && xAtTop <= x2 + halfW) {
+            tValues.push(tTop)
+        }
+    }
 
-    const point2: [number, number] = [
-        x2 - h * udx - w * perpX,
-        y2 - h * udy - w * perpY,
-    ]
+    // Bottom edge (y = y2 + halfH)
+    if (dy !== 0) {
+        const tBottom = (y2 + halfH - y1) / dy
+        const xAtBottom = x1 + tBottom * dx
+        if (tBottom >= 0 && tBottom <= 1 && xAtBottom >= x2 - halfW && xAtBottom <= x2 + halfW) {
+            tValues.push(tBottom)
+        }
+    }
 
-    return [tip, point1, point2]
+    // Find the smallest t value
+    const t = Math.min(...tValues)
+
+    // Adjusted endpoint
+    const adjustedX = x1 + t * dx
+    const adjustedY = y1 + t * dy
+
+    return [adjustedX, adjustedY]
 }
 
+export function drawAnchorTo(g: GraphicsRendering, sX: number, sY: number, tX: number, tY: number, distOrDim: number | [number, number], color: string, whileDraggingComp: DrawableWithPosition | undefined) {
+    // This is the arrowhead and the names of the points, and the dir and perp vectors:
+    //               at
+    //               +                 perp
+    //      st     mt|\                ^
+    //      +--------+ \               |
+    // +s   |           +th   +t         --> dir
+    //      +--------+ /
+    //      sb     mb|/
+    //               + 
+    //               ab
+
+    const ds = 0 // distance from s to the projection of st or sb
+    const wl = 3 // width of the line, distance from st to sb
+    const wh = 8 // width of the arrowhead, distance from mt to at or mb to ab
+    const h = 20 // height of the arrowhead, distance from th to the projection of mt or mb
+    const [dt, [tWidth, tHeight]] = isNumber(distOrDim) ? [distOrDim, [0, 0]] : [10, distOrDim] // TODO use width/height of the component
+
+    // if the start is within the target (e.g., we're dragging a group and the anchor is the group's center),
+    // do nothing, because it's visually clear that they should move together
+    if (Math.abs(sX - tX) < tWidth / 2 && Math.abs(sY - tY) < tHeight / 2) {
+        return
+    }
+
+    // if the start is within the target's exclusion box, do nothing
+    if (whileDraggingComp !== undefined) {
+        const c = whileDraggingComp
+        if (sX >= c.posX - c.width / 2 && sX <= c.posX + c.width / 2 &&
+            sY >= c.posY - c.height / 2 && sY <= c.posY + c.height / 2) {
+            return
+        }
+    }
+
+    // direction vector
+    let dirX = tX - sX
+    let dirY = tY - sY
+    const magn = Math.sqrt(dirX * dirX + dirY * dirY)
+    if (magn < 20) {
+        // too short to draw
+        return
+    }
+    dirX /= magn
+    dirY /= magn
+
+    // perpendicular vector
+    const perpX = -dirY
+    const perpY = dirX
+
+    sX += ds * dirX
+    sY += ds * dirY
+    const st = [sX + wl * perpX, sY + wl * perpY]
+    const sb = [sX - wl * perpX, sY - wl * perpY]
+
+    tX -= dt * dirX
+    tY -= dt * dirY
+    const th = [tX, tY]
+
+    tX -= h * dirX
+    tY -= h * dirY
+    const mt = [tX + wl * perpX, tY + wl * perpY]
+    const at = [tX + wh * perpX, tY + wh * perpY]
+    const mb = [tX - wl * perpX, tY - wl * perpY]
+    const ab = [tX - wh * perpX, tY - wh * perpY]
+
+    // fill this polygon
+    g.fillStyle = color
+    g.beginPath()
+    g.moveTo(st[0], st[1])
+    g.lineTo(mt[0], mt[1])
+    g.lineTo(at[0], at[1])
+    g.lineTo(th[0], th[1])
+    g.lineTo(ab[0], ab[1])
+    g.lineTo(mb[0], mb[1])
+    g.lineTo(sb[0], sb[1])
+    g.closePath()
+    g.fill()
+}
 
 //
 // DATA CONVERSIONS FOR DISPLAY PURPOSES

@@ -117,12 +117,13 @@ export class ComponentList {
     }
 
     public tryDelete(comp: Component): boolean {
-        return this.tryDeleteWhere(c => c === comp, true) > 0
+        return this.tryDeleteWhere(c => c === comp, true).length > 0
     }
 
-    public tryDeleteWhere(cond: (e: Component) => boolean, onlyOne: boolean): number {
+    public tryDeleteWhere(cond: (e: Component) => boolean, onlyOne: boolean): Component[] {
         const deletedComps: Component[] = []
 
+        // delete components
         outer:
         for (const compList of this._componentsByZIndex) {
             for (let i = 0; i < compList.length; i++) {
@@ -138,6 +139,7 @@ export class ComponentList {
             }
         }
 
+        // delete ids
         for (const comp of deletedComps) {
             const id = comp.ref
             if (id === undefined) {
@@ -149,7 +151,14 @@ export class ComponentList {
             }
         }
 
-        return deletedComps.length
+        // remove anchors
+        for (const comp of deletedComps) {
+            for (const anchored of comp.anchoredDrawables) {
+                anchored.anchor = undefined
+            }
+        }
+
+        return deletedComps
     }
 
     public clearAll() {

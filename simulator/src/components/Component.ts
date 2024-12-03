@@ -1053,9 +1053,9 @@ export abstract class ComponentBase<
             this.parent.ifEditing?.setDirty("moved component")
             return InteractionResult.SimpleChange
         }
-        const wireMgr = this.parent.editor.wireMgr
-        if (wireMgr.isSettingAnchor) {
-            return wireMgr.stopSettingAnchorOn(this)
+        const linkMgr = this.parent.editor.linkMgr
+        if (linkMgr.isSettingAnchor) {
+            return linkMgr.stopSettingAnchorOn(this)
         }
         return InteractionResult.NoChange
     }
