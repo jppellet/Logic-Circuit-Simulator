@@ -560,7 +560,12 @@ export abstract class DrawableWithPosition extends Drawable implements HasPositi
             }, "L")],
         ]
 
-        const anchorItem: MenuItems = this._anchor === undefined ? [] : [
+        const anchorItem: MenuItems = this._anchor === undefined ? [
+            ["start", MenuData.item("none", s.SetAnchor, () => {
+                this.parent.editor.showMessage(S.Messages.SetAnchorPrompt)
+                this.parent.editor.setCurrentMouseAction("setanchor", this)
+            })],
+        ] : [
             ["start", MenuData.item("none", span(s.ClearAnchor[0], span(fixedWidthInContextMenu, this._anchor.ref ?? "???"), s.ClearAnchor[1]), () => {
                 this.anchor = undefined
             })],

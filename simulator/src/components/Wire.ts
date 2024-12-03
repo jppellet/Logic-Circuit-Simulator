@@ -857,7 +857,7 @@ export class LinkManager {
     private _wireBeingAddedFrom: Node | undefined = undefined
 
     // anchors
-    private _anchorBeingSetFrom: DrawableWithDraggablePosition | undefined = undefined
+    private _anchorBeingSetFrom: DrawableWithPosition | undefined = undefined
 
     public constructor(parent: DrawableParent) {
         this.parent = parent
@@ -974,7 +974,7 @@ export class LinkManager {
         return wire
     }
 
-    public startSettingAnchorFrom(drawable: DrawableWithDraggablePosition) {
+    public startSettingAnchorFrom(drawable: DrawableWithPosition) {
         if (this._anchorBeingSetFrom !== undefined) {
             console.warn("LinkManager.startSettingAnchorFrom: already setting anchor from a drawable")
         }
@@ -985,32 +985,41 @@ export class LinkManager {
     public stopSettingAnchorOn(comp: Component): InteractionResult {
         const anchorBeingSetFrom = this._anchorBeingSetFrom
         if (anchorBeingSetFrom) {
-            this._anchorBeingSetFrom = undefined
-            this.parent.ifEditing?.setToolCursor(null)
+            return this.trySetAnchor(anchorBeingSetFrom, comp)
+        }
+        return InteractionResult.NoChange
+    }
 
-            if (comp.ref === undefined) {
-                console.warn("LinkManager.stopSettingAnchorOn: component has no ref")
+    public trySetAnchor(from: DrawableWithPosition, to: Component): InteractionResult {
+        this.tryCancelSetAnchor()
+
+        if (to.ref === undefined) {
+            console.warn("LinkManager.stopSettingAnchorOn: component has no ref")
+        }
+        if (to !== from) {
+            let forbidden = false
+            let current = to
+            while (current.anchor !== undefined) {
+                current = current.anchor
+                if (current === from) {
+                    forbidden = true
+                    break
+                }
             }
-            if (comp !== anchorBeingSetFrom) {
-                let forbidden = false
-                let current = comp
-                while (current.anchor !== undefined) {
-                    current = current.anchor
-                    if (current === anchorBeingSetFrom) {
-                        forbidden = true
-                        break
-                    }
-                }
-                if (forbidden) {
-                    this.parent.editor.showMessage(S.Messages.CircularAnchorsForbidden)
-                } else {
-                    anchorBeingSetFrom.anchor = comp
-                    this.parent.editor.showMessage(S.Messages.AnchorAdded)
-                    return InteractionResult.SimpleChange
-                }
+            if (forbidden) {
+                this.parent.editor.showMessage(S.Messages.CircularAnchorsForbidden)
+            } else {
+                from.anchor = to
+                this.parent.editor.showMessage(S.Messages.AnchorAdded)
+                return InteractionResult.SimpleChange
             }
         }
         return InteractionResult.NoChange
+    }
+
+    public tryCancelSetAnchor() {
+        this._anchorBeingSetFrom = undefined
+        this.parent.ifEditing?.setToolCursor(null)
     }
 
     public startDraggingWireFrom(node: Node) {

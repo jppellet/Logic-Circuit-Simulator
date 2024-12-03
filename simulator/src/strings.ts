@@ -208,6 +208,7 @@ const Strings_fr = {
         UnsupportedFileType: template("Type de fichier non pris en charge: ${type}."),
         LoadedDefinitions: template("${n} composant$s{n} personnalisé$s{n} chargé$s{n}"),
         SavedToUrl: "Circuit enregistré dans l’URL",
+        SetAnchorPrompt: "Cliquez sur le composant auquel s’ancrer",
         AnchorAdded: "Ancrage ajouté",
         CircularAnchorsForbidden: "Les ancrages circulaires ne sont pas pris en charge.",
         NotImplemented: "Cette fonctionnalité n’est pas encore implémentée.",
@@ -235,6 +236,7 @@ const Strings_fr = {
                 IdentifierCannotBeEmpty: "L’identifiant ne peut pas être vide.",
                 IdentifierAlreadyInUseShouldSwap: "L’identifiant est déjà utilisé par un autre composant. Voulez-vous inverser les identifiants?",
 
+                SetAnchor: "Définir l’ancrage…",
                 ClearAnchor: tuple("Supprimer l’ancrage (", ")"),
 
                 Orientation: "Orientation",
@@ -960,6 +962,7 @@ const Strings_en: Strings = {
         UnsupportedFileType: template("Unsupported file type: ${type}."),
         LoadedDefinitions: template("Loaded ${n} custom component definition$s{n}"),
         SavedToUrl: "Circuit saved to URL",
+        SetAnchorPrompt: "Click on the component to anchor to",
         AnchorAdded: "Anchor added",
         CircularAnchorsForbidden: "Circular anchors are not supported.",
         NotImplemented: "This feature is not implemented yet.",
@@ -987,7 +990,8 @@ const Strings_en: Strings = {
                 IdentifierCannotBeEmpty: "The identifier cannot be empty.",
                 IdentifierAlreadyInUseShouldSwap: "The identifier is already in use. Do you want to swap the component identifiers?",
 
-                ClearAnchor: tuple("Remove anchor (", ")"),
+                SetAnchor: "Set Anchor…",
+                ClearAnchor: tuple("Remove Anchor (", ")"),
 
                 Orientation: "Orientation",
                 ChangeOrientationDesc: "Change the orientation with Command + double click on the component",

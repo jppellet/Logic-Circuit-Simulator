@@ -79,12 +79,14 @@ export class UIEventManager {
     private _currentMouseDownData: MouseDownData | null = null
     private _startHoverTimeoutHandle: TimeoutHandle | null = null
     private _startDragTimeoutHandle: TimeoutHandle | null = null
+    private _currentAction: MouseAction
     private _currentHandlers: ToolHandlers
     private _lastTouchEnd: [Drawable, number] | undefined = undefined
     public currentSelection: EditorSelection | undefined = undefined
 
     public constructor(editor: LogicEditor) {
         this.editor = editor
+        this._currentAction = "edit"
         this._currentHandlers = new EditHandlers(editor)
     }
 
@@ -96,15 +98,27 @@ export class UIEventManager {
         return this._currentMouseDownData
     }
 
-    public setHandlersFor(action: MouseAction) {
-        this._currentHandlers = (() => {
+    public setHandlersFor(action: MouseAction, anchorFrom: DrawableWithPosition | undefined): boolean {
+        if (action === this._currentAction) {
+            return false
+        }
+        this._currentAction = action
+        const newHandlers = (() => {
             switch (action) {
                 case "edit": return new EditHandlers(this.editor)
                 case "delete": return new DeleteHandlers(this.editor)
                 case "move": return new MoveHandlers(this.editor)
+                case "setanchor":
+                    if (!anchorFrom) {
+                        throw new Error("anchorFrom is required for setanchor")
+                    }
+                    return new SetAnchorHandlers(this.editor, anchorFrom)
             }
         })()
+        this._currentHandlers.unmount()
+        this._currentHandlers = newHandlers
         setColorMouseOverIsDanger(action === "delete")
+        return true
     }
 
     public setStartDragTimeout(startMouseDownData: MouseDownData, e: MouseEvent | TouchEvent) {
@@ -412,6 +426,9 @@ export class UIEventManager {
                     }
                     if (!handled && this.editor.editorRoot instanceof CustomComponent) {
                         handled = this.editor.tryCloseCustomComponentEditor()
+                    }
+                    if (!handled) {
+                        handled = editor.setCurrentMouseAction("edit")
                     }
 
                     if (handled) {
@@ -797,6 +814,9 @@ abstract class ToolHandlers {
     public mouseUpOnBackground(__e: MouseEvent | TouchEvent) {
         // empty
     }
+    public unmount() {
+        // empty
+    }
 }
 
 class EditHandlers extends ToolHandlers {
@@ -1036,18 +1056,35 @@ class DeleteHandlers extends ToolHandlers {
 
 class SetAnchorHandlers extends ToolHandlers {
 
-    public static mainCursor() { return "grab" }
-    public mouseOverIsDanger() { return false }
+    private _from: DrawableWithPosition
 
-    private _from: DrawableWithDraggablePosition
-
-    public constructor(editor: LogicEditor, from: DrawableWithDraggablePosition) {
+    public constructor(editor: LogicEditor, from: DrawableWithPosition) {
         super(editor)
         this._from = from
+        editor.linkMgr.startSettingAnchorFrom(from)
+    }
+
+    public override unmount() {
+        this.editor.linkMgr.tryCancelSetAnchor()
+    }
+
+    private finish() {
+        this.editor.setCurrentMouseAction("edit")
     }
 
     public override mouseClickedOn(comp: Drawable, __: MouseEvent) {
-        return this.editor.eventMgr.tryDeleteDrawable(comp)
+        let result: InteractionResult = InteractionResult.NoChange
+        if (comp instanceof ComponentBase) {
+            result = this.editor.linkMgr.trySetAnchor(this._from, comp)
+        } else {
+            this.editor.linkMgr.tryCancelSetAnchor()
+        }
+        this.finish()
+        return result
+    }
+
+    public override mouseUpOnBackground(__: MouseEvent) {
+        this.finish()
     }
 }
 

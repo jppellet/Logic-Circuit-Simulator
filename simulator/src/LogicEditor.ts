@@ -35,7 +35,7 @@ import { CustomComponent } from "./components/CustomComponent"
 import { Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, EditTools, GraphicsRendering, Orientation } from "./components/Drawable"
 import { Rectangle, RectangleDef } from "./components/Rectangle"
 import { LinkManager, Wire, WireStyle, WireStyles } from "./components/Wire"
-import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, GRID_STEP, USER_COLORS, clampZoom, drawAnchorsToComponent as drawAnchorsForComponent, isDarkMode, parseColorToRGBA, setColorMouseOverIsDanger, setDarkMode, strokeSingleLine } from "./drawutils"
+import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, GRID_STEP, USER_COLORS, clampZoom, drawAnchorsToComponent as drawAnchorsForComponent, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine } from "./drawutils"
 import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, option, select, span, style, target, title, type } from "./htmlgen"
 import { inlineIconSvgFor, isIconName, makeIcon } from "./images"
@@ -107,6 +107,7 @@ export const MouseActions = RichStringEnum.withProps<{
     edit: { cursor: null },
     move: { cursor: "move" },
     delete: { cursor: "not-allowed" },
+    setanchor: { cursor: "alias" },
 })
 export type MouseAction = typeof MouseActions.type
 
@@ -1256,11 +1257,15 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.focus()
     }
 
-    public setCurrentMouseAction(action: MouseAction) {
-        this.setToolCursor(MouseActions.props[action].cursor)
-        this._topBar?.setActiveTool(action)
-        this.eventMgr.setHandlersFor(action)
-        this.editTools.redrawMgr.addReason("mouse action changed", null)
+    public setCurrentMouseAction(action: MouseAction, anchorFrom?: DrawableWithPosition): boolean {
+        const changed = this.eventMgr.setHandlersFor(action, anchorFrom)
+        if (changed) {
+            this.setToolCursor(MouseActions.props[action].cursor)
+            this._topBar?.setActiveTool(action)
+            this.editTools.redrawMgr.addReason("mouse action changed", null)
+            this.editor.focus()
+        }
+        return changed
     }
 
     public updateCursor(e?: MouseEvent | TouchEvent) {
