@@ -9,6 +9,8 @@ export type TimeoutHandle = NodeJS.Timeout
 
 export const InBrowser = typeof window !== 'undefined'
 
+export const Any = undefined as any
+
 // Better types for an Object.keys() replacement
 export function keysOf<K extends keyof any>(d: Record<K, any>): K[]
 export function keysOf<K extends {}>(o: K): (keyof K)[]

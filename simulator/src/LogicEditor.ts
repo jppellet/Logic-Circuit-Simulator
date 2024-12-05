@@ -1032,6 +1032,10 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this._topBar?.updateCustomComponentCaption()
     }
 
+    public allowGateType(type: string) {
+        return this._menu?.allowGateType(type) ?? true
+    }
+
     public override focus() {
         this.html.mainCanvas.focus()
     }

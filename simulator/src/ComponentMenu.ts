@@ -23,7 +23,7 @@ import { DisplayBarDef } from "./components/DisplayBar"
 import { FlipflopDDef } from "./components/FlipflopD"
 import { FlipflopJKDef } from "./components/FlipflopJK"
 import { FlipflopTDef } from "./components/FlipflopT"
-import { Gate1Def, GateNDef } from "./components/Gate"
+import { Gate1Def, GateNDef, GateTypePrefix } from "./components/Gate"
 import { GateArrayDef } from "./components/GateArray"
 import { HalfAdderDef } from "./components/HalfAdder"
 import { InputDef } from "./components/Input"
@@ -195,20 +195,24 @@ export class ComponentMenu {
 
     private readonly _htmlSections: HtmlSection[]
     private _customComponentSection?: HtmlSection
+    private _restrictedToGateTypes: Set<string> | undefined
 
     public constructor(
         public readonly parent: HTMLElement,
         public readonly showOnly: readonly string[] | undefined,
     ) {
         this._htmlSections = []
-
+        this._restrictedToGateTypes = showOnly === undefined ? undefined : new Set()
         const showOnlyBuf = showOnly === undefined ? undefined : [...showOnly]
         let lastSectionNonEmpty = false
 
         for (const section of componentsMenu) {
-            const { allButtons, buttonsShowWithMore, buttonsShowWithURLParam } =
+            const { allButtons, buttonsShowWithMore, buttonsShowWithURLParam, accessibleGateTypes } =
                 makeButtons(section, showOnlyBuf)
             const htmlSection = this.makeSection(section.nameKey, allButtons, buttonsShowWithMore, buttonsShowWithURLParam, showOnlyBuf, lastSectionNonEmpty)
+            for (const type of accessibleGateTypes) {
+                this._restrictedToGateTypes?.add(type)
+            }
             if (htmlSection !== undefined) {
                 this._htmlSections.push(htmlSection)
                 lastSectionNonEmpty = true
@@ -226,6 +230,10 @@ export class ComponentMenu {
 
     public allCustomButtons() {
         return this._customComponentSection === undefined ? [] : this._customComponentSection.buttons
+    }
+
+    public allowGateType(type: string) {
+        return this._restrictedToGateTypes?.has(type) ?? true
     }
 
     public updateCustomComponentButtons(defs: readonly CustomComponentDef[] | undefined) {
@@ -275,7 +283,7 @@ export class ComponentMenu {
             const icon = makeSvgHolder("svgimg", def.makeButtonSVG(),
                 CustomComponentImageWidth, CustomComponentImageHeight)
             const caption = def.caption
-            const [compButton, hiddenNow] = makeButton(
+            const { compButton, hiddenNow } = makeButton(
                 type, false, [type], showOnlyBuf,
                 icon, caption, caption + S.Components.Custom.MenuButtonSuffix, undefined, true
             )
@@ -361,12 +369,13 @@ function makeButtons(section: Section, showOnlyBuf: string[] | undefined) {
     const allButtons: HTMLButtonElement[] = []
     const buttonsShowWithMore: HTMLButtonElement[] = []
     const buttonsShowWithURLParam: HTMLButtonElement[] = []
+    const accessibleGateTypes = new Set<string>()
     for (const item of section.items) {
         const normallyHidden = item.visible !== undefined && item.visible !== "always"
         const [stringsKey, img] = isString(item.visual) ? [item.visual, item.visual] : item.visual
         const compStrings = S.ComponentBar.Components.props[stringsKey]
         const [titleStr, captionStr] = isString(compStrings) ? [compStrings, undefined] : compStrings
-        const [compButton, hiddenNow] = makeButton(
+        const { compButton, hiddenByShowOnly, hiddenNow } = makeButton(
             item.type, normallyHidden, componentIdsFor(item), showOnlyBuf,
             makeImage(img, item.width), captionStr, titleStr, item.params?.params, false
         )
@@ -376,14 +385,20 @@ function makeButtons(section: Section, showOnlyBuf: string[] | undefined) {
             targetArray.push(compButton)
         }
         allButtons.push(compButton)
+        const isGate = item.type.startsWith(GateTypePrefix)
+        let gateType
+        if (isGate && !hiddenByShowOnly && (gateType = item.params?.params?.type) !== undefined) {
+            accessibleGateTypes.add(gateType)
+        }
     }
-    return { allButtons, buttonsShowWithMore, buttonsShowWithURLParam }
+    return { allButtons, buttonsShowWithMore, buttonsShowWithURLParam, accessibleGateTypes }
 }
 
 
-function makeButton(typeStr: string, normallyHidden: boolean, componentIds: string[], showOnlyBuf: string[] | undefined, buttonIcon: Element, captionStr: string | undefined, titleStr: string | undefined, params: Record<string, unknown> | undefined, isCustom: boolean): [HTMLButtonElement, boolean] {
+function makeButton(typeStr: string, normallyHidden: boolean, componentIds: string[], showOnlyBuf: string[] | undefined, buttonIcon: Element, captionStr: string | undefined, titleStr: string | undefined, params: Record<string, unknown> | undefined, isCustom: boolean) {
 
-    const hiddenNow = showOnlyBuf !== undefined ? !shouldShow(componentIds, showOnlyBuf) : normallyHidden
+    const hiddenByShowOnly = showOnlyBuf !== undefined ? !shouldShow(componentIds, showOnlyBuf) : false
+    const hiddenNow = showOnlyBuf !== undefined ? hiddenByShowOnly : normallyHidden
 
     const buttonStyle = !hiddenNow ? "" : "max-height: 0; transition: all 0.25s ease-out; overflow: hidden; padding: 0; border: 0; margin-bottom: 0;"
     const extraClasses = hiddenNow ? " sim-component-button-extra" : ""
@@ -403,7 +418,7 @@ function makeButton(typeStr: string, normallyHidden: boolean, componentIds: stri
         compDataset.params = JSON5.stringify(params)
     }
 
-    return [compButton, hiddenNow]
+    return { compButton, hiddenByShowOnly, hiddenNow }
 }
 
 

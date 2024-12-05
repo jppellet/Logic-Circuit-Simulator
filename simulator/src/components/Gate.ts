@@ -428,9 +428,12 @@ export abstract class GateBase<
         const adminMode = this.parent.mode >= Mode.FULL
 
         if (!this._showAsUnknown || adminMode) {
-            items.push(
-                ["start", this.makeReplaceByMenuItem()]
-            )
+            const replaceBy = this.makeReplaceByMenuItem()
+            if (replaceBy !== undefined) {
+                items.push(
+                    ["start", replaceBy]
+                )
+            }
         }
         if (adminMode) {
             items.push(
@@ -441,10 +444,15 @@ export abstract class GateBase<
         return items
     }
 
-    private makeReplaceByMenuItem(): MenuItem {
+    private makeReplaceByMenuItem(): MenuItem | undefined {
         const gateTypes = this.gateTypes(this.numBits)
         const s = S.Components.Gate.contextMenu
-        const otherTypes = gateTypes.values.filter(t => t !== this._type && gateTypes.props[t].includeInContextMenu)
+        const otherTypes = gateTypes.values
+            .filter(t => t !== this._type && gateTypes.props[t].includeInContextMenu)
+            .filter(t => this.parent.editor.allowGateType(t))
+        if (otherTypes.length === 0) {
+            return undefined
+        }
         return MenuData.submenu("replace", s.ReplaceBy, [
             ...otherTypes.map(newType => {
                 const gateProps = gateTypes.props[newType]
@@ -507,9 +515,11 @@ export function validateGateType<TGateType extends string>(GateTypes: RichString
 }
 
 
+export const GateTypePrefix = "gate"
+
 
 export const Gate1Def =
-    defineParametrizedComponent("gate1", true, true, {
+    defineParametrizedComponent(GateTypePrefix + "1", true, true, {
         variantName: ({ type }) =>
             // return array thus overriding default component id
             [type],
@@ -574,7 +584,7 @@ Gate1Def.impl = Gate1
 
 
 export const GateNDef =
-    defineParametrizedComponent("gate", true, true, {
+    defineParametrizedComponent(GateTypePrefix + "", true, true, {
         variantName: ({ type, bits }) =>
             // return array thus overriding default component id
             [type, `${type}-${bits}`],

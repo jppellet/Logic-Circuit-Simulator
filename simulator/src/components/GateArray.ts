@@ -6,12 +6,12 @@ import { ArrayFillUsing, ArrayFillWith, LogicValue, Mode, typeOrUndefined } from
 import { AdderArrayDef } from "./AdderArray"
 import { defineParametrizedComponent, groupVertical, param, ParametrizedComponentBase, Repr, ResolvedParams } from "./Component"
 import { DrawableParent, DrawContext, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
-import { validateGateType } from "./Gate"
+import { GateTypePrefix, validateGateType } from "./Gate"
 import { GateNType, GateNTypes } from "./GateTypes"
 
 
 export const GateArrayDef =
-    defineParametrizedComponent("gate-array", true, true, {
+    defineParametrizedComponent(GateTypePrefix + "-array", true, true, {
         variantName: ({ type, bits }) =>
             // return array thus overriding default component id
             [`gate-array`, `${type}-array`, `${type}-array-${bits}`],
@@ -245,20 +245,35 @@ export class GateArray extends ParametrizedComponentBase<GateArrayRepr> {
         const s = S.Components.GateArray.contextMenu
 
         const typeItems: MenuData = []
-        for (const subtype of ["and", "or", "xor", "nand", "nor", "xnor", "-", "imply", "rimply", "nimply", "rnimply"] as const) {
-            if (subtype === "-") {
-                typeItems.push(MenuData.sep())
-            } else {
-                const icon = this._type === subtype ? "check" : "none"
-                typeItems.push(MenuData.item(icon, subtype.toUpperCase(), () => {
-                    this.doSetType(subtype)
-                }))
+        const subtypes = (["and", "or", "xor", "nand", "nor", "xnor", "-", "imply", "rimply", "nimply", "rnimply"] as const)
+            .filter(t => this.parent.editor.allowGateType(t))
+
+        if (subtypes.length !== 0) {
+            // remove leading or trailing "-" if present
+            if (subtypes[0] === "-") {
+                subtypes.shift()
+            } else if (subtypes[subtypes.length - 1] === "-") {
+                subtypes.pop()
+            }
+
+            for (const subtype of subtypes) {
+                if (subtype === "-") {
+                    typeItems.push(MenuData.sep())
+                } else {
+                    const icon = this._type === subtype ? "check" : "none"
+                    typeItems.push(MenuData.item(icon, subtype.toUpperCase(), () => {
+                        this.doSetType(subtype)
+                    }))
+                }
             }
         }
 
-        const items: MenuItems = [
-            ["mid", MenuData.submenu("settings", s.Type, typeItems)],
-        ]
+        const items: MenuItems = []
+
+        if (typeItems.length >= 2) {
+            // 2 because a choice of 1 is just a direct item
+            items.push(["mid", MenuData.submenu("settings", s.Type, typeItems)])
+        }
 
         if (this.parent.mode >= Mode.FULL) {
             const showAsUnknownItem = MenuData.item(this._showAsUnknown ? "check" : "none", s.ShowAsUnknown, () => {
