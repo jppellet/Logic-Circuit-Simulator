@@ -9,7 +9,7 @@ import { Waypoint, Wire } from './components/Wire'
 import { dist, setColorMouseOverIsDanger } from './drawutils'
 import { applyModifiersTo, button, cls, emptyMod, li, Modifier, ModifierObject, mods, span, type, ul } from './htmlgen'
 import { IconName, makeIcon } from './images'
-import { LogicEditor, MouseAction } from './LogicEditor'
+import { LogicEditor, MouseAction, MouseActionParams } from './LogicEditor'
 import { getScrollParent, InteractionResult, Mode, targetIsFieldOrOtherInput, TimeoutHandle } from "./utils"
 
 type MouseDownData = {
@@ -98,21 +98,22 @@ export class UIEventManager {
         return this._currentMouseDownData
     }
 
-    public setHandlersFor(action: MouseAction, anchorFrom: DrawableWithPosition | undefined): boolean {
+
+    public setHandlersFor<M extends MouseAction>(action: M, ...params: MouseActionParams<M>): boolean {
         if (action === this._currentAction) {
             return false
         }
         this._currentAction = action
         const newHandlers = (() => {
             switch (action) {
-                case "edit": return new EditHandlers(this.editor)
-                case "delete": return new DeleteHandlers(this.editor)
-                case "move": return new MoveHandlers(this.editor)
+                case "delete":
+                    return new DeleteHandlers(this.editor)
+                case "move":
+                    return new MoveHandlers(this.editor)
                 case "setanchor":
-                    if (!anchorFrom) {
-                        throw new Error("anchorFrom is required for setanchor")
-                    }
-                    return new SetAnchorHandlers(this.editor, anchorFrom)
+                    return new SetAnchorHandlers(this.editor, ...(params as MouseActionParams<"setanchor">))
+                case "edit": default:
+                    return new EditHandlers(this.editor)
             }
         })()
         this._currentHandlers.unmount()
@@ -1065,10 +1066,12 @@ class SetAnchorHandlers extends ToolHandlers {
     }
 
     public override unmount() {
+        // e.g. on escape, make sure to cancel the anchor set
         this.editor.linkMgr.tryCancelSetAnchor()
     }
 
     private finish() {
+        // always go back to edit mode after setting an anchor
         this.editor.setCurrentMouseAction("edit")
     }
 
@@ -1084,14 +1087,12 @@ class SetAnchorHandlers extends ToolHandlers {
     }
 
     public override mouseUpOnBackground(__: MouseEvent) {
+        this.editor.linkMgr.tryCancelSetAnchor()
         this.finish()
     }
 }
 
 class MoveHandlers extends ToolHandlers {
-
-    public static mainCursor() { return "move" }
-    public mouseOverIsDanger() { return false }
 
     public constructor(editor: LogicEditor) {
         super(editor)

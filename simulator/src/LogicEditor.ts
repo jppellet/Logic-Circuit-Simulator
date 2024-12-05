@@ -40,7 +40,7 @@ import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, option, select, span, style, target, title, type } from "./htmlgen"
 import { inlineIconSvgFor, isIconName, makeIcon } from "./images"
 import { DefaultLang, S, getLang, isLang, setLang } from "./strings"
-import { InBrowser, KeysOfByType, RichStringEnum, UIDisplay, copyToClipboard, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isString, isTruthyString, onVisible, pasteFromClipboard, setDisplay, setVisible, showModal, toggleVisible } from "./utils"
+import { Any, InBrowser, KeysOfByType, UIDisplay, copyToClipboard, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isString, isTruthyString, onVisible, pasteFromClipboard, setDisplay, setVisible, showModal, toggleVisible } from "./utils"
 
 
 
@@ -100,16 +100,31 @@ const DEFAULT_EDITOR_OPTIONS = {
 
 export type EditorOptions = typeof DEFAULT_EDITOR_OPTIONS
 
+export const MouseActions = {
+    edit: {
+        cursor: null,
+        paramTypes: [],
+    },
+    move: {
+        cursor: "move",
+        paramTypes: [],
+    },
+    delete: {
+        cursor: "not-allowed",
+        paramTypes: [],
+    },
+    setanchor: {
+        cursor: "alias",
+        paramTypes: Any as [DrawableWithPosition],
+    },
+} as const satisfies Record<string, {
+    cursor: string | null,
+    paramTypes: any[]
+}>
 
-export const MouseActions = RichStringEnum.withProps<{
-    cursor: string | null
-}>()({
-    edit: { cursor: null },
-    move: { cursor: "move" },
-    delete: { cursor: "not-allowed" },
-    setanchor: { cursor: "alias" },
-})
-export type MouseAction = typeof MouseActions.type
+export type MouseActionParams<M extends keyof typeof MouseActions> = typeof MouseActions[M]["paramTypes"]
+
+export type MouseAction = keyof typeof MouseActions
 
 type InitialData = { _type: "url", url: string } | { _type: "json", json: string } | { _type: "compressed", str: string }
 
@@ -1261,10 +1276,10 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.focus()
     }
 
-    public setCurrentMouseAction(action: MouseAction, anchorFrom?: DrawableWithPosition): boolean {
-        const changed = this.eventMgr.setHandlersFor(action, anchorFrom)
+    public setCurrentMouseAction<M extends MouseAction>(action: M, ...params: MouseActionParams<M>): boolean {
+        const changed = this.eventMgr.setHandlersFor(action, ...params)
         if (changed) {
-            this.setToolCursor(MouseActions.props[action].cursor)
+            this.setToolCursor(MouseActions[action].cursor)
             this._topBar?.setActiveTool(action)
             this.editTools.redrawMgr.addReason("mouse action changed", null)
             this.editor.focus()
