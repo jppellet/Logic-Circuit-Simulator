@@ -35,7 +35,7 @@ import { CustomComponent } from "./components/CustomComponent"
 import { Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, EditTools, GraphicsRendering, Orientation } from "./components/Drawable"
 import { Rectangle, RectangleDef } from "./components/Rectangle"
 import { LinkManager, Wire, WireStyle, WireStyles } from "./components/Wire"
-import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, GRID_STEP, USER_COLORS, clampZoom, drawAnchorsToComponent as drawAnchorsForComponent, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine } from "./drawutils"
+import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, GRID_STEP, USER_COLORS, clampZoom, drawAnchorsAroundComponent as drawAnchorsForComponent, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine } from "./drawutils"
 import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, option, select, span, style, target, title, type } from "./htmlgen"
 import { inlineIconSvgFor, isIconName, makeIcon } from "./images"
@@ -93,6 +93,7 @@ const DEFAULT_EDITOR_OPTIONS = {
     hideTooltips: false,
     groupParallelWires: false,
     showHiddenWires: false,
+    showAnchors: false,
     propagationDelay: 100,
     allowPausePropagation: false,
     zoom: 100,
@@ -236,6 +237,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         hideTooltipsCheckbox: HTMLInputElement,
         groupParallelWiresCheckbox: HTMLInputElement,
         showHiddenWiresCheckbox: HTMLInputElement,
+        showAnchorsCheckbox: HTMLInputElement,
         propagationDelayField: HTMLInputElement,
         showUserDataLinkContainer: HTMLDivElement,
     } | undefined = undefined
@@ -338,6 +340,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             optionsHtml.hideTooltipsCheckbox.checked = newOptions.hideTooltips
             optionsHtml.groupParallelWiresCheckbox.checked = newOptions.groupParallelWires
             optionsHtml.showHiddenWiresCheckbox.checked = newOptions.showHiddenWires
+            optionsHtml.showAnchorsCheckbox.checked = newOptions.showAnchors
             optionsHtml.propagationDelayField.valueAsNumber = newOptions.propagationDelay
 
             this.setWindowTitleFrom(newOptions.name)
@@ -793,6 +796,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const hideTooltipsCheckbox = makeCheckbox("hideTooltips", S.Settings.hideTooltips)
         const groupParallelWiresCheckbox = makeCheckbox("groupParallelWires", S.Settings.groupParallelWires, true)
         const showHiddenWiresCheckbox = makeCheckbox("showHiddenWires", S.Settings.showHiddenWires)
+        const showAnchorsCheckbox = makeCheckbox("showAnchors", S.Settings.showAnchors)
         // 
         const wireStylePopup = select(
             option(attr("value", WireStyles.auto), S.Settings.WireStyleAuto),
@@ -848,6 +852,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             hideTooltipsCheckbox,
             groupParallelWiresCheckbox,
             showHiddenWiresCheckbox,
+            showAnchorsCheckbox: showAnchorsCheckbox,
             propagationDelayField,
             showUserDataLinkContainer,
         }
@@ -1898,7 +1903,13 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const movingCompWithAnchor = moveMgr.getSingleMovingComponentWithAnchors()
         if (movingCompWithAnchor !== undefined) {
             g.beginGroup("anchors")
-            drawAnchorsForComponent(g, movingCompWithAnchor)
+            drawAnchorsForComponent(g, movingCompWithAnchor, true)
+            g.endGroup()
+        } else if (this._options.showAnchors) {
+            g.beginGroup("anchors")
+            for (const comp of root.components.all()) {
+                drawAnchorsForComponent(g, comp, false)
+            }
             g.endGroup()
         }
 

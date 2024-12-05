@@ -517,15 +517,39 @@ export function strokeAsWireLine(g: GraphicsRendering, value: LogicValue, color:
     const [baseColor, altColor] = neutral ? [COLOR_UNKNOWN, COLOR_UNKNOWN_ALT] : colorsForLogicValue(value)
     g.strokeStyle = baseColor
 
+    const prevLineDash = g.getLineDash()
+    const partial = prevLineDash.length === 2 && prevLineDash[0] < prevLineDash[1]
+
     if (timeFraction === undefined) {
         // no animation
         doStroke()
 
     } else {
+
+        const dashSize = 20
+
         // TODO: this currently breaks the animation showing the newly propagating value,
         // since this works along paths by changing the line dash, which we overwrite here.
-        const dashSize = 20
-        g.setLineDash([dashSize, dashSize])
+
+        // eslint-disable-next-line no-constant-condition
+        if (true || !partial) {
+            // draw the whole line
+            g.setLineDash([dashSize, dashSize])
+        } else {
+            // draw segment up to the given point
+            // TODO this doesn't work!
+            const onlyUpTo = prevLineDash[0]
+            const newLineDash = []
+            let acc = dashSize
+            while (acc < onlyUpTo) {
+                newLineDash.push(acc)
+                acc += dashSize
+            }
+            if (newLineDash.length % 2 === 1) {
+                newLineDash.push(0)
+            }
+            g.setLineDash(newLineDash)
+        }
         const baseOffset = -timeFraction * dashSize * 2
         g.lineDashOffset = baseOffset
         doStroke()
@@ -535,7 +559,7 @@ export function strokeAsWireLine(g: GraphicsRendering, value: LogicValue, color:
         g.lineDashOffset = altOffset
         doStroke()
 
-        g.setLineDash([])
+        g.setLineDash(prevLineDash)
         g.lineDashOffset = 0
     }
 
@@ -778,12 +802,15 @@ export function drawComponentName(g: GraphicsRendering, ctx: DrawContextExt, nam
     g.textBaseline = "middle" // restore
 }
 
-export function drawAnchorsToComponent(g: GraphicsRendering, comp: DrawableWithPosition) {
+export function drawAnchorsAroundComponent(g: GraphicsRendering, comp: DrawableWithPosition, includeTo: boolean) {
     const anchor = comp.anchor
     if (anchor !== undefined) {
-        drawAnchorTo(g, comp.posX, comp.posY, anchor.posX, anchor.posY, [anchor.width, anchor.height], COLOR_ANCHOR_IN, undefined)
+        const color = includeTo ? COLOR_ANCHOR_IN : COLOR_ANCHOR_NEW
+        drawAnchorTo(g, comp.posX, comp.posY, anchor.posX, anchor.posY, [anchor.width, anchor.height], color, undefined)
     }
-    drawAllTo(comp)
+    if (includeTo) {
+        drawAllTo(comp)
+    }
 
     function drawAllTo(drawable: DrawableWithPosition) {
         if (!(drawable instanceof ComponentBase)) {
