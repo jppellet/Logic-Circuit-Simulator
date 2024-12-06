@@ -33,9 +33,11 @@ import { UndoManager } from './UndoManager'
 import { Component, ComponentBase } from "./components/Component"
 import { CustomComponent } from "./components/CustomComponent"
 import { Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, EditTools, GraphicsRendering, Orientation } from "./components/Drawable"
+import { Input } from "./components/Input"
+import { Output } from "./components/Output"
 import { Rectangle, RectangleDef } from "./components/Rectangle"
 import { LinkManager, Wire, WireStyle, WireStyles } from "./components/Wire"
-import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, GRID_STEP, USER_COLORS, clampZoom, drawAnchorsAroundComponent as drawAnchorsForComponent, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine } from "./drawutils"
+import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_COMPONENT_ID, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, GRID_STEP, USER_COLORS, clampZoom, drawAnchorsAroundComponent as drawAnchorsForComponent, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine } from "./drawutils"
 import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, option, select, span, style, target, title, type } from "./htmlgen"
 import { inlineIconSvgFor, isIconName, makeIcon } from "./images"
@@ -94,6 +96,7 @@ const DEFAULT_EDITOR_OPTIONS = {
     groupParallelWires: false,
     showHiddenWires: false,
     showAnchors: false,
+    showIds: false,
     propagationDelay: 100,
     allowPausePropagation: false,
     zoom: 100,
@@ -238,6 +241,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         groupParallelWiresCheckbox: HTMLInputElement,
         showHiddenWiresCheckbox: HTMLInputElement,
         showAnchorsCheckbox: HTMLInputElement,
+        showIdsCheckbox: HTMLInputElement,
         propagationDelayField: HTMLInputElement,
         showUserDataLinkContainer: HTMLDivElement,
     } | undefined = undefined
@@ -341,6 +345,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             optionsHtml.groupParallelWiresCheckbox.checked = newOptions.groupParallelWires
             optionsHtml.showHiddenWiresCheckbox.checked = newOptions.showHiddenWires
             optionsHtml.showAnchorsCheckbox.checked = newOptions.showAnchors
+            optionsHtml.showIdsCheckbox.checked = newOptions.showIds
             optionsHtml.propagationDelayField.valueAsNumber = newOptions.propagationDelay
 
             this.setWindowTitleFrom(newOptions.name)
@@ -797,6 +802,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const groupParallelWiresCheckbox = makeCheckbox("groupParallelWires", S.Settings.groupParallelWires, true)
         const showHiddenWiresCheckbox = makeCheckbox("showHiddenWires", S.Settings.showHiddenWires)
         const showAnchorsCheckbox = makeCheckbox("showAnchors", S.Settings.showAnchors)
+        const showIdsCheckbox = makeCheckbox("showIds", S.Settings.showIds)
         // 
         const wireStylePopup = select(
             option(attr("value", WireStyles.auto), S.Settings.WireStyleAuto),
@@ -852,7 +858,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             hideTooltipsCheckbox,
             groupParallelWiresCheckbox,
             showHiddenWiresCheckbox,
-            showAnchorsCheckbox: showAnchorsCheckbox,
+            showAnchorsCheckbox,
+            showIdsCheckbox,
             propagationDelayField,
             showUserDataLinkContainer,
         }
@@ -1920,6 +1927,24 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
         g.endGroup()
 
+        // draw refs
+        if (this._options.showIds) {
+            g.beginGroup("refs")
+            g.font = 'bold 14px sans-serif'
+            g.textAlign = 'center'
+            g.textBaseline = 'middle'
+            g.strokeStyle = "white"
+            g.lineWidth = 3
+            g.fillStyle = COLOR_COMPONENT_ID
+            for (const comp of root.components.all()) {
+                if (comp.ref !== undefined) {
+                    g.strokeText(comp.ref, comp.posX, comp.posY)
+                    g.fillText(comp.ref, comp.posX, comp.posY)
+                }
+            }
+            g.endGroup()
+        }
+
         // draw selection
         let selRect
         if (currentSelection !== undefined && (selRect = currentSelection.currentlyDrawnRect) !== undefined) {
@@ -2063,7 +2088,7 @@ export class LogicStatic {
 
 
 if (InBrowser) {
-    // cannot be in setup function because 'template' var is not assigned until that func returns
+    // cannot be in setup function because the 'template' var is not assigned until that func returns
     // and promotion of elems occurs during this 'customElements.define' call
     const template = (() => {
         const template = document.createElement('template')
