@@ -112,6 +112,12 @@ export class Timeline {
         return this.unadjustedTime() - this._epochStart
     }
 
+    public hasPendingCallbacksNow(): boolean {
+        // console.log(`  hasPendingCallbacksNow: ${this._sortedNextCallbackTimes}; now: ${this.logicalTime()}`)
+        return this._sortedNextCallbackTimes.length > 0
+            && this._sortedNextCallbackTimes[0] <= this.logicalTime()
+    }
+
     public scheduleAt(time: Timestamp, callback: CallbackFn, desc: string, enablesPause: boolean) {
         // console.log(`Scheduling '${desc}' at ${time}`)
         const callbackRec = { callback, desc, enablesPause }

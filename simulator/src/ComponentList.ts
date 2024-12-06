@@ -89,6 +89,11 @@ export class ComponentList {
         this._componentsById.set(newId, comp)
     }
 
+    public regenerateIdOf(comp: Component) {
+        const newId = this.generateIdFor(comp)
+        this.changeIdOf(comp, newId)
+    }
+
     public swapIdsOf(comp1: Component, comp2: Component) {
         const id1 = comp1.ref
         const id2 = comp2.ref

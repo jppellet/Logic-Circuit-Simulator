@@ -457,6 +457,14 @@ export class Input extends InputBase<InputRepr> {
         this.doSetValue(newValues)
     }
 
+    public setValue(values: LogicValue[]) {
+        if (values.length !== this.numBits) {
+            console.warn(`Expected ${this.numBits} values, got ${values.length} for input ${this.ref}`)
+            return
+        }
+        this.doSetValue(values)
+    }
+
     public override doSetIsPushButton(isPushButton: boolean) {
         this._isPushButton = isPushButton
         if (isPushButton) {

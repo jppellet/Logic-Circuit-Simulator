@@ -166,8 +166,8 @@ export abstract class Drawable {
         this._ref = id
     }
 
-    protected setNeedsRedraw(reason: string) {
-        this.parent.ifEditing?.redrawMgr.addReason(reason, this)
+    protected setNeedsRedraw(reason: string, isPropagation: boolean = false) {
+        this.parent.ifEditing?.redrawMgr.addReason(reason, this, isPropagation)
     }
 
     public get drawZIndex(): DrawZIndex {

@@ -25,6 +25,7 @@ import { NodeManager } from "./NodeManager"
 import { RecalcManager, RedrawManager } from "./RedrawRecalcManager"
 import { SVGRenderingContext } from "./SVGRenderingContext"
 import { Serialization } from "./Serialization"
+import { TestCase } from "./TestCase"
 import { Tests } from "./Tests"
 import { Timeline } from "./Timeline"
 import { TopBar } from "./TopBar"
@@ -96,7 +97,7 @@ const DEFAULT_EDITOR_OPTIONS = {
     groupParallelWires: false,
     showHiddenWires: false,
     showAnchors: false,
-    showIds: false,
+    showIDs: false,
     propagationDelay: 100,
     allowPausePropagation: false,
     zoom: 100,
@@ -203,6 +204,9 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     private _toolCursor: string | null = null
     private _highlightedItems: HighlightedItems | undefined = undefined
     private _nextAnimationFrameHandle: number | null = null
+
+    private _propagationPromise: Promise<void> = Promise.resolve()
+    private _propagationResolve: (() => void) | undefined = undefined
 
     private _editorRoot: DrawableParent = this
     public get editorRoot() { return this._editorRoot }
@@ -345,7 +349,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             optionsHtml.groupParallelWiresCheckbox.checked = newOptions.groupParallelWires
             optionsHtml.showHiddenWiresCheckbox.checked = newOptions.showHiddenWires
             optionsHtml.showAnchorsCheckbox.checked = newOptions.showAnchors
-            optionsHtml.showIdsCheckbox.checked = newOptions.showIds
+            optionsHtml.showIdsCheckbox.checked = newOptions.showIDs
             optionsHtml.propagationDelayField.valueAsNumber = newOptions.propagationDelay
 
             this.setWindowTitleFrom(newOptions.name)
@@ -779,6 +783,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             checkbox.addEventListener("change", this.wrapHandler(() => {
                 this._options[optionName] = checkbox.checked
                 this.editTools.redrawMgr.addReason("option changed: " + optionName, null)
+                this.focus()
             }))
             const section = div(
                 style("height: 20px"),
@@ -802,7 +807,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const groupParallelWiresCheckbox = makeCheckbox("groupParallelWires", S.Settings.groupParallelWires, true)
         const showHiddenWiresCheckbox = makeCheckbox("showHiddenWires", S.Settings.showHiddenWires)
         const showAnchorsCheckbox = makeCheckbox("showAnchors", S.Settings.showAnchors)
-        const showIdsCheckbox = makeCheckbox("showIds", S.Settings.showIds)
+        const showIdsCheckbox = makeCheckbox("showIDs", S.Settings.showIds)
         // 
         const wireStylePopup = select(
             option(attr("value", WireStyles.auto), S.Settings.WireStyleAuto),
@@ -1629,6 +1634,43 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         saveAs(blob, filename)
     }
 
+    public async runTestCase(testCase: TestCase) {
+        const msg = S.Messages.RunningTestCase.expand({ name: testCase.name })
+        this.showMessage(msg)
+        console.group(msg)
+
+        for (const [inputName, inputValue] of testCase.in) {
+            const comp = this.components.get(inputName)
+            if (comp === undefined || !(comp instanceof Input)) {
+                console.warn(`Input component ${inputName} not found`)
+                return
+            }
+            comp.setValue([inputValue])
+        }
+        // console.log(`Propagating...`)
+        this.recalcPropagateAndDrawIfNeeded()
+        await this.waitForPropagation()
+        // console.log(`Propagation done at ${this.timeline.logicalTime()}`)
+        for (const [outputName, expected] of testCase.out) {
+            const comp = this.components.get(outputName)
+            if (comp === undefined || !(comp instanceof Output)) {
+                console.warn(`Output component ${outputName} not found`)
+                return
+            }
+            const actual = comp.value[0]
+            if (actual !== expected) {
+                console.log(`%cFAIL:%c ${outputName} is ${actual} instead of ${expected}`, 'color: red; font-weight: bold;', '')
+            } else {
+                console.log(`%cPASS:%c ${outputName} is ${expected}`, 'color: green; font-weight: bold;', '')
+            }
+        }
+        console.groupEnd()
+    }
+
+    public waitForPropagation() {
+        return this._propagationPromise
+    }
+
     public recalcPropagateAndDrawIfNeeded() {
         if (this._nextAnimationFrameHandle !== null) {
             // an animation frame will be played soon anyway
@@ -1649,8 +1691,42 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             return
         }
 
+        // By now, we know that we have to redraw
+
+        if (this._propagationResolve === undefined) {
+            // means that the promise has been resolved already and we are
+            // starting a new cycle, so we reset the promise
+            this._propagationPromise = new Promise(resolve => {
+                this._propagationResolve = resolve
+            })
+        }
+
         // console.log("Drawing " + (__recalculated ? "with" : "without") + " recalc, reasons:\n    " + redrawReasons)
         this.doRedraw()
+
+        if (!redrawMgr.isAnyValuePropagating()) {
+            // if no value is propagating, we can resolve the promise, but after the
+            // next timeline updates
+
+            if (this._propagationResolve === undefined) {
+                return
+            }
+            // console.log("will maybe call _propagationResolve")
+            // we cannot finish this now if there are pending callbacks
+            // as they may change the state and we need to let them run
+
+            const hasPendingCallbacks = this.timeline.hasPendingCallbacksNow()
+            if (!hasPendingCallbacks) {
+                // console.log("-> yes")
+                // setTimeout(() => {
+                this._propagationResolve()
+                this._propagationResolve = undefined
+                // }, 0)
+            } else {
+                // console.log("-> no, there are pending callbacks")
+            }
+
+        }
 
         if (animateWires || redrawMgr.hasReasons()) {
             // an animation is running
@@ -1928,7 +2004,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         g.endGroup()
 
         // draw refs
-        if (this._options.showIds) {
+        if (this._options.showIDs) {
             g.beginGroup("refs")
             g.font = 'bold 14px sans-serif'
             g.textAlign = 'center'

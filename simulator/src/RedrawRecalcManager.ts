@@ -5,15 +5,19 @@ import { Dict } from "./utils"
 export class RedrawManager {
 
     private _canvasRedrawReasons: Dict<unknown[]> = {}
+    private _isPropagating = false
     private _isEmpty = true
 
-    public addReason(reason: string, comp: Drawable | null) {
+    public addReason(reason: string, comp: Drawable | null, isPropagation: boolean = false) {
         const compObj = comp
         const compList = this._canvasRedrawReasons[reason]
         if (compList === undefined) {
             this._canvasRedrawReasons[reason] = [compObj]
         } else {
             compList.push(compObj)
+        }
+        if (isPropagation) {
+            this._isPropagating = true
         }
         this._isEmpty = false
     }
@@ -47,12 +51,17 @@ export class RedrawManager {
         reasonParts.pop()
 
         this._canvasRedrawReasons = {}
+        this._isPropagating = false
         this._isEmpty = true
         return reasonParts.join("")
     }
 
     public hasReasons(): boolean {
         return !this._isEmpty
+    }
+
+    public isAnyValuePropagating(): boolean {
+        return this._isPropagating
     }
 }
 

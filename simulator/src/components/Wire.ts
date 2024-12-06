@@ -281,14 +281,14 @@ export class Wire extends Drawable {
     }
 
     public propagateNewValue(newValue: LogicValue, logicalTime: Timestamp) {
-        // TODO this just keeps growing for wires inside custom components;
-        // find a way to not enqueue values over and over again
         if (this._propagatingValues[this._propagatingValues.length - 1][0] !== newValue) {
             this._propagatingValues.push([newValue, logicalTime])
         }
         const propagationDelay = this.customPropagationDelay ?? this.parent.editor.options.propagationDelay
         if (propagationDelay === 0) {
             this.endNode.value = newValue
+            // remove all but the last value
+            this._propagatingValues.splice(0, this._propagatingValues.length - 1)
         } else {
             const desc = S.Components.Wire.timeline.PropagatingValue.expand({ val: toLogicValueRepr(newValue) })
             this.parent.editor.timeline.scheduleAt(logicalTime + propagationDelay, () => {
@@ -496,7 +496,7 @@ export class Wire extends Drawable {
         g.setLineDash(old)
 
         if (isAnimating && !this.parent.editor.timeline.isPaused) {
-            this.setNeedsRedraw("propagating value")
+            this.setNeedsRedraw("propagating value", true)
         }
     }
 

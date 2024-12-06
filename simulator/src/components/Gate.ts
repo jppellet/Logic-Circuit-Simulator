@@ -457,7 +457,13 @@ export abstract class GateBase<
             ...otherTypes.map(newType => {
                 const gateProps = gateTypes.props[newType]
                 return MenuData.item(undefined, s.GateTempl.expand({ type: gateProps.fullShortDesc()[0] }), () => {
+                    const oldType = this._type
                     this.doSetType(newType)
+                    const ref = this.ref
+                    if (ref !== undefined && ref.startsWith(oldType)) {
+                        // change the id to match the new type
+                        this.parent.components.regenerateIdOf(this)
+                    }
                 })
             }),
             MenuData.sep(),
