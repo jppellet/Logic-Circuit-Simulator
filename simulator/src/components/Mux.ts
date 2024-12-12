@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_BACKGROUND, displayValuesFromArray, drawWireLineToComponent, strokeAsWireLine, useCompact } from "../drawutils"
+import { COLOR_BACKGROUND, displayValuesFromArray, drawWireLineToComponent, strokeWireOutlineAndSingleValue, useCompact } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, LogicValue, Unknown, isUnknown, typeOrUndefined } from "../utils"
@@ -180,7 +180,7 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
                             right - 1, toY,
                         )
                     }
-                    strokeAsWireLine(g, selectedInputs[i].value, toNode.color, false, neutral, timeFraction)
+                    strokeWireOutlineAndSingleValue(g, selectedInputs[i].value, toNode.color, neutral, timeFraction)
                 }
             }
         }

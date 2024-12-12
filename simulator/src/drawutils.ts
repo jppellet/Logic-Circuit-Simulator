@@ -492,16 +492,20 @@ export function drawStraightWireLine(g: GraphicsRendering, x0: number, y0: numbe
     g.beginPath()
     g.moveTo(x0, y0)
     g.lineTo(x1, y1)
-    strokeAsWireLine(g, value, color, false, neutral, timeFraction)
+    strokeWireOutlineAndSingleValue(g, value, color, neutral, timeFraction)
 }
 
-export function strokeAsWireLine(g: GraphicsRendering, value: LogicValue, color: WireColor, isMouseOver: boolean, neutral: boolean, timeFraction: number | undefined, path?: Path2D) {
 
-    function doStroke() {
-        if (path) { g.stroke(path) }
-        else { g.stroke() }
-    }
+export function strokeWireOutlineAndSingleValue(g: GraphicsRendering, value: LogicValue, color: WireColor, neutral: boolean, timeFraction: number | undefined) {
+    strokeWireOutline(g, color, false)
+    strokeWireValue(g, value, color, undefined, neutral, timeFraction)
+}
 
+/**
+ * Draws the outline of a wire.
+ * @param isMouseOver determines whether the border color is thicker with the mouse-over color
+ */
+export function strokeWireOutline(g: GraphicsRendering, color: WireColor, isMouseOver: boolean, path?: Path2D) {
     const oldLineCap = g.lineCap
     g.lineCap = "butt"
 
@@ -514,56 +518,66 @@ export function strokeAsWireLine(g: GraphicsRendering, value: LogicValue, color:
         g.strokeStyle = COLOR_WIRE[color]
     }
 
-    doStroke()
+    if (path) {
+        g.stroke(path)
+    } else {
+        g.stroke()
+    }
 
-    g.lineWidth = mainStrokeWidth - 2
+    g.lineCap = oldLineCap
+}
+
+/**
+ * Draws the (potentially fractional, potentially animated) value on a wire.
+ * @param g the graphics rendering context
+ * @param value the value to draw on the line
+ * @param color one of the predefined wire color palettes to use
+ * @param lengthToDrawAndTotal undefined to draw the whole line, or a pair of number to draw only that many units/"pixels" and the total length
+ * @param neutral overrides the default wire color with a neutral color
+ * @param timeFraction undefined to show no animation within the value being propagated, or a number between 0 and 1 to show an dashed line animation
+ * @param path undefined to draw the current path in the context; otherwise, the path to draw
+ */
+export function strokeWireValue(g: GraphicsRendering, value: LogicValue, color: WireColor, lengthToDrawAndTotal: [number, number] | undefined, neutral: boolean, timeFraction: number | undefined, path?: Path2D, debug?: boolean) {
+    debug = debug ?? false
+
+    const oldLineCap = g.lineCap
+    g.lineCap = "butt"
+
+    const doStroke = path ? () => g.stroke(path) : () => g.stroke()
+
+    // inner value
+    g.lineWidth = WIRE_WIDTH / 2 - 2
     const [baseColor, altColor] = neutral ? [COLOR_UNKNOWN, COLOR_UNKNOWN_ALT] : colorsForLogicValue(value)
     g.strokeStyle = baseColor
+    const animationDashSize = 20
 
-    const prevLineDash = g.getLineDash()
-    const partial = prevLineDash.length === 2 && prevLineDash[0] < prevLineDash[1]
-
-    if (timeFraction === undefined) {
-        // no animation
+    if (lengthToDrawAndTotal !== undefined) {
+        // draw only up to the given length, no other animation
+        const [lengthToDraw, totalLength] = lengthToDrawAndTotal
+        g.setLineDash([lengthToDraw, totalLength])
         doStroke()
+        g.setLineDash([])
 
     } else {
+        // whole line
 
-        const dashSize = 20
+        if (timeFraction === undefined) {
+            // no animation
+            doStroke()
 
-        // TODO: this currently breaks the animation showing the newly propagating value,
-        // since this works along paths by changing the line dash, which we overwrite here.
-
-        // eslint-disable-next-line no-constant-condition
-        if (true || !partial) {
-            // draw the whole line
-            g.setLineDash([dashSize, dashSize])
         } else {
-            // draw segment up to the given point
-            // TODO this doesn't work!
-            const onlyUpTo = prevLineDash[0]
-            const newLineDash = []
-            let acc = dashSize
-            while (acc < onlyUpTo) {
-                newLineDash.push(acc)
-                acc += dashSize
-            }
-            if (newLineDash.length % 2 === 1) {
-                newLineDash.push(0)
-            }
-            g.setLineDash(newLineDash)
+            // animate the line
+            g.setLineDash([animationDashSize, animationDashSize])
+            g.lineDashOffset = -timeFraction * animationDashSize * 2
+            doStroke()
+
+            g.strokeStyle = altColor
+            g.lineDashOffset += animationDashSize
+            doStroke()
+
+            g.lineDashOffset = 0
+            g.setLineDash([])
         }
-        const baseOffset = -timeFraction * dashSize * 2
-        g.lineDashOffset = baseOffset
-        doStroke()
-
-        const altOffset = baseOffset + dashSize
-        g.strokeStyle = altColor
-        g.lineDashOffset = altOffset
-        doStroke()
-
-        g.setLineDash(prevLineDash)
-        g.lineDashOffset = 0
     }
 
     g.lineCap = oldLineCap

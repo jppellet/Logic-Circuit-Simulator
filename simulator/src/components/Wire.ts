@@ -1,6 +1,6 @@
 import { Bezier, Offset } from "bezier-js"
 import * as t from "io-ts"
-import { COLOR_ANCHOR_NEW, COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, NodeStyle, WAYPOINT_DIAMETER, WIRE_WIDTH, colorForLogicValue, dist, drawAnchorTo, drawStraightWireLine, drawWaypoint, isOverWaypoint, strokeAsWireLine } from "../drawutils"
+import { COLOR_ANCHOR_NEW, COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, NodeStyle, WAYPOINT_DIAMETER, WIRE_WIDTH, colorForLogicValue, dist, drawAnchorTo, drawStraightWireLine, drawWaypoint, isOverWaypoint, strokeWireOutline, strokeWireOutlineAndSingleValue, strokeWireValue } from "../drawutils"
 import { span, style, title } from "../htmlgen"
 import { DrawParams } from "../LogicEditor"
 import { S } from "../strings"
@@ -159,7 +159,7 @@ export class Wire extends Drawable {
         this._startNode = startNode
         this._endNode = endNode
 
-        const longAgo = -1 - parent.editor.options.propagationDelay // make sure it is fully propagated no matter what
+        const longAgo = Number.MIN_SAFE_INTEGER / 2
         this._propagatingValues.push([startNode.value, longAgo])
 
         this.setStartNode(startNode)
@@ -470,7 +470,6 @@ export class Wire extends Drawable {
             prevProlong = Orientation.invert(nextProlong)
         }
 
-        const totalLength = this.parent.editor.lengthOfPath(svgPathDesc)
         const path = g.createPath(svgPathDesc)
 
         const drawParams = ctx.drawParams
@@ -486,14 +485,29 @@ export class Wire extends Drawable {
             g.shadowBlur = 0 // reset
         }
 
-        const old = g.getLineDash()
-        for (const [value, timeSet] of this._propagatingValues) {
+        // outline
+        const color = this._startNode.color
+        strokeWireOutline(g, color, ctx.isMouseOver, path)
+
+        // single value
+        if (this._propagatingValues.length === 1) {
+            // no need to compute the length of the path, which is costly
+            const [value, timeSet] = this._propagatingValues[0]
             const frac = Math.min(1.0, (drawTime - timeSet) / propagationDelay)
-            const lengthToDraw = totalLength * frac
-            g.setLineDash([lengthToDraw, totalLength])
-            strokeAsWireLine(g, value, this._startNode.color, ctx.isMouseOver, neutral, drawParams.drawTimeAnimationFraction, path)
+            if (frac < 1.0) {
+                console.warn(`Propagating value not fully propagated but drawn as such (frac=${frac} < 1.0, drawTime=${drawTime}, timeSet=${timeSet}, propagationDelay=${propagationDelay})`)
+            }
+            strokeWireValue(g, value, color, undefined, neutral, drawParams.drawTimeAnimationFraction, path, true)
+
+        } else {
+            // multiple propagating values
+            const totalLength = this.parent.editor.lengthOfPath(svgPathDesc)
+            for (const [value, timeSet] of this._propagatingValues) {
+                const frac = Math.min(1.0, (drawTime - timeSet) / propagationDelay)
+                const lengthToDraw = totalLength * frac
+                strokeWireValue(g, value, color, [lengthToDraw, totalLength], neutral, drawParams.drawTimeAnimationFraction, path, true)
+            }
         }
-        g.setLineDash(old)
 
         if (isAnimating && !this.parent.editor.timeline.isPaused) {
             this.setNeedsRedraw("propagating value", true)
@@ -928,7 +942,7 @@ export class LinkManager {
                 const [a2x, a2y] = bezierAnchorForWire(outgoingOrient, x2, y2, bezierAnchorPointDistX, bezierAnchorPointDistY)
                 g.bezierCurveTo(a1x, a1y, a2x, a2y, x2, y2)
             }
-            strokeAsWireLine(g, nodeFrom.value, nodeFrom.color, false, false, drawParams.drawTimeAnimationFraction)
+            strokeWireOutlineAndSingleValue(g, nodeFrom.value, nodeFrom.color, false, drawParams.drawTimeAnimationFraction)
         }
     }
 

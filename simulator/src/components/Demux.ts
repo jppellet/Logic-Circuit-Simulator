@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_BACKGROUND, displayValuesFromArray, drawWireLineToComponent, strokeAsWireLine, useCompact } from "../drawutils"
+import { COLOR_BACKGROUND, displayValuesFromArray, drawWireLineToComponent, strokeWireOutlineAndSingleValue, useCompact } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { IconName } from "../images"
 import { S } from "../strings"
@@ -202,7 +202,7 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
                             right - 1, toY,
                         )
                     }
-                    strokeAsWireLine(g, this.inputs.In[i].value, fromNode.color, false, neutral, timeFraction)
+                    strokeWireOutlineAndSingleValue(g, this.inputs.In[i].value, fromNode.color, neutral, timeFraction)
                 }
             }
         }
