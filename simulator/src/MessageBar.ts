@@ -6,7 +6,7 @@ export class MessageBar {
 
     private readonly root: HTMLElement
     private readonly msgBox: HTMLElement
-    private currentTimeout: TimeoutHandle | undefined = undefined
+    private _currentTimeout: TimeoutHandle | undefined = undefined
 
     public constructor(
         editor: LogicEditor,
@@ -17,19 +17,30 @@ export class MessageBar {
         ).render()
 
         editor.html.mainCanvas.insertAdjacentElement("afterend", this.root)
+
+        this.hideNow = this.hideNow.bind(this)
     }
 
-    public showMessage(msg: Modifier, duration: number) {
-        if (this.currentTimeout !== undefined) {
-            clearTimeout(this.currentTimeout)
+    private hideNow() {
+        this._currentTimeout = undefined
+        this.root.classList.remove("visible")
+    }
+
+    /**
+     * @param duration If 0, the message will not disappear automatically (unless replaced by another auto-hiding message)
+     */
+    public showMessage(msg: Modifier, duration: number): () => void {
+        if (this._currentTimeout !== undefined) {
+            clearTimeout(this._currentTimeout)
+            this._currentTimeout = undefined
         }
         this.msgBox.innerHTML = ""
         applyModifierTo(this.msgBox, msg)
         this.root.classList.add("visible")
-        this.currentTimeout = setTimeout(() => {
-            this.currentTimeout = undefined
-            this.root.classList.remove("visible")
-        }, duration)
+        if (duration > 0) {
+            this._currentTimeout = setTimeout(this.hideNow, duration)
+        }
+        return this.hideNow
     }
 
 }

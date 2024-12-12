@@ -1316,9 +1316,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.html.canvasContainer.style.cursor = cursor
     }
 
-    public showMessage(msg: Modifier) {
-        this._messageBar?.showMessage(msg, 2000)
-        // console.log(String(msg))
+    public showMessage(msg: Modifier, duration: number = 2000): () => void {
+        return this._messageBar?.showMessage(msg, duration) ?? (() => undefined)
     }
 
     public lengthOfPath(svgPathDesc: string): number {
@@ -1638,7 +1637,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     public async runTestCase(testCase: TestCase) {
         const msg = S.Messages.RunningTestCase.expand({ name: testCase.name })
-        this.showMessage(msg)
+        const hideMsg = this.showMessage(msg, 0)
         console.group(msg)
 
         for (const [inputName, inputValue] of testCase.in) {
@@ -1667,6 +1666,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             }
         }
         console.groupEnd()
+        hideMsg()
     }
 
     public waitForPropagation() {
