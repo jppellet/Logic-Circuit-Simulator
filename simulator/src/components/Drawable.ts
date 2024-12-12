@@ -689,12 +689,12 @@ export abstract class DrawableWithDraggablePosition extends DrawableWithPosition
 
     public override mouseDragged(e: MouseEvent | TouchEvent) {
         if (this.parent.mode >= Mode.CONNECT && !this.lockPos) {
+            this.parent.ifEditing?.moveMgr.setDrawableMoving(this, e)
             const [x, y] = this.parent.editor.offsetXY(e)
             const snapToGrid = !e.metaKey
             const newPos = this.updateSelfPositionIfNeeded(x, y, snapToGrid, e)
             if (newPos !== undefined) { // position changed
                 this.positionChanged(newPos.delta)
-                this.parent.ifEditing?.moveMgr.setDrawableMoving(this, e)
             }
         }
     }

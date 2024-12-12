@@ -15,6 +15,7 @@ import { getScrollParent, InteractionResult, Mode, targetIsFieldOrOtherInput, Ti
 type MouseDownData = {
     mainComp: Drawable | Element
     selectionComps: Drawable[]
+    firedMouseDraggedAlready: boolean
     fireMouseClickedOnFinish: boolean
     initialXY: [number, number]
     triggeredContextMenu: boolean
@@ -128,6 +129,7 @@ export class UIEventManager {
         _e._savedOffsetX = _e.offsetX
         _e._savedOffsetY = _e.offsetY
         _e._savedTarget = _e.target
+
         this._startDragTimeoutHandle = setTimeout(
             this.editor.wrapHandler(() => {
                 let fireDrag = true
@@ -147,7 +149,7 @@ export class UIEventManager {
                     }
                 }
             }),
-            300
+            500
         )
     }
 
@@ -562,6 +564,7 @@ export class UIEventManager {
                     const mouseDownData: MouseDownData = {
                         mainComp: this._currentMouseOverComp,
                         selectionComps: selectedComps,
+                        firedMouseDraggedAlready: false,
                         fireMouseClickedOnFinish: true,
                         initialXY: xy,
                         triggeredContextMenu: false,
@@ -575,6 +578,7 @@ export class UIEventManager {
                 this._currentMouseDownData = {
                     mainComp: this.editor.html.canvasContainer,
                     selectionComps: [], // ignore selection
+                    firedMouseDraggedAlready: false,
                     fireMouseClickedOnFinish: true,
                     initialXY: xy,
                     triggeredContextMenu: false,
@@ -597,10 +601,19 @@ export class UIEventManager {
                 if (this._currentMouseDownData.mainComp instanceof Drawable) {
                     // check if the drag is too small to be taken into account now
                     // (e.g., touchmove is fired very quickly)
-                    const d = dist(...this.editor.offsetXY(e), ...this._currentMouseDownData.initialXY)
-                    // NaN is returned when no input point was specified and
-                    // dragging should then happen regardless
-                    if (isNaN(d) || d >= 5) {
+                    let fireDragEvent =
+                        // if we fired a drag event already for this "click session", we go on
+                        this._currentMouseDownData.firedMouseDraggedAlready
+
+                    if (!fireDragEvent) {
+                        // we check if we should fire a drag event and cancel it if the move is too small,
+                        const d = dist(...this.editor.offsetXY(e), ...this._currentMouseDownData.initialXY)
+                        // NaN is returned when no input point was specified and
+                        // dragging should then happen regardless
+                        fireDragEvent = isNaN(d) || d >= 5
+                    }
+
+                    if (fireDragEvent) {
                         // dragging component
                         this.clearStartDragTimeout()
                         this._currentMouseDownData.fireMouseClickedOnFinish = false
@@ -610,6 +623,7 @@ export class UIEventManager {
                                 this._currentHandlers.mouseDraggedOn(comp, e)
                             }
                         }
+                        this._currentMouseDownData.firedMouseDraggedAlready = true
                     }
                 } else {
                     // dragging background
@@ -706,6 +720,7 @@ export class UIEventManager {
                     this._currentMouseDownData = {
                         mainComp: this._currentMouseOverComp,
                         selectionComps: [], // ignore selection when dragging new component
+                        firedMouseDraggedAlready: false,
                         fireMouseClickedOnFinish: false,
                         initialXY: [NaN, NaN],
                         triggeredContextMenu: false,

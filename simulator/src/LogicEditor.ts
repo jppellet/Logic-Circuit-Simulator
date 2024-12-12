@@ -555,7 +555,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 return time
             }
 
-            this.html.canvasContainer.appendChild(
+            const madeBy =
                 div(style("user-select: none; position: absolute; bottom: 0; right: 0; padding: 5px 3px 2px 5px; color: rgba(128,128,128,0.2); border-radius: 10px 0 0 0; font-size: 69%; font-style: italic;"),
                     S.Messages.DevelopedBy + " ",
                     a(style("color: inherit"),
@@ -568,7 +568,9 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                         "HEP Vaud"
                     ),
                 ).render()
-            )
+
+            // insert as first child
+            this.html.canvasContainer.insertAdjacentElement("afterbegin", madeBy)
 
             window.onbeforeunload = e => {
                 if (this._isSingleton && this._isDirty && this.mode >= Mode.CONNECT) {
