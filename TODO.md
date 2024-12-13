@@ -8,17 +8,14 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
 ## High priority
 
  * New custom components should show up in library even with showonly
- * Fix moving: ctr-click then drag -> shouldn't starts moving; long click -> should start moving
  * Take undo snapshot after key events too
  * Adder orientation
- * Prevent click event if right-click and when dragging
  * More consistently set things dirty
  * Ce qui serait super, ce serait de pouvoir valider les résultats des élèves. Ce qui serait top top, ce serait d’avoir un bouton « valider », qui testerait toutes les combinaisons d’entrées et les comparerait avec les sorties attendues. Je pense que c’est quelque chose qui pourrait se faire surtout avec des options supplémentaires dans le JSON. Ce qui serait ultra top, ce serait que les tests se fassent « à l’écran », avec les entrées qui changent et les sorties qui sont en vert quand tout va bien et en rouge quand ça se passe mal. À la rigueur, ça peut s’arrêter à la première erreur -> https://mooc-forums.inria.fr/moocnsi/t/simulateur-de-systemes-logiques-en-ligne/6215/110
 
 
 ## Medium priority
 
- * Name field for non-input components, https://github.com/jppellet/Logic-Circuit-Simulator/issues/15
  * High-Z bus logic
  * Allow to swap RAM width/height (for Christophe Declercq)
  * Add tootips to components, e.g., describe what happens on the next state transition, etc.
@@ -38,8 +35,8 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
  * Add rich HTML annotations
  * Computation delay for components with inputs and outputs
  * Disable/hide input of component (e.g., to make exercise to prevent alu from knowing how to do a subtraction)
- * Lock component to some "parent" to move them more intuitively?
  * Implement Quine–McCluskey algorithm for function normalization
+ * X-ray mode
 
 
 ### DONE
@@ -126,3 +123,5 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
  * Optimize draw calls
  * Support touch events
  * Unify click-and-drag also from left buttons instead of click-and-move
+ * Name field for non-input components, done with component anchoring
+ * Lock component to some "parent" to move them more intuitively
