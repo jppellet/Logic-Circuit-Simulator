@@ -83,6 +83,38 @@ logic-editor:not(:defined) {
   background: rgba(136, 136, 136, 0.5);
   box-shadow: 0px 0px 10px 1px rgb(201, 201, 201);
   border-radius: 5px;
+  position: relative;
+  right: 0px;
+  top: 0px;
+}
+
+.sim-toolbar-right .toolbar-title {
+  text-align: center;
+  width: 100%;
+  font-weight: bold;
+  font-size: 12px;
+  color: #444;
+  padding: 2px;
+  cursor: grab;
+}
+
+.sim-toolbar-right .toolbar-title.with-border {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+  margin-bottom: 5px;
+}
+
+.sim-toolbar-right .close-palette {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  cursor: pointer;
+  margin-left: 5px;
+  color: rgb(112, 112, 112)
+}
+
+#settingsPalette label span {
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .sim-component-button {
@@ -551,3 +583,101 @@ svg text {
 .dark .msgZone .msgBar {
   color: rgb(220, 220, 220);
 }
+
+
+.test-suite {
+  background-color: #ccc;
+  color: #444;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 5px;
+  width: 100%;
+  border: none;
+  font-size: 12px;
+}
+
+.test-suite::before {
+  content: '\25B6';
+  /* Right-pointing triangle */
+  display: inline-block;
+  margin-right: 5px;
+  transition: transform 0.1s;
+}
+
+.test-suite.expanded::before {
+  transform: rotate(90deg);
+  /* Down-pointing triangle */
+}
+
+.test-cases {
+  padding: 0;
+  display: none;
+  overflow: hidden;
+  background-color: #f1f1f1;
+}
+
+
+
+.testcase {
+  padding: 2px 5px;
+}
+
+.testcase.wait {
+  background: #f1f1f1
+}
+
+.testcase.pass {
+  background: #d3f3d3
+}
+
+.testcase.fail {
+  background: #f3d3d3
+}
+
+.testcase.error {
+  background: #f3f3d3
+}
+
+.testcase.skip {
+  background: #d3d3f3
+}
+
+.testcase.running {
+  background: repeating-linear-gradient(135deg,
+      #d3d3d3,
+      #d3d3d3 10px,
+      #f1f1f1 10px,
+      #f1f1f1 20px);
+  background-size: 200% 200%;
+  animation: barberpole 5s linear infinite;
+}
+
+@keyframes barberpole {
+  0% {
+    background-position: 0% 0%;
+  }
+
+  100% {
+    background-position: -100% 0%;
+  }
+}
+
+/* .testresult-wait::before {
+  content: '\231B';
+ Hourglass 
+  display: inline-block;
+  margin-right: 10px;
+  font-size: 10px;
+  animation: spin 1s linear infinite;
+}
+
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+} */

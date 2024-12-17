@@ -21,7 +21,7 @@
                 <div class="sim-toolbar-right" style="margin-bottom: 15px; display: none;" id="modeChangeMenu">
                 </div>
 
-                <div class="sim-toolbar-right" style="display: none;" id="rightToolbarContainer">
+                <div id="rightToolbarContainer" class="sim-toolbar-right" style="display: none;">
                     <div class="btn-group-vertical">
                         <button type="button" class="btn btn-sm btn-outline-light sim-toolbar-button-right" tool="reset" id="rightResetButton">
                             <i class="svgicon" data-icon="reset"></i>
@@ -30,11 +30,12 @@
                     </div>
                 </div>
 
-                <div class="sim-toolbar-right" style="display: none; flex-direction:column; align-items: stretch; font-size: 75%; padding: 5px" data-prev-display="flex" id="optionsZone">
-                    <div style="height: 20px; display: flex">
-                        <b style="flex:auto; margin-right:5px" id="settingsTitle"></b>
-                        <i class="svgicon" data-icon="close" style="cursor: pointer; margin-left: 5px; color: rgb(112, 112, 112)" id="closeOptions"></i>
-                    </div>
+                <div id="testResultsPalette" class="sim-toolbar-right" style="display: none; padding-bottom: 2px;" data-prev-display="block">
+                    <div id="testResultsContainer" style="width: 100%; font-size: 80%;"></div>
+                </div>
+
+                <div id="settingsPalette" class="sim-toolbar-right" style="display: none; flex-direction:column; align-items: stretch; font-size: 75%; padding: 0 5px 5px" data-prev-display="flex">
+
                 </div>
 
 

@@ -25,7 +25,7 @@ import { NodeManager } from "./NodeManager"
 import { RecalcManager, RedrawManager } from "./RedrawRecalcManager"
 import { SVGRenderingContext } from "./SVGRenderingContext"
 import { Serialization } from "./Serialization"
-import { TestCase } from "./TestCase"
+import { TestCaseCombinational, TestCaseResult, TestSuite, TestSuiteResults } from "./TestSuite"
 import { Tests } from "./Tests"
 import { Timeline } from "./Timeline"
 import { TopBar } from "./TopBar"
@@ -40,10 +40,10 @@ import { Rectangle, RectangleDef } from "./components/Rectangle"
 import { LinkManager, Wire, WireStyle, WireStyles } from "./components/Wire"
 import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_COMPONENT_ID, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, GRID_STEP, USER_COLORS, clampZoom, drawAnchorsAroundComponent as drawAnchorsForComponent, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine } from "./drawutils"
 import { gallery } from './gallery'
-import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, option, select, span, style, target, title, type } from "./htmlgen"
-import { inlineIconSvgFor, isIconName, makeIcon } from "./images"
+import { Modifier, a, attr, attrBuilder, button, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
+import { makeIcon } from "./images"
 import { DefaultLang, S, getLang, isLang, setLang } from "./strings"
-import { Any, InBrowser, KeysOfByType, UIDisplay, copyToClipboard, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isString, isTruthyString, onVisible, pasteFromClipboard, setDisplay, setVisible, showModal, toggleVisible } from "./utils"
+import { Any, InBrowser, KeysOfByType, UIDisplay, copyToClipboard, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, setDisplay, setVisible, showModal, toggleVisible } from "./utils"
 
 
 
@@ -220,11 +220,13 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         leftToolbar: HTMLElement,
         rightToolbarContainer: HTMLElement,
         rightResetButton: HTMLButtonElement,
+        testResultsPalette: HTMLElement,
+        testResultsContainer: HTMLElement,
         tooltipElem: HTMLElement,
         tooltipContents: HTMLElement,
         mainContextMenu: HTMLElement,
         fileChooser: HTMLInputElement,
-        optionsZone: HTMLElement,
+        settingsPalette: HTMLElement,
         embedDialog: HTMLDialogElement,
         embedUrl: HTMLTextAreaElement,
         // embedUrlQRCode: HTMLImageElement,
@@ -270,10 +272,12 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             leftToolbar: this.elemWithId("leftToolbar"),
             rightToolbarContainer: this.elemWithId("rightToolbarContainer"),
             rightResetButton: this.elemWithId("rightResetButton"),
+            testResultsPalette: this.elemWithId("testResultsPalette"),
+            testResultsContainer: this.elemWithId("testResultsContainer"),
             tooltipElem: this.elemWithId("tooltip"),
             tooltipContents: this.elemWithId("tooltipContents"),
             mainContextMenu: this.elemWithId("mainContextMenu"),
-            optionsZone: this.elemWithId("optionsZone"),
+            settingsPalette: this.elemWithId("settingsPalette"),
             fileChooser: this.elemWithId("fileChooser"),
             embedDialog: this.elemWithId("embedDialog"),
             embedUrl: this.elemWithId("embedUrl"),
@@ -657,7 +661,6 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         // set strings in the UI
         const s = S.Dialogs.Share
-        setCaption("settingsTitle", S.Settings.Settings)
         setCaption("shareDialogTitle", s.title)
         setCaption("shareDialogUrl", s.URL)
         setCaption("shareDialogIframe", s.EmbedInIframe)
@@ -695,60 +698,69 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const showModeChange = this._maxInstanceMode >= Mode.FULL
         if (showModeChange) {
             const modeChangeMenu: HTMLElement = this.elemWithId("modeChangeMenu")!
-            div(cls("btn-group-vertical"),
-                div(style("text-align: center; width: 100%; font-weight: bold; font-size: 80%; color: #666; padding: 2px;"),
-                    "Mode",
-                ),
-                ...[Mode.FULL, Mode.DESIGN, Mode.CONNECT, Mode.TRYOUT, Mode.STATIC].map((buttonMode) => {
-                    const [[modeTitle, expl], addElem] = (() => {
-                        switch (buttonMode) {
-                            case Mode.FULL: {
-                                const optionsDiv =
-                                    div(cls("sim-mode-link"),
-                                        title(S.Settings.Settings),
-                                        makeIcon("settings")
-                                    ).render()
+            const titleElem = div(cls("toolbar-title"),
+                "Mode",
+            ).render()
+            this.eventMgr.registerTitleDragListenersOn(titleElem, false)
+            mods(
+                titleElem,
+                div(cls("btn-group-vertical"),
+                    ...[Mode.FULL, Mode.DESIGN, Mode.CONNECT, Mode.TRYOUT, Mode.STATIC].map((buttonMode) => {
+                        const [[modeTitle, expl], addElem] = (() => {
+                            switch (buttonMode) {
+                                case Mode.FULL: {
+                                    const optionsDiv =
+                                        div(cls("sim-mode-link"),
+                                            title(S.Settings.Settings),
+                                            makeIcon("settings")
+                                        ).render()
 
-                                optionsDiv.addEventListener("click", () => {
-                                    toggleVisible(this.html.optionsZone)
-                                })
+                                    optionsDiv.addEventListener("click", () => {
+                                        toggleVisible(this.html.settingsPalette)
+                                    })
 
-                                return [S.Modes.FULL, optionsDiv]
+                                    return [S.Modes.FULL, optionsDiv]
+                                }
+                                case Mode.DESIGN: return [S.Modes.DESIGN, emptyMod]
+                                case Mode.CONNECT: return [S.Modes.CONNECT, emptyMod]
+                                case Mode.TRYOUT: return [S.Modes.TRYOUT, emptyMod]
+                                case Mode.STATIC: return [S.Modes.STATIC, emptyMod]
                             }
-                            case Mode.DESIGN: return [S.Modes.DESIGN, emptyMod]
-                            case Mode.CONNECT: return [S.Modes.CONNECT, emptyMod]
-                            case Mode.TRYOUT: return [S.Modes.TRYOUT, emptyMod]
-                            case Mode.STATIC: return [S.Modes.STATIC, emptyMod]
-                        }
-                    })()
+                        })()
 
-                    const copyLinkDiv =
-                        div(cls("sim-mode-link"),
-                            title("Copie un lien vers ce contenu dans ce mode"),
-                            makeIcon("link"),
-                        ).render()
+                        const copyLinkDiv =
+                            div(cls("sim-mode-link"),
+                                title("Copie un lien vers ce contenu dans ce mode"),
+                                makeIcon("link"),
+                            ).render()
 
-                    copyLinkDiv.addEventListener("click", __ => {
-                        this.shareSheetForMode(buttonMode)
+                        copyLinkDiv.addEventListener("click", __ => {
+                            this.shareSheetForMode(buttonMode)
+                        })
+
+                        const switchToModeDiv =
+                            div(cls("btn btn-sm btn-outline-light sim-toolbar-button-right sim-mode-tool"),
+                                style("display: flex; justify-content: space-between; align-items: center"),
+                                attrBuilder("mode")(Mode[buttonMode]),
+                                title(expl),
+                                modeTitle,
+                                addElem,
+                                copyLinkDiv
+                            ).render()
+
+                        switchToModeDiv.addEventListener("click", () => this.setMode(buttonMode, true))
+
+                        return switchToModeDiv
                     })
-
-                    const switchToModeDiv =
-                        div(cls("btn btn-sm btn-outline-light sim-toolbar-button-right sim-mode-tool"),
-                            style("display: flex; justify-content: space-between; align-items: center"),
-                            attrBuilder("mode")(Mode[buttonMode]),
-                            title(expl),
-                            modeTitle,
-                            addElem,
-                            copyLinkDiv
-                        ).render()
-
-                    switchToModeDiv.addEventListener("click", () => this.setMode(buttonMode, true))
-
-                    return switchToModeDiv
-                })
+                )
             ).applyTo(modeChangeMenu)
             setVisible(modeChangeMenu, true)
         }
+
+
+        const testsTitleElem = div(cls("toolbar-title"), S.Tests.Title).render()
+        this.eventMgr.registerTitleDragListenersOn(testsTitleElem, true)
+        this.html.testResultsPalette.insertAdjacentElement("afterbegin", testsTitleElem)
 
         // this.html.embedUrlQRCode.addEventListener("click", __ => {
         //     // download
@@ -772,10 +784,10 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.timeline.reset()
 
         // Options
-        const optionsZone = this.html.optionsZone
-        optionsZone.querySelector("#closeOptions")?.addEventListener("click", () => {
-            setVisible(optionsZone, false)
-        })
+        const settingsPalette = this.html.settingsPalette
+        const settingsTitleElem = div(cls("toolbar-title with-border"), S.Settings.Settings).render()
+        this.eventMgr.registerTitleDragListenersOn(settingsTitleElem, true)
+        settingsPalette.insertAdjacentElement("afterbegin", settingsTitleElem)
 
         const makeCheckbox = <K extends KeysOfByType<EditorOptions, boolean>>(optionName: K, [title, mouseover]: [string, string], hide = false) => {
             const checkbox = input(type("checkbox")).render()
@@ -791,7 +803,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 style("height: 20px"),
                 label(checkbox, span(style("margin-left: 4px"), attr("title", mouseover), title))
             ).render()
-            optionsZone.appendChild(section)
+            settingsPalette.appendChild(section)
             if (hide) {
                 setVisible(section, false)
             }
@@ -820,7 +832,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             this._options.wireStyle = wireStylePopup.value as WireStyle
             this.editTools.redrawMgr.addReason("wire style changed", null)
         }))
-        optionsZone.appendChild(
+        settingsPalette.appendChild(
             div(
                 style("height: 20px"),
                 S.Settings.wireStyle + " ", wireStylePopup
@@ -836,7 +848,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         propagationDelayField.addEventListener("change", () => {
             this._options.propagationDelay = propagationDelayField.valueAsNumber
         })
-        optionsZone.appendChild(
+        settingsPalette.appendChild(
             div(
                 style("height: 20px"),
                 S.Settings.propagationDelayField[0], propagationDelayField, S.Settings.propagationDelayField[1]
@@ -851,7 +863,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             style("margin-top: 5px; display: none"),
             S.Settings.showUserDataLink[0], showUserdataLink,
         ).render()
-        optionsZone.appendChild(showUserDataLinkContainer)
+        settingsPalette.appendChild(showUserDataLinkContainer)
 
         this.optionsHtml = {
             animateWiresCheckbox,
@@ -1022,7 +1034,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             setVisible(this.html.rightToolbarContainer, showOnlyReset)
 
             if (hideSettings) {
-                setVisible(this.html.optionsZone, false)
+                setVisible(this.html.settingsPalette, false)
             }
 
             setDisplay(this.html.leftToolbar, showComponentsAndEditControls)
@@ -1635,38 +1647,112 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         saveAs(blob, filename)
     }
 
-    public async runTestCase(testCase: TestCase) {
-        const msg = S.Messages.RunningTestCase.expand({ name: testCase.name })
-        const hideMsg = this.showMessage(msg, 0)
-        console.group(msg)
+    public async runTestSuite(testSuite: TestSuite, options?: { doLog?: boolean, fast?: boolean }): Promise<TestSuiteResults> {
+        const oldMode = this.mode
+        const fast = options?.fast ?? false
+        const doLog = options?.doLog ?? false
 
-        for (const [inputName, inputValue] of testCase.in) {
-            const comp = this.components.get(inputName)
-            if (comp === undefined || !(comp instanceof Input)) {
-                console.warn(`Input component ${inputName} not found`)
-                return
+        const testContainerHtml = this.html.testResultsContainer
+        testContainerHtml.innerHTML = ""
+        setVisible(this.html.testResultsPalette, true)
+        const s = S.Tests
+        const htmlResults = testSuite.testCases.map(tc => div(cls("testcase wait"), tc.name ?? s.DefaultTestCaseName).render())
+        const header = button(cls("test-suite expanded"), testSuite.name ?? s.DefaultTestSuiteName).render()
+        const content = div(cls("test-cases"), style("display: block"), ...htmlResults).render()
+        header.addEventListener("click", () => {
+            const expanded = header.classList.toggle("expanded")
+            setVisible(content, expanded)
+        })
+        mods(header, content).applyTo(testContainerHtml)
+
+        try {
+            this.setMode(Mode.STATIC, false)
+
+            const results = new TestSuiteResults(testSuite)
+            let isFirst = true
+            let skip = false
+            for (let i = 0; i < testSuite.testCases.length; i++) {
+                const testCase = testSuite.testCases[i]
+                const htmlResult = htmlResults[i]
+                htmlResult.className = "testcase running"
+                if (isFirst) {
+                    isFirst = false
+                } else if (!fast) {
+                    // pause for 2 seconds
+                    await new Promise(resolve => setTimeout(resolve, 2000))
+                }
+                let testCaseResult
+                if (skip) {
+                    testCaseResult = TestCaseResult.Skip
+                } else {
+                    testCaseResult = await this.runTestCase(testCase, testSuite, doLog)
+                }
+                results.addTestCaseResult(testCase, testCaseResult)
+                htmlResult.className = "testcase " + testCaseResult._tag
+                if (testCase.breakOnFail && testCaseResult._tag === "fail") {
+                    skip = true
+                }
             }
-            comp.setValue([inputValue])
+            return results
+
+        } finally {
+            this.setMode(oldMode, true)
         }
-        // console.log(`Propagating...`)
-        this.recalcPropagateAndDrawIfNeeded()
-        await this.waitForPropagation()
-        // console.log(`Propagation done at ${this.timeline.logicalTime()}`)
-        for (const [outputName, expected] of testCase.out) {
-            const comp = this.components.get(outputName)
-            if (comp === undefined || !(comp instanceof Output)) {
-                console.warn(`Output component ${outputName} not found`)
-                return
+    }
+
+    private async runTestCase(testCase: TestCaseCombinational, sourceSuite: TestSuite, doLog: boolean): Promise<TestCaseResult> {
+        const fullTestNameParts = [sourceSuite.name, testCase.name].filter(Boolean)
+        const fullTestName = fullTestNameParts.length === 0 ? S.Tests.DefaultTestCaseName : fullTestNameParts.join("/")
+        const msg = S.Messages.RunningTestCase.expand({ name: fullTestName })
+        const hideMsg = this.showMessage(msg, 0)
+        if (doLog) {
+            console.group(msg)
+        }
+
+        try {
+            for (const [inputName, inputValue] of testCase.in) {
+                const comp = this.components.get(inputName)
+                if (comp === undefined || !(comp instanceof Input)) {
+                    return TestCaseResult.Error(`Input component ${inputName} not found`)
+                }
+                comp.setValue([inputValue])
             }
-            const actual = comp.value[0]
-            if (actual !== expected) {
-                console.log(`%cFAIL:%c ${outputName} is ${actual} instead of ${expected}`, 'color: red; font-weight: bold;', '')
+            // console.log(`Propagating...`)
+            this.recalcPropagateAndDrawIfNeeded()
+            await this.waitForPropagation()
+            // console.log(`Propagation done at ${this.timeline.logicalTime()}`)
+            const failed: string[] = []
+            for (const [outputName, expected] of testCase.out) {
+                const comp = this.components.get(outputName)
+                if (comp === undefined || !(comp instanceof Output)) {
+                    return TestCaseResult.Error(`Output component ${outputName} not found`)
+                }
+                const actual = comp.value[0]
+                if (actual !== expected) {
+                    const failMsg = `${outputName} is ${actual} instead of ${expected}`
+                    failed.push(failMsg)
+                    if (doLog) {
+                        console.log(`%cFAIL:%c ${failMsg}`, 'color: red; font-weight: bold;', '')
+                    }
+                } else {
+                    const passMsg = `${outputName} is ${expected}`
+                    if (doLog) {
+                        console.log(`%cPASS:%c ${passMsg}`, 'color: green; font-weight: bold;', '')
+                    }
+                }
+            }
+            if (failed.length === 0) {
+                return TestCaseResult.Pass
             } else {
-                console.log(`%cPASS:%c ${outputName} is ${expected}`, 'color: green; font-weight: bold;', '')
+                return TestCaseResult.Fail(failed)
             }
+
+        } finally {
+            if (doLog) {
+                console.groupEnd()
+            }
+            hideMsg()
         }
-        console.groupEnd()
-        hideMsg()
     }
 
     public waitForPropagation() {
@@ -2174,15 +2260,7 @@ if (InBrowser) {
         const styles = [LogicEditorCSS, DialogPolyfillCSS]
         template.content.querySelector("#inlineStyle")!.innerHTML = styles.join("\n\n\n")
 
-        template.content.querySelectorAll("i.svgicon").forEach((_iconElem) => {
-            const iconElem = _iconElem as HTMLElement
-            const iconName = iconElem.dataset.icon ?? "question"
-            if (isIconName(iconName)) {
-                iconElem.innerHTML = inlineIconSvgFor(iconName)
-            } else {
-                console.log(`Unknown icon name '${iconName}'`)
-            }
-        })
+        template.content.querySelectorAll("i.svgicon").forEach(setupSvgIcon)
         return template
     })()
     window.Logic = new LogicStatic(template)

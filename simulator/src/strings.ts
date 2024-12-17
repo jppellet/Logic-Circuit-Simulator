@@ -157,7 +157,6 @@ const Strings_fr = {
         Settings: "Réglages",
         CircuitName: "Nom:",
         DefaultFileName: "circuit",
-        DefaultTestCaseName: "Test",
         NameOfDownloadedFile: "Ceci sera le nom du fichier téléchargé.",
         animateWires: tuple("Animer les fils", "Si coché, les fils sont animés pour montrer dans quel sens logique le signal se propage."),
         hideWireColors: tuple("Cacher l’état des fils", "Si coché, les fils sont affichés avec une couleur neutre plutôt que de montrer s’ils véhiculent un 1 ou un 0."),
@@ -182,6 +181,11 @@ const Strings_fr = {
         WireStyleAuto: "Auto",
         WireStyleLine: "Ligne",
         WireStyleCurve: "Courbe",
+    },
+    Tests: {
+        Title: "Tests",
+        DefaultTestCaseName: "Test",
+        DefaultTestSuiteName: "Tests",
     },
     TopBar: {
         DirtyTooltip: "Le circuit a été modifié depuis la dernière sauvegarde.",
@@ -916,7 +920,6 @@ const Strings_en: Strings = {
         Settings: "Settings",
         CircuitName: "Name:",
         DefaultFileName: "circuit",
-        DefaultTestCaseName: "Test",
         NameOfDownloadedFile: "This will be the name of the downloaded file.",
         animateWires: tuple("Animate wires", "If checked, wires are shown as animated to show the propagation direction."),
         hideWireColors: tuple("Hide wire colors", "If checked, wires are shown with a neutral color instead of showing whether they carry a 1 or a 0."),
@@ -941,6 +944,11 @@ const Strings_en: Strings = {
         WireStyleAuto: "Auto",
         WireStyleLine: "Line",
         WireStyleCurve: "Curve",
+    },
+    Tests: {
+        Title: "Tests",
+        DefaultTestCaseName: "Test",
+        DefaultTestSuiteName: "Test Suite",
     },
     TopBar: {
         DirtyTooltip: "The circuit has been modified since the last download/save",

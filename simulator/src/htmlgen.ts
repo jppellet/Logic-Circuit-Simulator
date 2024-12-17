@@ -3,6 +3,7 @@
 // Helper export function s to build HTML more smartly in JavaScript
 //
 
+import { inlineIconSvgFor, isIconName } from "./images"
 import { isHighImpedance, isUnknown, LogicValue, Unknown } from "./utils"
 
 export interface ModifierObject {
@@ -14,12 +15,12 @@ export interface RenderObject<T extends HTMLElement> {
 }
 export type ElemRenderer<T extends HTMLElement> = ModifierObject & RenderObject<T>
 export interface AttrBuilder {
-    (attrValue: any): ModifierObject;
-    attrName: string;
+    (attrValue: any): ModifierObject
+    attrName: string
 }
 export interface StyleBuilder {
-    (styleValue: any): ModifierObject;
-    styleName: string;
+    (styleValue: any): ModifierObject
+    styleName: string
 }
 
 export function isModifierObject(mod: any): mod is ModifierObject {
@@ -98,7 +99,7 @@ export function addClass(className: string): Modifier {
     }
 }
 
-export function mods(...modifiers: Modifier[]): Modifier {
+export function mods(...modifiers: Modifier[]): ModifierObject {
     return {
         applyTo: p => applyModifiersTo(p, modifiers),
     }
@@ -162,3 +163,13 @@ export function tooltipContent(title: Modifier | undefined, body: Modifier, maxW
 }
 
 export const fixedWidthInContextMenu = style("font-family: monospace; font-weight: bolder; font-size: 90%")
+
+export function setupSvgIcon(_iconElem: Element) {
+    const iconElem = _iconElem as HTMLElement
+    const iconName = iconElem.dataset.icon ?? "question"
+    if (isIconName(iconName)) {
+        iconElem.innerHTML = inlineIconSvgFor(iconName)
+    } else {
+        console.log(`Unknown icon name '${iconName}'`)
+    }
+}

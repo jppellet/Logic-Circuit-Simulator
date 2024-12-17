@@ -7,10 +7,10 @@ import { Drawable, DrawableWithPosition, MenuData, MenuItem } from "./components
 import { Node } from "./components/Node"
 import { Waypoint, Wire } from './components/Wire'
 import { dist, setColorMouseOverIsDanger } from './drawutils'
-import { applyModifiersTo, button, cls, emptyMod, li, Modifier, ModifierObject, mods, span, type, ul } from './htmlgen'
+import { applyModifiersTo, attr, button, cls, emptyMod, i, li, Modifier, ModifierObject, mods, setupSvgIcon, span, type, ul } from './htmlgen'
 import { IconName, makeIcon } from './images'
 import { LogicEditor, MouseAction, MouseActionParams } from './LogicEditor'
-import { getScrollParent, InteractionResult, Mode, targetIsFieldOrOtherInput, TimeoutHandle } from "./utils"
+import { getScrollParent, InteractionResult, Mode, setVisible, targetIsFieldOrOtherInput, TimeoutHandle } from "./utils"
 
 type MouseDownData = {
     mainComp: Drawable | Element
@@ -543,6 +543,64 @@ export class UIEventManager {
                 this._currentMouseOverComp.keyDown(e)
             }
         }))
+    }
+
+    public registerTitleDragListenersOn(title: HTMLDivElement, withCloseButton: boolean) {
+        let isDragging = false
+        let startX: number, startY: number, startTop: number, startRight: number
+
+        title.addEventListener('mousedown', (e) => {
+            isDragging = true
+
+            // Store the initial mouse position
+            startX = e.clientX
+            startY = e.clientY
+
+            // Get the current computed top and right values of the element
+            const parent = title.parentElement!
+            const computedStyle = window.getComputedStyle(parent)
+            startTop = parseInt(computedStyle.top, 10)
+            startRight = parseInt(computedStyle.right, 10)
+
+            // Change cursor to grabbing
+            title.style.cursor = 'grabbing'
+
+            // Prevent text selection while dragging
+            e.preventDefault()
+        })
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) { return }
+
+            // Calculate the movement
+            const deltaX = e.clientX - startX
+            const deltaY = e.clientY - startY
+
+            // Update top and right based on movement
+            const parent = title.parentElement!
+            parent.style.top = `${startTop + deltaY}px`
+            parent.style.right = `${startRight - deltaX}px`
+        })
+
+        document.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false
+
+                // Restore cursor
+                title.style.removeProperty("cursor")
+            }
+        })
+
+        if (withCloseButton) {
+            const closeButton = i(
+                cls("svgicon close-palette"), attr("data-icon", "close"),
+            ).render()
+            setupSvgIcon(closeButton)
+            closeButton.addEventListener("click", () => {
+                setVisible(title.parentElement!, false)
+            })
+            title.appendChild(closeButton)
+        }
     }
 
     private _mouseDownTouchStart(e: MouseEvent | TouchEvent) {
