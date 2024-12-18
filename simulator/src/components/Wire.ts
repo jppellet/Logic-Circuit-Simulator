@@ -497,7 +497,7 @@ export class Wire extends Drawable {
             if (frac < 1.0) {
                 console.warn(`Propagating value not fully propagated but drawn as such (frac=${frac} < 1.0, drawTime=${drawTime}, timeSet=${timeSet}, propagationDelay=${propagationDelay})`)
             }
-            strokeWireValue(g, value, color, undefined, neutral, drawParams.drawTimeAnimationFraction, path, true)
+            strokeWireValue(g, value, color, undefined, neutral, drawParams.drawTimeAnimationFraction, path)
 
         } else {
             // multiple propagating values
@@ -505,7 +505,7 @@ export class Wire extends Drawable {
             for (const [value, timeSet] of this._propagatingValues) {
                 const frac = Math.min(1.0, (drawTime - timeSet) / propagationDelay)
                 const lengthToDraw = totalLength * frac
-                strokeWireValue(g, value, color, [lengthToDraw, totalLength], neutral, drawParams.drawTimeAnimationFraction, path, true)
+                strokeWireValue(g, value, color, [lengthToDraw, totalLength], neutral, drawParams.drawTimeAnimationFraction, path)
             }
         }
 

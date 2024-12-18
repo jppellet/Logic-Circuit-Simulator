@@ -397,7 +397,7 @@ export class ComponentFactory {
             return s.ComponentAlreadyExists.expand({ id })
         }
 
-        const { components, wires } = Serialization.buildComponentsAndWireObject(componentsToInclude, undefined)
+        const { components, wires } = Serialization.buildComponentsAndWireObject(componentsToInclude, [], undefined)
         if (components === undefined || wires === undefined) {
             return s.NoWires
         }
@@ -433,7 +433,7 @@ export class ComponentFactory {
 
         const newComponents = checkResult.components
 
-        const circuit = Serialization.buildComponentsAndWireObject(newComponents, undefined)
+        const circuit = Serialization.buildComponentsAndWireObject(newComponents, [], undefined)
         if (circuit.components === undefined || circuit.wires === undefined) {
             return ""
         }

@@ -186,6 +186,9 @@ const Strings_fr = {
         Title: "Tests",
         DefaultTestCaseName: "Test",
         DefaultTestSuiteName: "Tests",
+        SetInputs: "Entrées",
+        WantedOutputs: "Sorties",
+        SetTheseInputs: "Régler ces entrées",
     },
     TopBar: {
         DirtyTooltip: "Le circuit a été modifié depuis la dernière sauvegarde.",
@@ -210,6 +213,8 @@ const Strings_fr = {
         Design: tuple("Concevoir", "Compose ou modifie le circuit"),
         Delete: tuple("Supprimer", "Supprime des éléments du circuit"),
         Move: tuple("Déplacer", "Déplace tout le circuit"),
+
+        Tests: tuple("Tests", "Montre les tests pour ce circuit"),
     },
     Messages: {
         UnsupportedFileType: template("Type de fichier non pris en charge: ${type}."),
@@ -949,6 +954,9 @@ const Strings_en: Strings = {
         Title: "Tests",
         DefaultTestCaseName: "Test",
         DefaultTestSuiteName: "Test Suite",
+        SetInputs: "Inputs",
+        WantedOutputs: "Outputs",
+        SetTheseInputs: "Set these inputs",
     },
     TopBar: {
         DirtyTooltip: "The circuit has been modified since the last download/save",
@@ -973,6 +981,8 @@ const Strings_en: Strings = {
         Design: tuple("Design", "Create or modify the circuit"),
         Delete: tuple("Delete", "Delete elements from the circuit"),
         Move: tuple("Move", "Move the whole circuit"),
+
+        Tests: tuple("Tests", "Show tests for the circuit"),
     },
     Messages: {
         UnsupportedFileType: template("Unsupported file type: ${type}."),

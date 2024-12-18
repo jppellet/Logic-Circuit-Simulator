@@ -41,6 +41,7 @@ import { default as ref, default as regroup } from '../img/icons/ref.icon.svg'; 
 import replace from '../img/icons/replace.icon.svg'; // @ts-ignore
 import reset from '../img/icons/reset.icon.svg'; // @ts-ignore
 import screenshot from '../img/icons/screenshot.icon.svg'; // @ts-ignore
+import setinput from '../img/icons/setinput.icon.svg'; // @ts-ignore
 import settings from '../img/icons/settings.icon.svg'; // @ts-ignore
 import slanted from '../img/icons/slanted.icon.svg'; // @ts-ignore
 import step from '../img/icons/step.icon.svg'; // @ts-ignore
@@ -118,7 +119,7 @@ import xnor4 from '../img/xnor4.svg'; // @ts-ignore
 import xor from '../img/xor.svg'; // @ts-ignore
 import xor3 from '../img/xor3.svg'; // @ts-ignore
 import xor4 from '../img/xor4.svg'; // @ts-ignore
-import { Modifier, applyModifierTo, raw } from './htmlgen';
+import { Modifier, applyModifierTo, raw } from './htmlgen'
 
 
 void 0 // dummy line to consume the last 'ts-ignore'
@@ -160,6 +161,7 @@ const icons = {
     replace,
     reset,
     screenshot,
+    setinput,
     settings,
     slanted,
     step,

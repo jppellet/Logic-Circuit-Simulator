@@ -10,7 +10,7 @@ import { dist, setColorMouseOverIsDanger } from './drawutils'
 import { applyModifiersTo, attr, button, cls, emptyMod, i, li, Modifier, ModifierObject, mods, setupSvgIcon, span, type, ul } from './htmlgen'
 import { IconName, makeIcon } from './images'
 import { LogicEditor, MouseAction, MouseActionParams } from './LogicEditor'
-import { getScrollParent, InteractionResult, Mode, setVisible, targetIsFieldOrOtherInput, TimeoutHandle } from "./utils"
+import { getScrollParent, InteractionResult, Mode, targetIsFieldOrOtherInput, TimeoutHandle } from "./utils"
 
 type MouseDownData = {
     mainComp: Drawable | Element
@@ -545,7 +545,7 @@ export class UIEventManager {
         }))
     }
 
-    public registerTitleDragListenersOn(title: HTMLDivElement, withCloseButton: boolean) {
+    public registerTitleDragListenersOn(title: HTMLDivElement, closeHandler?: () => unknown) {
         let isDragging = false
         let startX: number, startY: number, startTop: number, startRight: number
 
@@ -591,14 +591,12 @@ export class UIEventManager {
             }
         })
 
-        if (withCloseButton) {
+        if (closeHandler) {
             const closeButton = i(
                 cls("svgicon close-palette"), attr("data-icon", "close"),
             ).render()
             setupSvgIcon(closeButton)
-            closeButton.addEventListener("click", () => {
-                setVisible(title.parentElement!, false)
-            })
+            closeButton.addEventListener("click", closeHandler)
             title.appendChild(closeButton)
         }
     }

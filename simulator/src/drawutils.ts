@@ -537,9 +537,7 @@ export function strokeWireOutline(g: GraphicsRendering, color: WireColor, isMous
  * @param timeFraction undefined to show no animation within the value being propagated, or a number between 0 and 1 to show an dashed line animation
  * @param path undefined to draw the current path in the context; otherwise, the path to draw
  */
-export function strokeWireValue(g: GraphicsRendering, value: LogicValue, color: WireColor, lengthToDrawAndTotal: [number, number] | undefined, neutral: boolean, timeFraction: number | undefined, path?: Path2D, debug?: boolean) {
-    debug = debug ?? false
-
+export function strokeWireValue(g: GraphicsRendering, value: LogicValue, color: WireColor, lengthToDrawAndTotal: [number, number] | undefined, neutral: boolean, timeFraction: number | undefined, path?: Path2D) {
     const oldLineCap = g.lineCap
     g.lineCap = "butt"
 

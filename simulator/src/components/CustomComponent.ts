@@ -6,6 +6,7 @@ import { NodeManager } from "../NodeManager"
 import { RecalcManager } from "../RedrawRecalcManager"
 import { SVGRenderingContext } from "../SVGRenderingContext"
 import { Serialization } from "../Serialization"
+import { TestSuites } from "../TestSuite"
 import { COLOR_COMPONENT_BORDER } from "../drawutils"
 import { b, div, mods, span, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
@@ -300,6 +301,7 @@ export class CustomComponent extends ComponentBase<CustomComponentRepr, LogicVal
     public get mode() { return this.parent.mode }
 
     public readonly components = new ComponentList()
+    public readonly testSuites: TestSuites = new TestSuites(this)
     public readonly nodeMgr = new NodeManager()
     public readonly linkMgr: LinkManager = new LinkManager(this)
     public readonly recalcMgr = new RecalcManager()

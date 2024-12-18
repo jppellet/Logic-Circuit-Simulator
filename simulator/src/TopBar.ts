@@ -41,10 +41,11 @@ export class TopBar {
 
     private readonly designButton: HTMLButtonElement
     private readonly deleteButton: HTMLButtonElement
-    private readonly moveButton: HTMLButtonElement
+    private readonly testsButton: HTMLButtonElement
 
     private readonly flexibleSep: HTMLElement
 
+    private readonly moveButton: HTMLButtonElement
     private readonly zoomLevelInput: HTMLInputElement
 
     public constructor(
@@ -104,13 +105,16 @@ export class TopBar {
 
         this.designButton = this.makeButtonWithLabel("mouse", s.Design,
             () => this.editor.setCurrentMouseAction("edit"))
+
         this.deleteButton = this.makeButtonWithLabel("trash", s.Delete,
             () => this.editor.setCurrentMouseAction("delete"))
-        this.moveButton = this.makeButton("move", s.Move[1],
-            () => this.editor.setCurrentMouseAction("move"))
+
+        this.testsButton = this.makeButtonWithLabel("check", s.Tests,
+            () => this.editor.setTestsPaletteVisible(!this.testsButton.classList.contains("active")))
 
         this.flexibleSep = div(style("flex: auto")).render()
-
+        this.moveButton = this.makeButton("move", s.Move[1],
+            () => this.editor.setCurrentMouseAction("move"))
         this.zoomLevelInput = input(type("number"),
             style("margin: 0 2px 0 0; width: 4em; background-color: inherit;"),
             attr("min", "0"), attr("step", "10"),
@@ -148,6 +152,9 @@ export class TopBar {
                 this.makeSep(true),
                 this.designButton,
                 this.deleteButton,
+
+                this.makeSep(),
+                this.testsButton,
 
                 this.flexibleSep,
 
@@ -378,10 +385,23 @@ export class TopBar {
             (ms < 100 ? (ms < 10 ? "00" : "0") : "") + ms
     }
 
-    public setActiveTool(tool: MouseAction) {
+    public updateActiveTool(tool: MouseAction) {
         setActive(this.designButton, tool === "edit")
         setActive(this.deleteButton, tool === "delete")
         setActive(this.moveButton, tool === "move")
+    }
+
+    public updateTestPaletteVisible(visible: boolean) {
+        this.testsButton.classList.toggle("active", visible)
+    }
+
+    public setTestPaletteButtonVisible(numHint: number) {
+        const visible = numHint !== 0
+        if (visible) {
+            const newCaption = numHint > 0 ? S.TopBar.Tests[0] + ` (${numHint})` : S.TopBar.Tests[0]
+            this.setCaption(this.testsButton, newCaption)
+        }
+        setVisible(this.testsButton, visible)
     }
 
 
@@ -420,6 +440,13 @@ export class TopBar {
     private makeSep(fat: boolean = false): HTMLElement {
         const classes = fat ? "sep fat" : "sep"
         return div(cls(classes)).render()
+    }
+
+    private setCaption(button: HTMLButtonElement, caption: string) {
+        const label = button.querySelector(".btnLabel")
+        if (label !== null) {
+            label.textContent = caption
+        }
     }
 
 }

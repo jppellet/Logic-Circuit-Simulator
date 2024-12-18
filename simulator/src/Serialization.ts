@@ -5,6 +5,7 @@ import * as json5util from "json5/lib/util"
 import { CurrentFormatVersion, migrateData } from './DataMigration'
 import { LogicEditor } from "./LogicEditor"
 import { NodeMapping } from './NodeManager'
+import { TestSuite, TestSuiteRepr } from './TestSuite'
 import { type Component } from "./components/Component"
 import { type CustomComponent, type CustomComponentDefRepr } from './components/CustomComponent'
 import { DrawableParent } from './components/Drawable'
@@ -54,6 +55,9 @@ export type ComponentAndWires = {
 
     /** The wires between the previously listed components */
     wires?: WireRepr[],
+
+    /** The test suites linked to the circuit */
+    tests?: TestSuiteRepr[],
 }
 
 type LoadOptions = {
@@ -182,6 +186,15 @@ class _Serialization {
         const immediateWirePropagation = opts?.immediateWirePropagation ?? false
         this.makeWires(parent, parsed.wires, nodeMapping, componentsByRef, immediateWirePropagation)
         delete parsed.wires
+
+        if (isArray(parsed.tests)) {
+            const testSuiteReprs = validateJson(parsed.tests, TestSuite.ReprArray, "tests")
+            if (testSuiteReprs !== undefined) {
+                const testSuites = testSuiteReprs.map(ts => new TestSuite(ts))
+                parent.testSuites.set(testSuites)
+            }
+        }
+        delete parsed.tests
 
         if (parent.isMainEditor()) {
             // load userdata, keeping already existing data
@@ -333,11 +346,11 @@ class _Serialization {
             const scratch: Scratch = {
                 id: customComp.ref ?? "n/a",
             }
-            this.buildComponentAndWireReprsInto(scratch, editorRoot.components.all(), editorRoot.linkMgr.wires)
+            this.buildReprsInto(scratch, editorRoot.components.all(), editorRoot.linkMgr.wires, editorRoot.testSuites.suites)
             dataObject.scratch = scratch
         }
 
-        this.buildComponentAndWireReprsInto(dataObject, editor.components.all(), editor.linkMgr.wires)
+        this.buildReprsInto(dataObject, editor.components.all(), editor.linkMgr.wires, editor.testSuites.suites)
         return dataObject
     }
 
@@ -349,7 +362,7 @@ class _Serialization {
         }
     }
 
-    public buildComponentsAndWireObject(components: readonly Component[], sourcePos: [number, number] | undefined): ComponentAndWires {
+    public buildComponentsAndWireObject(components: readonly Component[], testSuites: readonly TestSuite[], sourcePos: [number, number] | undefined): ComponentAndWires {
         const dataObject: ComponentAndWires = {}
         if (sourcePos !== undefined) {
             dataObject.pos = sourcePos
@@ -365,11 +378,11 @@ class _Serialization {
                 }
             }
         }
-        this.buildComponentAndWireReprsInto(dataObject, components, wires)
+        this.buildReprsInto(dataObject, components, wires, testSuites)
         return dataObject
     }
 
-    private buildComponentAndWireReprsInto(dataObject: ComponentAndWires, components: Iterable<Component>, wires: readonly Wire[]): void {
+    private buildReprsInto(dataObject: ComponentAndWires, components: Iterable<Component>, wires: readonly Wire[], testSuites: readonly TestSuite[]): void {
         for (const comp of components) {
             if (dataObject.components === undefined) {
                 dataObject.components = {}
@@ -391,6 +404,11 @@ class _Serialization {
         if (wires.length !== 0) {
             dataObject.wires = wires.map(w => w.toJSON())
         }
+        if (testSuites.length !== 0) {
+            dataObject.tests = testSuites.map(ts => ts.toJSON())
+        }
+
+
         // TODO: better way of representing the wires, along these lines:
         // const nodeName = (node: Node) => {
         //     const group = node.group
@@ -454,7 +472,7 @@ class _Serialization {
                 let subpart = stringifySmart(def, { maxLength: Infinity })
                 def.circuit = circuit
                 const compparts: string[] = []
-                stringifyComponentAndWiresReprsTo(compparts, { ...circuit }, 3, true)
+                stringifyComponentWiresTestsReprsTo(compparts, { ...circuit }, 3, true)
                 const circuitRepr = compparts.length === 0 ? "{}" : "{\n      " + compparts.join(",\n      ") + "\n    }"
                 subpart = subpart.slice(0, subpart.length - 1) + `, circuit: ` + circuitRepr + "}"
                 defparts.push(subpart)
@@ -467,12 +485,12 @@ class _Serialization {
         if (scratch !== undefined) {
             const scratchparts: string[] = []
             scratchparts.push(`id: ${stringifySmart(scratch.id)}`)
-            stringifyComponentAndWiresReprsTo(scratchparts, { ...scratch }, 2, false)
+            stringifyComponentWiresTestsReprsTo(scratchparts, { ...scratch }, 2, false)
             parts.push(`scratch: {\n    ` + scratchparts.join(",\n    ") + "\n  }")
         }
         delete dataObject.scratch
 
-        stringifyComponentAndWiresReprsTo(parts, dataObject, 1, false)
+        stringifyComponentWiresTestsReprsTo(parts, dataObject, 1, false)
 
         // loop though the remaining fields
         const unprocessedFields = keysOf(dataObject)
@@ -496,12 +514,12 @@ function stringifyCompactReprTo(parts: string[], container: Record<string, unkno
     delete container[key]
 }
 
-function stringifyComponentAndWiresReprsTo(parts: string[], container: ComponentAndWires, outerLevel: number, noWireDelay: boolean) {
+function stringifyComponentWiresTestsReprsTo(parts: string[], container: ComponentAndWires, outerLevel: number, noWireDelay: boolean) {
     const outerIndent = "  ".repeat(outerLevel)
     const innerIndent = outerIndent + "  "
-    const comps = container.components
     let entries
 
+    const comps = container.components
     if (comps !== undefined) {
         if (isArray(comps) && comps.length !== 0) {
             // array style
@@ -535,6 +553,27 @@ function stringifyComponentAndWiresReprsTo(parts: string[], container: Component
         }
     }
     stringifyCompactReprTo(parts, container, "wires")
+
+    const tests = container.tests
+    if (tests !== undefined && tests.length !== 0) {
+        const innerIndent2 = innerIndent + "  "
+
+        const subparts: string[] = []
+        for (const testSuiteRepr of tests) {
+            const Cases = "cases"
+            const testCases = testSuiteRepr[Cases]
+            const testCasesReprStrs = testCases.map(testCase => stringifySmart(testCase, { maxLength: Infinity }));
+
+            (testSuiteRepr as any).cases = undefined
+            const baseSuiteRepr = stringifySmart(testSuiteRepr, { maxLength: Infinity })
+            testSuiteRepr.cases = testCases
+            const completeSuiteRepr = baseSuiteRepr.substring(0, baseSuiteRepr.length - 1) + `, ${Cases}: [\n${innerIndent2}` + testCasesReprStrs.join(`,\n${innerIndent2}`) + `,\n${innerIndent}]},`
+            subparts.push(completeSuiteRepr)
+        }
+
+        parts.push(`tests: [\n${innerIndent}` + subparts.join(`\n${innerIndent}`) + `\n${outerIndent}]`)
+    }
+    delete container.tests
 }
 
 function allValuesUndefined(obj: Record<string, unknown>): boolean {

@@ -1,8 +1,11 @@
 import * as t from "io-ts"
+import { DrawableParent } from "./components/Drawable"
 import { S } from "./strings"
-import { ADTWith, LogicValue, LogicValueRepr, toLogicValue, toLogicValueRepr, typeOrUndefined } from "./utils"
+import { ADTCase, ADTWith, LogicValue, LogicValueRepr, toLogicValue, toLogicValueRepr, typeOrUndefined } from "./utils"
 
 export type TestCaseCombinationalRepr = t.TypeOf<typeof TestCaseCombinational.Repr>
+
+export type InOutValueMap = Map<string, LogicValue>
 
 export class TestCaseCombinational {
 
@@ -20,8 +23,8 @@ export class TestCaseCombinational {
     }
 
     public name: string | undefined
-    public in: Map<string, LogicValue>
-    public out: Map<string, LogicValue>
+    public in: InOutValueMap
+    public out: InOutValueMap
     public breakOnFail: boolean
 
     public constructor(repr?: TestCaseCombinationalRepr) {
@@ -39,7 +42,7 @@ export class TestCaseCombinational {
     }
 
     public toJSON(): TestCaseCombinationalRepr {
-        const mapRepr = (map: Map<string, LogicValue>) =>
+        const mapRepr = (map: InOutValueMap) =>
             Object.fromEntries([...map.entries()].map(([k, v]) => [k, toLogicValueRepr(v)]))
         return {
             name: this.name,
@@ -59,8 +62,12 @@ export class TestSuite {
     public static get Repr() {
         return t.type({
             name: typeOrUndefined(t.string),
-            testCases: t.array(TestCaseCombinational.Repr),
+            cases: t.array(TestCaseCombinational.Repr),
         }, "TestSuite")
+    }
+
+    public static get ReprArray() {
+        return t.array(TestSuite.Repr)
     }
 
     public name: string | undefined
@@ -69,31 +76,33 @@ export class TestSuite {
     public constructor(repr?: TestSuiteRepr) {
         if (repr !== undefined) {
             this.name = repr.name
-            this.testCases = repr.testCases.map(tc => new TestCaseCombinational(tc))
+            this.testCases = repr.cases.map(tc => new TestCaseCombinational(tc))
         } else {
             this.name = S.Tests.DefaultTestSuiteName
             this.testCases = []
         }
     }
 
-    public toJSON(): t.TypeOf<typeof TestSuite.Repr> {
+    public toJSON(): TestSuiteRepr {
         return {
             name: this.name,
-            testCases: this.testCases.map(tc => tc.toJSON()),
+            cases: this.testCases.map(tc => tc.toJSON()),
         }
     }
 
 }
 
+export type TestCaseResultMismatch = { name: string, expected: LogicValue, actual: LogicValue }
 
 export const TestCaseResult = {
     Pass: { _tag: "pass" as const },
     Skip: { _tag: "skip" as const },
-    Fail: (msgs: string[]) => ({ _tag: "fail" as const, msgs }),
+    Fail: (mismatches: TestCaseResultMismatch[]) => ({ _tag: "fail" as const, mismatches }),
     Error: (msg: string) => ({ _tag: "error" as const, msg }),
 }
 export type TestCaseResult = ADTWith<typeof TestCaseResult>
 
+export type TestCaseResultFail = ADTCase<TestCaseResult, "fail">
 
 
 export class TestSuiteResults {
@@ -116,13 +125,41 @@ export class TestSuiteResults {
             if (result._tag === "pass") {
                 console.log("PASS")
             } else if (result._tag === "fail") {
-                console.log(["FAIL", ...result.msgs].join(" - "))
+                const mismatches = result.mismatches.map(m => `${m.name}: ${toLogicValueRepr(m.actual)} instead of ${toLogicValueRepr(m.expected)}`)
+                console.log("FAIL - mismatches: " + mismatches.join(", "))
             } else if (result._tag === "error") {
                 console.log(`ERROR - ${result.msg}`)
             }
             console.groupEnd()
         }
         console.groupEnd()
+    }
+
+}
+
+
+export class TestSuites {
+
+    private readonly _testSuites: TestSuite[]
+
+    public constructor(
+        public readonly parent: DrawableParent
+    ) {
+        this._testSuites = []
+    }
+
+    public get suites(): ReadonlyArray<TestSuite> {
+        return this._testSuites
+    }
+
+    public totalCases(): number {
+        return this._testSuites.reduce((acc, suite) => acc + suite.testCases.length, 0)
+    }
+
+    public set(testSuites: readonly TestSuite[]) {
+        this._testSuites.length = 0
+        this._testSuites.push(...testSuites)
+        this.parent.ifEditing?.testsPalette.updateWith(this)
     }
 
 }

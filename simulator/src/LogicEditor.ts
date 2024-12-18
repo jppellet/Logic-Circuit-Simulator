@@ -25,8 +25,9 @@ import { NodeManager } from "./NodeManager"
 import { RecalcManager, RedrawManager } from "./RedrawRecalcManager"
 import { SVGRenderingContext } from "./SVGRenderingContext"
 import { Serialization } from "./Serialization"
-import { TestCaseCombinational, TestCaseResult, TestSuite, TestSuiteResults } from "./TestSuite"
+import { InOutValueMap, TestCaseCombinational, TestCaseResult, TestCaseResultMismatch, TestSuite, TestSuiteResults, TestSuites } from "./TestSuite"
 import { Tests } from "./Tests"
+import { TestsPalette } from "./TestsPalette"
 import { Timeline } from "./Timeline"
 import { TopBar } from "./TopBar"
 import { EditorSelection, UIEventManager } from "./UIEventManager"
@@ -40,10 +41,10 @@ import { Rectangle, RectangleDef } from "./components/Rectangle"
 import { LinkManager, Wire, WireStyle, WireStyles } from "./components/Wire"
 import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_COMPONENT_ID, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, GRID_STEP, USER_COLORS, clampZoom, drawAnchorsAroundComponent as drawAnchorsForComponent, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine } from "./drawutils"
 import { gallery } from './gallery'
-import { Modifier, a, attr, attrBuilder, button, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
+import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
 import { makeIcon } from "./images"
 import { DefaultLang, S, getLang, isLang, setLang } from "./strings"
-import { Any, InBrowser, KeysOfByType, UIDisplay, copyToClipboard, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, setDisplay, setVisible, showModal, toggleVisible } from "./utils"
+import { Any, InBrowser, KeysOfByType, LogicValue, UIDisplay, copyToClipboard, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, setDisplay, setVisible, showModal, toggleVisible } from "./utils"
 
 
 
@@ -165,6 +166,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         moveMgr: new MoveManager(this),
         undoMgr: new UndoManager(this),
         redrawMgr: new RedrawManager(),
+        testsPalette: new TestsPalette(this),
         setDirty: this.setDirty.bind(this),
         setToolCursor: this.setToolCursor.bind(this),
     }
@@ -177,6 +179,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     public readonly components = new ComponentList()
     public readonly nodeMgr = new NodeManager()
+    public readonly testSuites: TestSuites = new TestSuites(this)
     public readonly linkMgr: LinkManager = new LinkManager(this)
     public readonly recalcMgr = new RecalcManager()
 
@@ -220,8 +223,6 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         leftToolbar: HTMLElement,
         rightToolbarContainer: HTMLElement,
         rightResetButton: HTMLButtonElement,
-        testResultsPalette: HTMLElement,
-        testResultsContainer: HTMLElement,
         tooltipElem: HTMLElement,
         tooltipContents: HTMLElement,
         mainContextMenu: HTMLElement,
@@ -272,8 +273,6 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             leftToolbar: this.elemWithId("leftToolbar"),
             rightToolbarContainer: this.elemWithId("rightToolbarContainer"),
             rightResetButton: this.elemWithId("rightResetButton"),
-            testResultsPalette: this.elemWithId("testResultsPalette"),
-            testResultsContainer: this.elemWithId("testResultsContainer"),
             tooltipElem: this.elemWithId("tooltip"),
             tooltipContents: this.elemWithId("tooltipContents"),
             mainContextMenu: this.elemWithId("mainContextMenu"),
@@ -671,6 +670,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this._topBar = new TopBar(this)
         this._menu = new ComponentMenu(this.html.leftToolbar, this._options.showOnly)
         this._messageBar = new MessageBar(this)
+        const testResultsPalette = this.elemWithId("testResultsPalette")
+        testResultsPalette.parentElement!.replaceChild(this.editTools.testsPalette.rootElem, testResultsPalette)
 
         // TODO move this to the Def of LabelRect to be cleaner
         const groupButton = this.html.leftToolbar.querySelector("button.sim-component-button[data-type=rect]")
@@ -701,7 +702,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             const titleElem = div(cls("toolbar-title"),
                 "Mode",
             ).render()
-            this.eventMgr.registerTitleDragListenersOn(titleElem, false)
+            this.eventMgr.registerTitleDragListenersOn(titleElem)
             mods(
                 titleElem,
                 div(cls("btn-group-vertical"),
@@ -757,11 +758,6 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             setVisible(modeChangeMenu, true)
         }
 
-
-        const testsTitleElem = div(cls("toolbar-title"), S.Tests.Title).render()
-        this.eventMgr.registerTitleDragListenersOn(testsTitleElem, true)
-        this.html.testResultsPalette.insertAdjacentElement("afterbegin", testsTitleElem)
-
         // this.html.embedUrlQRCode.addEventListener("click", __ => {
         //     // download
         //     const dataUrl = this.html.embedUrlQRCode.src
@@ -780,13 +776,15 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             textArea.addEventListener("focus", selectAllListener)
         }
 
-        this.setCurrentMouseAction("edit")
+        this.setCurrentMouseAction("edit", true)
         this.timeline.reset()
 
         // Options
         const settingsPalette = this.html.settingsPalette
         const settingsTitleElem = div(cls("toolbar-title with-border"), S.Settings.Settings).render()
-        this.eventMgr.registerTitleDragListenersOn(settingsTitleElem, true)
+        this.eventMgr.registerTitleDragListenersOn(settingsTitleElem, () => {
+            setVisible(settingsPalette, false)
+        })
         settingsPalette.insertAdjacentElement("afterbegin", settingsTitleElem)
 
         const makeCheckbox = <K extends KeysOfByType<EditorOptions, boolean>>(optionName: K, [title, mouseover]: [string, string], hide = false) => {
@@ -1039,6 +1037,11 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
             setDisplay(this.html.leftToolbar, showComponentsAndEditControls)
 
+            if (mode < Mode.CONNECT) {
+                this.setTestsPaletteVisible(false)
+            } else {
+                this.didLoadTests(this.testSuites)
+            }
             // const showTxGates = mode >= Mode.FULL && (showOnly === undefined || showOnly.includes("TX") || showOnly.includes("TXA"))
             // const txGateButton = this.root.querySelector("button[data-type=TXA]") as HTMLElement
             // setVisible(txGateButton, showTxGates)
@@ -1307,11 +1310,11 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.focus()
     }
 
-    public setCurrentMouseAction<M extends MouseAction>(action: M, ...params: MouseActionParams<M>): boolean {
+    public setCurrentMouseAction<M extends MouseAction>(action: M, forceUpdate: boolean = false, ...params: MouseActionParams<M>): boolean {
         const changed = this.eventMgr.setHandlersFor(action, ...params)
-        if (changed) {
+        if (forceUpdate || changed) {
             this.setToolCursor(MouseActions[action].cursor)
-            this._topBar?.setActiveTool(action)
+            this._topBar?.updateActiveTool(action)
             this.editTools.redrawMgr.addReason("mouse action changed", null)
             this.editor.focus()
         }
@@ -1547,6 +1550,9 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         Serialization.removeShowOnlyFrom(jsonObj)
         const jsonForUri = Serialization.stringifyObject(jsonObj, true)
 
+        console.log("Full JSON:\n" + jsonFull)
+        console.log("JSON for URL:\n" + jsonForUri)
+
         // We did this in the past, but now we're compressing things a bit
         // const encodedJson1 = btoa(json).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "%3D")
 
@@ -1647,37 +1653,44 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         saveAs(blob, filename)
     }
 
-    public async runTestSuite(testSuite: TestSuite, options?: { doLog?: boolean, fast?: boolean }): Promise<TestSuiteResults> {
+    public setTestsPaletteVisible(visible: boolean) {
+        this.editTools.testsPalette.setVisible(visible)
+        this._topBar?.updateTestPaletteVisible(visible)
+    }
+
+    public didLoadTests(testSuites: TestSuites) {
+        this._topBar?.setTestPaletteButtonVisible(testSuites.totalCases())
+    }
+
+    public async runTestSuite(testSuite: TestSuite, options?: { doLog?: boolean, fast?: boolean }): Promise<TestSuiteResults | undefined> {
+        const palette = this.editTools.testsPalette
+        if (palette === undefined) {
+            return undefined
+        }
+
         const oldMode = this.mode
         const fast = options?.fast ?? false
         const doLog = options?.doLog ?? false
+        const allOldInValues: InOutValueMap = new Map()
 
-        const testContainerHtml = this.html.testResultsContainer
-        testContainerHtml.innerHTML = ""
-        setVisible(this.html.testResultsPalette, true)
-        const s = S.Tests
-        const htmlResults = testSuite.testCases.map(tc => div(cls("testcase wait"), tc.name ?? s.DefaultTestCaseName).render())
-        const header = button(cls("test-suite expanded"), testSuite.name ?? s.DefaultTestSuiteName).render()
-        const content = div(cls("test-cases"), style("display: block"), ...htmlResults).render()
-        header.addEventListener("click", () => {
-            const expanded = header.classList.toggle("expanded")
-            setVisible(content, expanded)
-        })
-        mods(header, content).applyTo(testContainerHtml)
 
         try {
             this.setMode(Mode.STATIC, false)
+            palette.clearAllSuites()
+            this.setTestsPaletteVisible(true) // after setMode, which may hide it
 
             const results = new TestSuiteResults(testSuite)
+            const ui = palette.addTestSuite(testSuite)
+
             let isFirst = true
             let skip = false
             for (let i = 0; i < testSuite.testCases.length; i++) {
                 const testCase = testSuite.testCases[i]
-                const htmlResult = htmlResults[i]
-                htmlResult.className = "testcase running"
+                ui.setRunning(i)
+
                 if (isFirst) {
                     isFirst = false
-                } else if (!fast) {
+                } else if (!skip && !fast) {
                     // pause for 2 seconds
                     await new Promise(resolve => setTimeout(resolve, 2000))
                 }
@@ -1685,10 +1698,16 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 if (skip) {
                     testCaseResult = TestCaseResult.Skip
                 } else {
-                    testCaseResult = await this.runTestCase(testCase, testSuite, doLog)
+                    const [oldInValues, result] = await this.runTestCase(testCase, testSuite, doLog)
+                    testCaseResult = result
+                    for (const [inputName, value] of oldInValues) {
+                        if (!allOldInValues.has(inputName)) {
+                            allOldInValues.set(inputName, value)
+                        }
+                    }
                 }
                 results.addTestCaseResult(testCase, testCaseResult)
-                htmlResult.className = "testcase " + testCaseResult._tag
+                ui.setResult(i, testCaseResult)
                 if (testCase.breakOnFail && testCaseResult._tag === "fail") {
                     skip = true
                 }
@@ -1696,11 +1715,46 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             return results
 
         } finally {
+            console.log("Restoring old input values", allOldInValues)
             this.setMode(oldMode, true)
+            for (const [inputName, value] of allOldInValues) {
+                this.trySetInput(inputName, value)
+            }
+            this.recalcPropagateAndDrawIfNeeded()
         }
     }
 
-    private async runTestCase(testCase: TestCaseCombinational, sourceSuite: TestSuite, doLog: boolean): Promise<TestCaseResult> {
+    /**
+     * Sets the value of an input referred to by name. We currently assume it's a single-bit input.
+     * This doesn't trigger a recalculation, so you should probably call `recalcPropagateAndDrawIfNeeded`
+     * after a series of these calls here.
+     * @returns the value that was set before, or undefined if the input was not found
+     */
+    private trySetInput(inputName: string, value: LogicValue): LogicValue | undefined {
+        const comp = this.components.get(inputName)
+        if (comp === undefined || !(comp instanceof Input)) {
+            console.error(`Input component ${inputName} not found`)
+            return undefined
+        }
+        const oldValue = comp.value[0]
+        comp.setValue([value])
+        return oldValue
+    }
+
+    public trySetInputsAndRecalc(inputs: InOutValueMap | Record<string, LogicValue>) {
+        const iter = inputs instanceof Map ? inputs : Object.entries(inputs)
+        for (const [inputName, inputValue] of iter) {
+            this.trySetInput(inputName, inputValue)
+        }
+        this.recalcPropagateAndDrawIfNeeded(true)
+    }
+
+    private async runTestCase(
+        testCase: TestCaseCombinational,
+        sourceSuite: TestSuite,
+        doLog: boolean
+    ): Promise<[InOutValueMap, TestCaseResult]> {
+
         const fullTestNameParts = [sourceSuite.name, testCase.name].filter(Boolean)
         const fullTestName = fullTestNameParts.length === 0 ? S.Tests.DefaultTestCaseName : fullTestNameParts.join("/")
         const msg = S.Messages.RunningTestCase.expand({ name: fullTestName })
@@ -1709,43 +1763,41 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             console.group(msg)
         }
 
+        const oldInValues: InOutValueMap = new Map()
         try {
             for (const [inputName, inputValue] of testCase.in) {
-                const comp = this.components.get(inputName)
-                if (comp === undefined || !(comp instanceof Input)) {
-                    return TestCaseResult.Error(`Input component ${inputName} not found`)
+                const oldValue = this.trySetInput(inputName, inputValue)
+                if (oldValue === undefined) {
+                    return [oldInValues, TestCaseResult.Error(`Input component ${inputName} not found`)]
                 }
-                comp.setValue([inputValue])
+                oldInValues.set(inputName, oldValue)
             }
-            // console.log(`Propagating...`)
-            this.recalcPropagateAndDrawIfNeeded()
+            // console.log(`Propagation starting at ${this.timeline.logicalTime()}...`)
+            this.recalcPropagateAndDrawIfNeeded(true)
             await this.waitForPropagation()
             // console.log(`Propagation done at ${this.timeline.logicalTime()}`)
-            const failed: string[] = []
+            const mismatches: TestCaseResultMismatch[] = []
             for (const [outputName, expected] of testCase.out) {
                 const comp = this.components.get(outputName)
                 if (comp === undefined || !(comp instanceof Output)) {
-                    return TestCaseResult.Error(`Output component ${outputName} not found`)
+                    return [oldInValues, TestCaseResult.Error(`Output component ${outputName} not found`)]
                 }
                 const actual = comp.value[0]
+                // console.log(`  ${outputName}: ${actual} (expected ${expected})`)
                 if (actual !== expected) {
-                    const failMsg = `${outputName} is ${actual} instead of ${expected}`
-                    failed.push(failMsg)
+                    mismatches.push({ name: outputName, expected, actual })
                     if (doLog) {
+                        const failMsg = `${outputName} is ${actual} instead of ${expected}`
                         console.log(`%cFAIL:%c ${failMsg}`, 'color: red; font-weight: bold;', '')
                     }
                 } else {
-                    const passMsg = `${outputName} is ${expected}`
                     if (doLog) {
+                        const passMsg = `${outputName} is ${expected}`
                         console.log(`%cPASS:%c ${passMsg}`, 'color: green; font-weight: bold;', '')
                     }
                 }
             }
-            if (failed.length === 0) {
-                return TestCaseResult.Pass
-            } else {
-                return TestCaseResult.Fail(failed)
-            }
+            return [oldInValues, mismatches.length === 0 ? TestCaseResult.Pass : TestCaseResult.Fail(mismatches)]
 
         } finally {
             if (doLog) {
@@ -1755,14 +1807,29 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
     }
 
+    /**
+     * Make sure that `recalcPropagateAndDrawIfNeeded` has been called after the change
+     * with an argument of `true` to force the redraw and reset the promise if needed.
+     */
     public waitForPropagation() {
         return this._propagationPromise
     }
 
-    public recalcPropagateAndDrawIfNeeded() {
+    /**
+     * @param forceNow This must be `true` only if have just changed values manually and
+     * we need to bypass the cancel the possible next animation frame to make sure we
+     * renew the propagation promise right now. Otherwise, the next animation frame
+     * will take care of the redraw.
+     */
+    public recalcPropagateAndDrawIfNeeded(forceNow: boolean = false) {
         if (this._nextAnimationFrameHandle !== null) {
-            // an animation frame will be played soon anyway
-            return
+            if (!forceNow) {
+                // an animation frame will be played soon anyway
+                return
+            } else {
+                cancelAnimationFrame(this._nextAnimationFrameHandle)
+                this._nextAnimationFrameHandle = null
+            }
         }
 
         const __recalculated = this.recalcMgr.recalcAndPropagateIfNeeded()
@@ -1781,7 +1848,10 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         // By now, we know that we have to redraw
 
-        if (this._propagationResolve === undefined) {
+        // we need to reset the promise if we have real redraw reasons, not only
+        // a wire animate to run
+        if (redrawReasons !== undefined && this._propagationResolve === undefined) {
+            // console.log("new propagation promise")
             // means that the promise has been resolved already and we are
             // starting a new cycle, so we reset the promise
             this._propagationPromise = new Promise(resolve => {
@@ -1793,27 +1863,25 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.doRedraw()
 
         if (!redrawMgr.isAnyValuePropagating()) {
+            // console.log("No value is propagating")
             // if no value is propagating, we can resolve the promise, but after the
             // next timeline updates
 
-            if (this._propagationResolve === undefined) {
-                return
-            }
-            // console.log("will maybe call _propagationResolve")
-            // we cannot finish this now if there are pending callbacks
-            // as they may change the state and we need to let them run
+            if (this._propagationResolve !== undefined) {
+                // console.log("will maybe call _propagationResolve")
+                // we cannot finish this now if there are pending callbacks
+                // as they may change the state and we need to let them run
 
-            const hasPendingCallbacks = this.timeline.hasPendingCallbacksNow()
-            if (!hasPendingCallbacks) {
-                // console.log("-> yes")
-                // setTimeout(() => {
-                this._propagationResolve()
-                this._propagationResolve = undefined
-                // }, 0)
-            } else {
-                // console.log("-> no, there are pending callbacks")
+                if (!this.timeline.hasPendingCallbacksNow()) {
+                    // console.log("-> yes")
+                    // setTimeout(() => {
+                    this._propagationResolve()
+                    this._propagationResolve = undefined
+                    // }, 0)
+                } else {
+                    // console.log("-> no, there are pending callbacks")
+                }
             }
-
         }
 
         if (animateWires || redrawMgr.hasReasons()) {
@@ -2145,7 +2213,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         // ... but then, beware of duplicated custom components if pasting into the same circuit,
         // or find some compatibility criterion for component defs (e.g., number of in/out nodes
         // and names) that would seem enough to determine they are the same (beyond their id/name)
-        const reprs = Serialization.buildComponentsAndWireObject(componentsToInclude, [this.mouseX, this.mouseY])
+        const reprs = Serialization.buildComponentsAndWireObject(componentsToInclude, [], [this.mouseX, this.mouseY])
         if (reprs.components === undefined && reprs.wires === undefined) {
             return false
         }
@@ -2220,6 +2288,42 @@ export class LogicStatic {
             }
             diagram.highlight(componentRefs)
         }
+    }
+
+    public runSampleTestSuite(options: unknown): void {
+        const f = async () => {
+            if (this.singleton) {
+                const testSuite = new TestSuite({
+                    name: "Simple XOR gate test suite",
+                    cases: [{
+                        name: "false false -> false",
+                        in: { in0: 0, in1: 0 },
+                        out: { out0: 0 },
+                        breakOnFail: true,
+                    }, {
+                        name: "false true -> true",
+                        in: { in0: 1, in1: 0 },
+                        out: { out0: 1 },
+                    }, {
+                        name: "true false -> true",
+                        in: { in0: 0, in1: 1 },
+                        out: { out0: 1 },
+                    }, {
+                        name: "true true -> false",
+                        in: { in0: 1, in1: 1 },
+                        out: { out0: 0 },
+                    }],
+                })
+                const _opts = isRecord(options) ? options : {}
+                const results = await this.singleton.runTestSuite(testSuite, _opts)
+                if (results === undefined) {
+                    console.error("Could not run test suite")
+                } else {
+                    results.dump()
+                }
+            }
+        }
+        setTimeout(f, 0)
     }
 
     public printUndoStack() {

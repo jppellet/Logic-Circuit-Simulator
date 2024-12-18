@@ -5,6 +5,8 @@ import { type MoveManager } from "../MoveManager"
 import { type NodeManager } from "../NodeManager"
 import { RecalcManager, RedrawManager } from "../RedrawRecalcManager"
 import { type SVGRenderingContext } from "../SVGRenderingContext"
+import { TestSuites } from "../TestSuite"
+import { TestsPalette } from "../TestsPalette"
 import { UndoManager } from "../UndoManager"
 import { COLOR_COMPONENT_BORDER, COLOR_MOUSE_OVER, COLOR_MOUSE_OVER_DANGER, ColorString, GRID_STEP, inRect } from "../drawutils"
 import { fixedWidthInContextMenu, Modifier, ModifierObject, span } from "../htmlgen"
@@ -126,6 +128,7 @@ export interface DrawableParent {
 
     // implemented as one per (editor + instantiated custom component)
     readonly components: ComponentList
+    readonly testSuites: TestSuites
     readonly nodeMgr: NodeManager
     readonly linkMgr: LinkManager
     readonly recalcMgr: RecalcManager
@@ -141,6 +144,7 @@ export type EditTools = {
     readonly redrawMgr: RedrawManager
     readonly moveMgr: MoveManager
     readonly undoMgr: UndoManager
+    readonly testsPalette: TestsPalette
     setDirty(reason: string): void
     setToolCursor(cursor: string | null): void
 }
@@ -563,7 +567,7 @@ export abstract class DrawableWithPosition extends Drawable implements HasPositi
         const anchorItem: MenuItems = this._anchor === undefined ? [
             ["start", MenuData.item("none", s.SetAnchor, () => {
                 this.parent.editor.showMessage(S.Messages.SetAnchorPrompt)
-                this.parent.editor.setCurrentMouseAction("setanchor", this)
+                this.parent.editor.setCurrentMouseAction("setanchor", false, this)
             })],
         ] : [
             ["start", MenuData.item("none", span(s.ClearAnchor[0], span(fixedWidthInContextMenu, this._anchor.ref ?? "???"), s.ClearAnchor[1]), () => {

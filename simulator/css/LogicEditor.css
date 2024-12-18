@@ -584,19 +584,12 @@ svg text {
   color: rgb(220, 220, 220);
 }
 
-
-.test-suite {
-  background-color: #ccc;
-  color: #444;
-  font-weight: bold;
+.test-disclosable {
   cursor: pointer;
-  padding: 5px;
-  width: 100%;
   border: none;
-  font-size: 12px;
 }
 
-.test-suite::before {
+.test-disclosable::before {
   content: '\25B6';
   /* Right-pointing triangle */
   display: inline-block;
@@ -604,9 +597,27 @@ svg text {
   transition: transform 0.1s;
 }
 
-.test-suite.expanded::before {
+.testcase-button {
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+
+.testcase-button.test-disclosable::before {
+  font-size: 80%;
+}
+
+.test-disclosable.expanded::before {
   transform: rotate(90deg);
   /* Down-pointing triangle */
+}
+
+.test-suite {
+  background-color: #ccc;
+  color: #444;
+  font-weight: bold;
+  padding: 5px;
+  width: 100%;
 }
 
 .test-cases {
@@ -615,8 +626,6 @@ svg text {
   overflow: hidden;
   background-color: #f1f1f1;
 }
-
-
 
 .testcase {
   padding: 2px 5px;
@@ -644,11 +653,11 @@ svg text {
 
 .testcase.running {
   background: repeating-linear-gradient(135deg,
-      #d3d3d3,
-      #d3d3d3 10px,
-      #f1f1f1 10px,
-      #f1f1f1 20px);
-  background-size: 200% 200%;
+      #e2e2e2,
+      #e2e2e2 10px,
+      #f7f6f6 10px,
+      #f7f6f6 20px);
+  background-size: 200% 100%;
   animation: barberpole 5s linear infinite;
 }
 
@@ -662,22 +671,36 @@ svg text {
   }
 }
 
-/* .testresult-wait::before {
-  content: '\231B';
- Hourglass 
-  display: inline-block;
-  margin-right: 10px;
-  font-size: 10px;
-  animation: spin 1s linear infinite;
+.testcase-details {
+  padding: 5px 5px 10px 20px;
 }
 
+.testcase-table {
+  width: 100%;
+  font-size: 90%;
+  border-collapse: collapse;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+  border-left: 2px solid rgba(255, 255, 255, 0.6);
+  opacity: 0.8;
+}
 
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
+.testcase-table th {
+  padding-left: 5px;
+}
 
-  100% {
-    transform: rotate(360deg);
-  }
-} */
+.testcase-table td {
+  padding-left: 10px;
+}
+
+.testcase-table :is(td, th):first-child {
+  width: 50%;
+}
+
+.testcase-table :is(td, th):nth-child(2) {
+  border-left: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.testcase-wrongvalue {
+  color: #8f2626;
+  font-weight: bold;
+}

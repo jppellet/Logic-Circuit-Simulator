@@ -153,6 +153,8 @@ type _PartialWhereUndefinedRecursively<T> =
 //    const MyADTCases = { Case1: ..., Case2: () => ... } // as before
 //    export type MyADT = ADTWith<typeof MyADTCases>
 //    export const MyADT = defineADTStatics(MyADTCases, { ...statics })
+// Then, as needed, you can alias type cases:
+//    export type MyADTCase = ADTCase<MyADT, "Case1">
 export type ADTWith<TADTCases extends Record<string, unknown>>
     = { [K in keyof TADTCases]:
         TADTCases[K] extends (...args: infer TArgs) => infer TReturn ? TReturn : TADTCases[K]
@@ -164,6 +166,8 @@ export function defineADTStatics<
 >(cases: TADTCases, statics: TStatics) {
     return { ...statics, ...cases }
 }
+
+export type ADTCase<T extends { _tag: string }, Tag extends T["_tag"]> = T extends { _tag: Tag } ? T : never
 
 
 // Series of type-assertion functions
