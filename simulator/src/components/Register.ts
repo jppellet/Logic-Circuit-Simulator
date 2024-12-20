@@ -2,7 +2,7 @@ import * as t from "io-ts"
 import { COLOR_COMPONENT_BORDER, GRID_STEP, displayValuesFromArray, useCompact } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
-import { ArrayFillWith, EdgeTrigger, LogicValue, Unknown, allBooleans, binaryStringRepr, hexStringRepr, isAllZeros, isHighImpedance, isUnknown, typeOrUndefined, wordFromBinaryOrHexRepr } from "../utils"
+import { ArrayFillWith, EdgeTrigger, LogicValue, Unknown, allBooleans, binaryStringRepr, hexStringRepr, isAllZeros, isHighImpedance, isUnknown, typeOrUndefined, valuesFromBinaryOrHexRepr } from "../utils"
 import { ExtractParamDefs, ExtractParams, NodesIn, NodesOut, ParametrizedComponentBase, ReadonlyGroupedNodeArray, Repr, ResolvedParams, defineAbstractParametrizedComponent, defineParametrizedComponent, groupVertical, param, paramBool } from "./Component"
 import { Counter } from "./Counter"
 import { DrawContext, DrawContextExt, DrawableParent, GraphicsRendering, MenuData, MenuItems, Orientation } from "./Drawable"
@@ -56,7 +56,7 @@ export const RegisterBaseDef =
             if (saved === undefined || (content = saved.content) === undefined) {
                 return ArrayFillWith(false, numBits)
             }
-            return wordFromBinaryOrHexRepr(content, numBits)
+            return valuesFromBinaryOrHexRepr(content, numBits)
         },
     })
 
@@ -97,15 +97,16 @@ export abstract class RegisterBase<
             ...super.toJSONBase(),
             showContent: (this._showContent !== RegisterDef.aults.showContent) ? this._showContent : undefined,
             trigger: (this._trigger !== RegisterDef.aults.trigger) ? this._trigger : undefined,
-            content: this.contentRepr(),
+            content: this.contentRepr(true),
         }
     }
 
-    private contentRepr(): string | undefined {
+    public contentRepr<AllowUndefined extends boolean>(undefinedIfTrivial: AllowUndefined)
+        : string | (AllowUndefined extends false ? never : undefined) {
         const content = this.value
         const hexWidth = Math.ceil(this.numBits / 4)
         const repr = allBooleans(content) ? hexStringRepr(content, hexWidth) : binaryStringRepr(content)
-        return isAllZeros(repr) ? undefined : repr
+        return undefinedIfTrivial && isAllZeros(repr) ? undefined as any : repr
     }
 
     public get trigger() {

@@ -1,54 +1,99 @@
 import * as t from "io-ts"
+import { type ComponentList } from "./ComponentList"
+import { type Component } from "./components/Component"
 import { DrawableParent } from "./components/Drawable"
+import { type Input } from "./components/Input"
+import { type Output } from "./components/Output"
 import { S } from "./strings"
-import { ADTCase, ADTWith, LogicValue, LogicValueRepr, toLogicValue, toLogicValueRepr, typeOrUndefined } from "./utils"
+import { ADTCase, ADTWith, ComponentTypeInput, ComponentTypeOutput, InputOutputValueRepr, isString, LogicValue, reprForLogicValues } from "./utils"
 
 export type TestCaseCombinationalRepr = t.TypeOf<typeof TestCaseCombinational.Repr>
 
-export type InOutValueMap = Map<string, LogicValue>
+function buildMap<IO extends Input | Output>(repr: Record<string, InputOutputValueRepr>, compList: ComponentList, isInputOutput: (comp: Component | undefined) => comp is IO): TestCaseValueMap<IO> {
+    const map: TestCaseValueMap<IO> = new Map()
+    for (const [ref, value] of Object.entries(repr)) {
+        const comp = compList.get(ref)
+        if (isInputOutput(comp)) {
+            map.set(comp, value)
+        } else {
+            // fall back to using the ref as a string
+            map.set(ref, value)
+        }
+    }
+    return map
+}
+
+function fixMap<IO extends Input | Output>(map: TestCaseValueMap<IO>, compList: ComponentList, isInputOutput: (comp: Component | undefined) => comp is IO) {
+    for (const [k, v] of map.entries()) {
+        if (isString(k)) {
+            const comp = compList.get(k)
+            if (isInputOutput(comp)) {
+                map.delete(k)
+                map.set(comp, v)
+            }
+        }
+    }
+}
+
+function isInput(comp: Component | undefined): comp is Input {
+    return comp?.def.type === ComponentTypeInput
+}
+
+function isOutput(comp: Component | undefined): comp is Output {
+    return comp?.def.type === ComponentTypeOutput
+}
+
+export type TestCaseValueMap<IO extends Input | Output> = Map<IO | string, InputOutputValueRepr>
 
 export class TestCaseCombinational {
 
     public static get Repr() {
         return t.intersection([
             t.type({
-                in: t.record(t.string, LogicValueRepr),
-                out: t.record(t.string, LogicValueRepr),
+                in: t.record(t.string, InputOutputValueRepr),
+                out: t.record(t.string, InputOutputValueRepr),
             }),
             t.partial({
                 name: t.string,
-                breakOnFail: t.boolean,
+                stopOnFail: t.boolean,
             }),
         ], "TestCaseCombinational")
     }
 
     public name: string | undefined
-    public in: InOutValueMap
-    public out: InOutValueMap
-    public breakOnFail: boolean
+    public in: TestCaseValueMap<Input>
+    public out: TestCaseValueMap<Output>
+    public stopOnFail: boolean
 
-    public constructor(repr?: TestCaseCombinationalRepr) {
+    public constructor(repr: TestCaseCombinationalRepr, compList: ComponentList) {
         if (repr !== undefined) {
             this.name = repr.name
-            this.in = new Map(Object.entries(repr.in).map(([k, v]) => [k, toLogicValue(v)]))
-            this.out = new Map(Object.entries(repr.out).map(([k, v]) => [k, toLogicValue(v)]))
-            this.breakOnFail = repr.breakOnFail ?? false
+            this.in = buildMap(repr.in, compList, isInput)
+            this.out = buildMap(repr.out, compList, isOutput)
+            this.stopOnFail = repr.stopOnFail ?? false
         } else {
             this.name = S.Tests.DefaultTestCaseName
             this.in = new Map()
             this.out = new Map()
-            this.breakOnFail = false
+            this.stopOnFail = false
         }
     }
 
+    public tryFixReferences(compList: ComponentList) {
+        fixMap(this.in, compList, isInput)
+        fixMap(this.out, compList, isOutput)
+    }
+
     public toJSON(): TestCaseCombinationalRepr {
-        const mapRepr = (map: InOutValueMap) =>
-            Object.fromEntries([...map.entries()].map(([k, v]) => [k, toLogicValueRepr(v)]))
+        const mapRepr = (map: TestCaseValueMap<Input | Output>) =>
+            Object.fromEntries([...map.entries()].map(
+                ([k, v]) => [(isString(k) ? k : k.ref ?? "?"), v])
+            )
         return {
             name: this.name,
             in: mapRepr(this.in),
             out: mapRepr(this.out),
-            breakOnFail: this.breakOnFail === true ? true : undefined,
+            stopOnFail: this.stopOnFail === true ? true : undefined,
         }
     }
 
@@ -60,10 +105,15 @@ export type TestSuiteRepr = t.TypeOf<typeof TestSuite.Repr>
 export class TestSuite {
 
     public static get Repr() {
-        return t.type({
-            name: typeOrUndefined(t.string),
-            cases: t.array(TestCaseCombinational.Repr),
-        }, "TestSuite")
+        return t.intersection([
+            t.type({
+                cases: t.array(TestCaseCombinational.Repr),
+            }),
+            t.partial({
+                name: t.string,
+                hidden: t.boolean,
+            }),
+        ], "TestSuite")
     }
 
     public static get ReprArray() {
@@ -71,14 +121,18 @@ export class TestSuite {
     }
 
     public name: string | undefined
+    public isHidden: boolean
     public testCases: TestCaseCombinational[]
 
-    public constructor(repr?: TestSuiteRepr) {
-        if (repr !== undefined) {
+    public constructor(reprAndComps?: [TestSuiteRepr, ComponentList]) {
+        if (reprAndComps !== undefined) {
+            const [repr, compList] = reprAndComps
             this.name = repr.name
-            this.testCases = repr.cases.map(tc => new TestCaseCombinational(tc))
+            this.isHidden = repr.hidden ?? false
+            this.testCases = repr.cases.map(tc => new TestCaseCombinational(tc, compList))
         } else {
             this.name = S.Tests.DefaultTestSuiteName
+            this.isHidden = false
             this.testCases = []
         }
     }
@@ -86,13 +140,14 @@ export class TestSuite {
     public toJSON(): TestSuiteRepr {
         return {
             name: this.name,
+            hidden: this.isHidden === true ? true : undefined,
             cases: this.testCases.map(tc => tc.toJSON()),
         }
     }
 
 }
 
-export type TestCaseResultMismatch = { name: string, expected: LogicValue, actual: LogicValue }
+export type TestCaseResultMismatch = { output: Output, expected: LogicValue[], actual: LogicValue[] }
 
 export const TestCaseResult = {
     Pass: { _tag: "pass" as const },
@@ -125,7 +180,7 @@ export class TestSuiteResults {
             if (result._tag === "pass") {
                 console.log("PASS")
             } else if (result._tag === "fail") {
-                const mismatches = result.mismatches.map(m => `${m.name}: ${toLogicValueRepr(m.actual)} instead of ${toLogicValueRepr(m.expected)}`)
+                const mismatches = result.mismatches.map(m => `${m.output.ref}: ${reprForLogicValues(m.actual, false)} instead of ${reprForLogicValues(m.expected, false)}`)
                 console.log("FAIL - mismatches: " + mismatches.join(", "))
             } else if (result._tag === "error") {
                 console.log(`ERROR - ${result.msg}`)

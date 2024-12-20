@@ -1,12 +1,11 @@
 import { createPopper, Instance as PopperInstance } from '@popperjs/core'
 import { ButtonDataset } from './ComponentFactory'
-import { DrawZIndex } from './ComponentList'
 import { Component, ComponentBase, ComponentState } from './components/Component'
 import { CustomComponent } from './components/CustomComponent'
 import { Drawable, DrawableWithPosition, MenuData, MenuItem } from "./components/Drawable"
 import { Node } from "./components/Node"
 import { Waypoint, Wire } from './components/Wire'
-import { dist, setColorMouseOverIsDanger } from './drawutils'
+import { dist, DrawZIndex, setColorMouseOverIsDanger } from "./drawutils"
 import { applyModifiersTo, attr, button, cls, emptyMod, i, li, Modifier, ModifierObject, mods, setupSvgIcon, span, type, ul } from './htmlgen'
 import { IconName, makeIcon } from './images'
 import { LogicEditor, MouseAction, MouseActionParams } from './LogicEditor'

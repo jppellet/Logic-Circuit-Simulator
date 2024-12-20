@@ -2,7 +2,7 @@ import * as t from "io-ts"
 import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, GRID_STEP, INPUT_OUTPUT_DIAMETER, circle, colorForLogicValue, dist, drawComponentName, drawValueText, drawValueTextCentered, drawWireLineToComponent, inRect, isTrivialNodeName, triangle, useCompact } from "../drawutils"
 import { mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
-import { ArrayClampOrPad, ArrayFillWith, HighImpedance, InteractionResult, LogicValue, LogicValueRepr, Mode, Unknown, isArray, isNumber, toLogicValue, toLogicValueFromChar, toLogicValueRepr, typeOrUndefined } from "../utils"
+import { ArrayFillWith, ComponentTypeInput, HighImpedance, InputOutputValueRepr, InteractionResult, LogicValue, Mode, Unknown, reprForLogicValues, toLogicValueRepr, typeOrUndefined, valuesFromReprForInput } from "../utils"
 import { ClockDef, ClockRepr } from "./Clock"
 import { Component, ComponentName, ComponentNameRepr, ExtractParamDefs, ExtractParams, InstantiatedComponentDef, NodesIn, NodesOut, ParametrizedComponentBase, Repr, ResolvedParams, SomeParamCompDef, defineParametrizedComponent, groupVertical, param } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems, Orientation } from "./Drawable"
@@ -231,22 +231,17 @@ export abstract class InputBase<
         }
     }
 
-
 }
 
 
 export const InputDef =
-    defineParametrizedComponent("in", false, true, {
+    defineParametrizedComponent(ComponentTypeInput, false, true, {
         variantName: ({ bits }) => `in-${bits}`,
         idPrefix: "in",
         button: { imgWidth: 32 },
         repr: {
             bits: typeOrUndefined(t.number),
-            val: typeOrUndefined(t.union([
-                LogicValueRepr,
-                t.string,
-                t.array(LogicValueRepr),
-            ])),
+            val: typeOrUndefined(InputOutputValueRepr),
             isPushButton: typeOrUndefined(t.boolean),
             isConstant: typeOrUndefined(t.boolean),
             name: ComponentNameRepr,
@@ -277,29 +272,12 @@ export const InputDef =
             },
         }),
         initialValue: (saved, { numBits }) => {
-            const allFalse = () => ArrayFillWith<LogicValue>(false, numBits)
-            if (saved === undefined) {
-                return allFalse()
-            }
-            let val
-            if ((val = saved.val) !== undefined) {
-                if (isArray(val)) {
-                    return ArrayClampOrPad(val.map(v => toLogicValue(v)), numBits, false)
-                } else if (isNumber(val)) {
-                    return ArrayFillWith<LogicValue>(toLogicValue(val), numBits)
-                } else if (val.length === 0) {
-                    return allFalse()
-                } else {
-                    return ArrayClampOrPad(Array.from(val).reverse().map(v => toLogicValueFromChar(v)), numBits, false)
-                }
-            }
-            return allFalse()
+            return valuesFromReprForInput(saved?.val, numBits)
         },
     })
 
 export type InputRepr = Repr<typeof InputDef>
 export type InputParams = ResolvedParams<typeof InputDef>
-
 
 export class Input extends InputBase<InputRepr> {
 
@@ -320,7 +298,7 @@ export class Input extends InputBase<InputRepr> {
         return {
             ...this.toJSONBase(),
             bits: this.numBits === InputDef.aults.bits ? undefined : this.numBits,
-            val: this.contentRepr(),
+            val: this.contentRepr(true),
             isPushButton: (this._isPushButton !== InputDef.aults.isPushButton) ? this._isPushButton : undefined,
             isConstant: (this._isConstant !== InputDef.aults.isConstant) ? this._isConstant : undefined,
         }
@@ -330,24 +308,8 @@ export class Input extends InputBase<InputRepr> {
         return this._isConstant
     }
 
-    private contentRepr(): LogicValueRepr | string | undefined {
-        if (this.numBits === 1) {
-            const value = this.value[0]
-            return value === false ? undefined : toLogicValueRepr(value)
-        }
-        const value = this.value
-        let nontrivial = false
-        for (let i = 0; i < this.numBits; i++) {
-            if (value[i] !== false) {
-                nontrivial = true
-                break
-            }
-        }
-        if (!nontrivial) {
-            return undefined
-        }
-
-        return this.value.map(toLogicValueRepr).reverse().join("")
+    public contentRepr<AllowUndefined extends boolean>(undefinedIfTrivial: AllowUndefined) {
+        return reprForLogicValues(this.value, undefinedIfTrivial)
     }
 
     public override cursorWhenMouseover(e?: MouseEvent | TouchEvent) {

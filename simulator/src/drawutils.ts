@@ -72,6 +72,13 @@ export class DrawingRect {
 
 }
 
+export const DrawZIndex = {
+    Background: 0,
+    Normal: 1,
+    Overlay: 2,
+} as const
+export type DrawZIndex = (typeof DrawZIndex)[keyof typeof DrawZIndex]
+
 
 //
 // COLORS

@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { ComponentList, DrawZIndex } from "../ComponentList"
+import { ComponentList } from "../ComponentList"
 import { DrawParams, LogicEditor } from "../LogicEditor"
 import { type MoveManager } from "../MoveManager"
 import { type NodeManager } from "../NodeManager"
@@ -8,7 +8,7 @@ import { type SVGRenderingContext } from "../SVGRenderingContext"
 import { TestSuites } from "../TestSuite"
 import { TestsPalette } from "../TestsPalette"
 import { UndoManager } from "../UndoManager"
-import { COLOR_COMPONENT_BORDER, COLOR_MOUSE_OVER, COLOR_MOUSE_OVER_DANGER, ColorString, GRID_STEP, inRect } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, COLOR_MOUSE_OVER, COLOR_MOUSE_OVER_DANGER, ColorString, DrawZIndex, GRID_STEP, inRect } from "../drawutils"
 import { fixedWidthInContextMenu, Modifier, ModifierObject, span } from "../htmlgen"
 import { IconName } from "../images"
 import { S } from "../strings"
@@ -175,7 +175,7 @@ export abstract class Drawable {
     }
 
     public get drawZIndex(): DrawZIndex {
-        return 1
+        return DrawZIndex.Normal
     }
 
     public draw(g: GraphicsRendering, drawParams: DrawParams): void {

@@ -1,8 +1,10 @@
+import { type Input } from "./components/Input"
+import { type Output } from "./components/Output"
 import { a, attr, button, cls, data, div, href, i, Modifier, mods, setupSvgIcon, span, style, table, tbody, td, th, thead, title, tr } from "./htmlgen"
 import { LogicEditor } from "./LogicEditor"
 import { S } from "./strings"
 import { TestCaseCombinational, TestCaseResult, TestCaseResultFail, TestSuite, TestSuites } from "./TestSuite"
-import { setVisible, toLogicValueRepr } from "./utils"
+import { isString, reprForLogicValues, setVisible } from "./utils"
 
 
 export class TestsPalette {
@@ -40,9 +42,9 @@ export class TestsPalette {
 
     public updateWith(testSuites: TestSuites) {
         this.clearAllSuites()
-        // TODO
         for (const suite of testSuites.suites) {
-            console.log("adding suite " + suite.name)
+            // TODO
+            this.suiteContainer.appendChild(div("Test suite: ", suite.name ?? "n/a").render())
         }
         this.editor.didLoadTests(testSuites)
     }
@@ -113,10 +115,11 @@ export class TestSuiteUI {
         htmlResult.container.className = "testcase " + result._tag
     }
 
-    private makeComponentRefSpan(name: string): HTMLElement {
-        const link = a(name, href("#")).render()
+    private makeComponentRefSpan(elem: Input | Output | string): HTMLElement {
+        const ref = isString(elem) ? elem : elem.ref ?? "?"
+        const link = a(ref, href("#")).render()
         link.addEventListener("click", () => {
-            this.editor.highlight(name)
+            this.editor.highlight(elem)
         })
         return link
     }
@@ -127,19 +130,19 @@ export class TestSuiteUI {
         const ins = [...testCase.in]
         const outs = [...testCase.out]
         for (let i = 0; i < Math.max(ins.length, outs.length); i++) {
-            const inStr = i >= ins.length ? "" : mods(this.makeComponentRefSpan(ins[i][0]), `: ${toLogicValueRepr(ins[i][1])}`)
+            const inStr = i >= ins.length ? "" : mods(this.makeComponentRefSpan(ins[i][0]), `: ${ins[i][1]}`)
 
             let outStr: Modifier = ""
             if (i < outs.length) {
-                const outName = outs[i][0]
-                let outValue: Modifier = `${toLogicValueRepr(outs[i][1])}` // should value
+                const [output, expectedRepr] = outs[i]
+                let outValue: Modifier = String(expectedRepr)
                 if (failed !== undefined) {
-                    const mismatch = failed.mismatches.find(m => m.name === outName)
+                    const mismatch = failed.mismatches.find(m => m.output === output)
                     if (mismatch !== undefined) {
-                        outValue = mods(span(cls("testcase-wrongvalue"), `${toLogicValueRepr(mismatch.actual)}`), ` ≠ ${outValue}`)
+                        outValue = mods(span(cls("testcase-wrongvalue"), `${reprForLogicValues(mismatch.actual, false)}`), ` ≠ ${outValue}`)
                     }
                 }
-                outStr = mods(this.makeComponentRefSpan(outName), `: `, outValue)
+                outStr = mods(this.makeComponentRefSpan(output), `: `, outValue)
             }
             tr(td(inStr), td(outStr)).applyTo(tableBody)
         }

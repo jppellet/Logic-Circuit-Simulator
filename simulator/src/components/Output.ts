@@ -2,7 +2,7 @@ import * as t from "io-ts"
 import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, GRID_STEP, INPUT_OUTPUT_DIAMETER, circle, colorForLogicValue, dist, drawComponentName, drawValueText, drawValueTextCentered, drawWireLineToComponent, isTrivialNodeName, triangle, useCompact } from "../drawutils"
 import { mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
-import { ArrayFillWith, LogicValue, Mode, Unknown, toLogicValueRepr, typeOrUndefined } from "../utils"
+import { ArrayFillWith, ComponentTypeOutput, LogicValue, Mode, Unknown, reprForLogicValues, toLogicValueRepr, typeOrUndefined } from "../utils"
 import { Component, ComponentName, ComponentNameRepr, ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupVertical } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems, Orientation } from "./Drawable"
 import { InputDef } from "./Input"
@@ -10,7 +10,7 @@ import { Node, NodeIn, NodeOut } from "./Node"
 
 
 export const OutputDef =
-    defineParametrizedComponent("out", true, false, {
+    defineParametrizedComponent(ComponentTypeOutput, true, false, {
         variantName: ({ bits }) => `out-${bits}`,
         idPrefix: "out",
         button: { imgWidth: 32 },
@@ -75,6 +75,10 @@ export class Output extends ParametrizedComponentBase<OutputRepr> {
 
     public get name() {
         return this._name
+    }
+
+    public contentRepr<AllowUndefined extends boolean>(undefinedIfTrivial: AllowUndefined) {
+        return reprForLogicValues(this.value, undefinedIfTrivial)
     }
 
     public override makeTooltip() {

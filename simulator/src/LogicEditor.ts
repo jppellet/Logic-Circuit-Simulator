@@ -17,7 +17,7 @@ import JSON5 from "json5"
 import * as LZString from "lz-string"
 import * as pngMeta from 'png-metadata-writer'
 import { ComponentFactory } from "./ComponentFactory"
-import { ComponentList, DrawZIndex } from "./ComponentList"
+import { ComponentList } from "./ComponentList"
 import { ComponentMenu } from "./ComponentMenu"
 import { MessageBar } from "./MessageBar"
 import { MoveManager } from "./MoveManager"
@@ -25,7 +25,7 @@ import { NodeManager } from "./NodeManager"
 import { RecalcManager, RedrawManager } from "./RedrawRecalcManager"
 import { SVGRenderingContext } from "./SVGRenderingContext"
 import { Serialization } from "./Serialization"
-import { InOutValueMap, TestCaseCombinational, TestCaseResult, TestCaseResultMismatch, TestSuite, TestSuiteResults, TestSuites } from "./TestSuite"
+import { TestCaseCombinational, TestCaseResult, TestCaseResultMismatch, TestCaseValueMap, TestSuite, TestSuiteResults, TestSuites } from "./TestSuite"
 import { Tests } from "./Tests"
 import { TestsPalette } from "./TestsPalette"
 import { Timeline } from "./Timeline"
@@ -35,16 +35,15 @@ import { UndoManager } from './UndoManager'
 import { Component, ComponentBase } from "./components/Component"
 import { CustomComponent } from "./components/CustomComponent"
 import { Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, EditTools, GraphicsRendering, Orientation } from "./components/Drawable"
-import { Input } from "./components/Input"
-import { Output } from "./components/Output"
+import { type Input } from "./components/Input"
 import { Rectangle, RectangleDef } from "./components/Rectangle"
 import { LinkManager, Wire, WireStyle, WireStyles } from "./components/Wire"
-import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_COMPONENT_ID, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, GRID_STEP, USER_COLORS, clampZoom, drawAnchorsAroundComponent as drawAnchorsForComponent, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine } from "./drawutils"
+import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_COMPONENT_ID, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, DrawZIndex, GRID_STEP, USER_COLORS, clampZoom, drawAnchorsAroundComponent as drawAnchorsForComponent, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine } from "./drawutils"
 import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
 import { makeIcon } from "./images"
 import { DefaultLang, S, getLang, isLang, setLang } from "./strings"
-import { Any, InBrowser, KeysOfByType, LogicValue, UIDisplay, copyToClipboard, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, setDisplay, setVisible, showModal, toggleVisible } from "./utils"
+import { Any, InBrowser, KeysOfByType, LogicValue, UIDisplay, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, setDisplay, setVisible, showModal, toggleVisible, valuesFromReprForInput } from "./utils"
 
 
 
@@ -1550,8 +1549,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         Serialization.removeShowOnlyFrom(jsonObj)
         const jsonForUri = Serialization.stringifyObject(jsonObj, true)
 
-        console.log("Full JSON:\n" + jsonFull)
-        console.log("JSON for URL:\n" + jsonForUri)
+        // console.log("Full JSON:\n" + jsonFull)
+        // console.log("JSON for URL:\n" + jsonForUri)
 
         // We did this in the past, but now we're compressing things a bit
         // const encodedJson1 = btoa(json).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "%3D")
@@ -1671,8 +1670,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const oldMode = this.mode
         const fast = options?.fast ?? false
         const doLog = options?.doLog ?? false
-        const allOldInValues: InOutValueMap = new Map()
-
+        const allOldInValues = new Map<Input, LogicValue[]>()
 
         try {
             this.setMode(Mode.STATIC, false)
@@ -1700,60 +1698,43 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 } else {
                     const [oldInValues, result] = await this.runTestCase(testCase, testSuite, doLog)
                     testCaseResult = result
-                    for (const [inputName, value] of oldInValues) {
-                        if (!allOldInValues.has(inputName)) {
-                            allOldInValues.set(inputName, value)
+                    for (const [input, value] of oldInValues) {
+                        if (!allOldInValues.has(input)) {
+                            allOldInValues.set(input, value)
                         }
                     }
                 }
                 results.addTestCaseResult(testCase, testCaseResult)
                 ui.setResult(i, testCaseResult)
-                if (testCase.breakOnFail && testCaseResult._tag === "fail") {
+                if (testCase.stopOnFail && testCaseResult._tag === "fail") {
                     skip = true
                 }
             }
             return results
 
         } finally {
-            console.log("Restoring old input values", allOldInValues)
             this.setMode(oldMode, true)
-            for (const [inputName, value] of allOldInValues) {
-                this.trySetInput(inputName, value)
+            for (const [input, value] of allOldInValues) {
+                input.setValue(value)
             }
             this.recalcPropagateAndDrawIfNeeded()
         }
     }
 
-    /**
-     * Sets the value of an input referred to by name. We currently assume it's a single-bit input.
-     * This doesn't trigger a recalculation, so you should probably call `recalcPropagateAndDrawIfNeeded`
-     * after a series of these calls here.
-     * @returns the value that was set before, or undefined if the input was not found
-     */
-    private trySetInput(inputName: string, value: LogicValue): LogicValue | undefined {
-        const comp = this.components.get(inputName)
-        if (comp === undefined || !(comp instanceof Input)) {
-            console.error(`Input component ${inputName} not found`)
-            return undefined
+    public trySetInputsAndRecalc(inputs: TestCaseValueMap<Input>) {
+        for (const [input, valueRepr] of inputs) {
+            if (!isString(input)) {
+                input.setValue(valuesFromReprForInput(valueRepr, input.numBits))
+            }
         }
-        const oldValue = comp.value[0]
-        comp.setValue([value])
-        return oldValue
-    }
-
-    public trySetInputsAndRecalc(inputs: InOutValueMap | Record<string, LogicValue>) {
-        const iter = inputs instanceof Map ? inputs : Object.entries(inputs)
-        for (const [inputName, inputValue] of iter) {
-            this.trySetInput(inputName, inputValue)
-        }
-        this.recalcPropagateAndDrawIfNeeded(true)
+        this.recalcPropagateAndDrawIfNeeded(false)
     }
 
     private async runTestCase(
         testCase: TestCaseCombinational,
         sourceSuite: TestSuite,
         doLog: boolean
-    ): Promise<[InOutValueMap, TestCaseResult]> {
+    ): Promise<[Map<Input, LogicValue[]>, TestCaseResult]> {
 
         const fullTestNameParts = [sourceSuite.name, testCase.name].filter(Boolean)
         const fullTestName = fullTestNameParts.length === 0 ? S.Tests.DefaultTestCaseName : fullTestNameParts.join("/")
@@ -1763,36 +1744,37 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             console.group(msg)
         }
 
-        const oldInValues: InOutValueMap = new Map()
+        testCase.tryFixReferences(this.components)
+        const oldInValues = new Map<Input, LogicValue[]>()
         try {
-            for (const [inputName, inputValue] of testCase.in) {
-                const oldValue = this.trySetInput(inputName, inputValue)
-                if (oldValue === undefined) {
-                    return [oldInValues, TestCaseResult.Error(`Input component ${inputName} not found`)]
+            for (const [input, valueRepr] of testCase.in) {
+                if (isString(input)) {
+                    return [oldInValues, TestCaseResult.Error(`Input component ${input} not found`)]
                 }
-                oldInValues.set(inputName, oldValue)
+                oldInValues.set(input, input.value)
+                input.setValue(valuesFromReprForInput(valueRepr, input.numBits))
             }
             // console.log(`Propagation starting at ${this.timeline.logicalTime()}...`)
             this.recalcPropagateAndDrawIfNeeded(true)
             await this.waitForPropagation()
             // console.log(`Propagation done at ${this.timeline.logicalTime()}`)
             const mismatches: TestCaseResultMismatch[] = []
-            for (const [outputName, expected] of testCase.out) {
-                const comp = this.components.get(outputName)
-                if (comp === undefined || !(comp instanceof Output)) {
-                    return [oldInValues, TestCaseResult.Error(`Output component ${outputName} not found`)]
+            for (const [output, expectedRepr] of testCase.out) {
+                if (isString(output)) {
+                    return [oldInValues, TestCaseResult.Error(`Output component ${output} not found`)]
                 }
-                const actual = comp.value[0]
+                const actual = output.value
+                const expected = valuesFromReprForInput(expectedRepr, output.numBits)
                 // console.log(`  ${outputName}: ${actual} (expected ${expected})`)
-                if (actual !== expected) {
-                    mismatches.push({ name: outputName, expected, actual })
+                if (!deepArrayEquals(actual, expected)) {
+                    mismatches.push({ output, expected, actual })
                     if (doLog) {
-                        const failMsg = `${outputName} is ${actual} instead of ${expected}`
+                        const failMsg = `${output.ref} is ${actual} instead of ${expected}`
                         console.log(`%cFAIL:%c ${failMsg}`, 'color: red; font-weight: bold;', '')
                     }
                 } else {
                     if (doLog) {
-                        const passMsg = `${outputName} is ${expected}`
+                        const passMsg = `${output.ref} is ${expected}`
                         console.log(`%cPASS:%c ${passMsg}`, 'color: green; font-weight: bold;', '')
                     }
                 }
@@ -1893,7 +1875,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
     }
 
-    public highlight(refs: string | string[] | undefined) {
+    public highlight(refs: string | string[] | Component | undefined) {
         if (refs === undefined) {
             this._highlightedItems = undefined
             return
@@ -1904,23 +1886,29 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
 
         const highlightComps: Component[] = []
-        for (const comp of this.components.all()) {
-            if (comp.ref !== undefined && refs.includes(comp.ref)) {
-                highlightComps.push(comp)
-            }
-        }
-
         const highlightWires: Wire[] = []
-        for (const wire of this.linkMgr.wires) {
-            if (wire.ref !== undefined && refs.includes(wire.ref)) {
-                highlightWires.push(wire)
-            }
-        }
 
-        if (highlightComps.length === 0 && highlightWires.length === 0) {
-            console.log(`Nothing to highlight for ref '${refs}'`)
-            this._highlightedItems = undefined
-            return
+        if (!isArray(refs)) {
+            // a single component
+            highlightComps.push(refs)
+        } else {
+            for (const comp of this.components.all()) {
+                if (comp.ref !== undefined && refs.includes(comp.ref)) {
+                    highlightComps.push(comp)
+                }
+            }
+
+            for (const wire of this.linkMgr.wires) {
+                if (wire.ref !== undefined && refs.includes(wire.ref)) {
+                    highlightWires.push(wire)
+                }
+            }
+
+            if (highlightComps.length === 0 && highlightWires.length === 0) {
+                console.log(`Nothing to highlight for ref '${refs}'`)
+                this._highlightedItems = undefined
+                return
+            }
         }
 
         const start = this.timeline.unadjustedTime()
@@ -2293,13 +2281,13 @@ export class LogicStatic {
     public runSampleTestSuite(options: unknown): void {
         const f = async () => {
             if (this.singleton) {
-                const testSuite = new TestSuite({
+                const testSuite = new TestSuite([{
                     name: "Simple XOR gate test suite",
                     cases: [{
                         name: "false false -> false",
                         in: { in0: 0, in1: 0 },
                         out: { out0: 0 },
-                        breakOnFail: true,
+                        stopOnFail: true,
                     }, {
                         name: "false true -> true",
                         in: { in0: 1, in1: 0 },
@@ -2313,7 +2301,7 @@ export class LogicStatic {
                         in: { in0: 1, in1: 1 },
                         out: { out0: 0 },
                     }],
-                })
+                }, this.singleton.components])
                 const _opts = isRecord(options) ? options : {}
                 const results = await this.singleton.runTestSuite(testSuite, _opts)
                 if (results === undefined) {

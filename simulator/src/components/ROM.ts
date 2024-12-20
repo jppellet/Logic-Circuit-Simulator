@@ -3,7 +3,7 @@ import * as t from "io-ts"
 import { COLOR_COMPONENT_BORDER, COLOR_EMPTY, colorForLogicValue, displayValuesFromArray, formatWithRadix, strokeSingleLine } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
-import { ArrayFillWith, InteractionResult, LogicValue, Unknown, allBooleans, binaryStringRepr, hexStringRepr, isAllZeros, isArray, isUnknown, typeOrUndefined, wordFromBinaryOrHexRepr } from "../utils"
+import { ArrayFillWith, InteractionResult, LogicValue, Unknown, allBooleans, binaryStringRepr, hexStringRepr, isAllZeros, isArray, isUnknown, typeOrUndefined, valuesFromBinaryOrHexRepr } from "../utils"
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineAbstractParametrizedComponent, defineParametrizedComponent, groupHorizontal, groupVertical, param } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItem, MenuItemPlacement, MenuItems, Orientation } from "./Drawable"
 import { RAM, RAMDef } from "./RAM"
@@ -89,7 +89,7 @@ export abstract class ROMRAMBase<TRepr extends ROMRAMRepr> extends ParametrizedC
         for (let i = 0; i < numWords; i++) {
             const row = i >= splitContent.length
                 ? ArrayFillWith(false, numDataBits)
-                : wordFromBinaryOrHexRepr(splitContent[i], numDataBits)
+                : valuesFromBinaryOrHexRepr(splitContent[i], numDataBits)
             mem[i] = row
         }
         return mem
@@ -123,7 +123,8 @@ export abstract class ROMRAMBase<TRepr extends ROMRAMRepr> extends ParametrizedC
         }
     }
 
-    private contentRepr<TrimEnd extends boolean>(delim: string, trimEnd: TrimEnd): TrimEnd extends false ? string : string | undefined {
+    private contentRepr<TrimEnd extends boolean>(delim: string, trimEnd: TrimEnd)
+        : string | (TrimEnd extends false ? never : undefined) {
         const cells: string[] = []
         const useHex = this.numDataBits >= 8
         const hexWidth = Math.ceil(this.numDataBits / 4)

@@ -1,6 +1,5 @@
 import * as t from "io-ts"
-import { DrawZIndex } from "../ComponentList"
-import { COLOR_COMPONENT_BORDER, FONT_LABEL_DEFAULT, GRID_STEP } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, DrawZIndex, FONT_LABEL_DEFAULT, GRID_STEP } from "../drawutils"
 import { S } from "../strings"
 import { InteractionResult, typeOrUndefined } from "../utils"
 import { ComponentBase, Repr, defineComponent } from "./Component"
@@ -70,7 +69,7 @@ export class Label extends ComponentBase<LabelRepr> {
     }
 
     public override get drawZIndex(): DrawZIndex {
-        return 2
+        return DrawZIndex.Overlay
     }
 
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {

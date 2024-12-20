@@ -1,14 +1,7 @@
 import { Component } from "./components/Component"
 import { CustomComponent } from "./components/CustomComponent"
+import { DrawZIndex } from "./drawutils"
 import { ArrayFillUsing, isString } from "./utils"
-
-export const DrawZIndex = {
-    Background: 0,
-    Normal: 1,
-    Overlay: 2,
-} as const
-
-export type DrawZIndex = typeof DrawZIndex[keyof typeof DrawZIndex]
 
 export class ComponentList {
 

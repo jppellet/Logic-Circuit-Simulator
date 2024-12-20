@@ -1,6 +1,5 @@
 import * as t from "io-ts"
-import { DrawZIndex } from "../ComponentList"
-import { COLOR_COMPONENT_BORDER, COLOR_RECTANGLE_BACKGROUND, COLOR_RECTANGLE_BORDER, FONT_LABEL_DEFAULT, GRID_STEP } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, COLOR_RECTANGLE_BACKGROUND, COLOR_RECTANGLE_BORDER, DrawZIndex, FONT_LABEL_DEFAULT, GRID_STEP } from "../drawutils"
 import { span, style, title } from "../htmlgen"
 import { S } from "../strings"
 import { InteractionResult, typeOrUndefined } from "../utils"
@@ -126,7 +125,7 @@ export class Rectangle extends ComponentBase<RectangleRepr> {
     }
 
     public override get drawZIndex(): DrawZIndex {
-        return 0
+        return DrawZIndex.Background
     }
 
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {

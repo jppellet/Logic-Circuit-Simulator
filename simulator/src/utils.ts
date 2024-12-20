@@ -221,11 +221,15 @@ export function ArrayFillUsing<T>(val: (i: number) => T, n: number): Array<T> {
 
 export function ArrayClampOrPad<T>(arr: T[], len: number, padValue: T): T[] {
     const missing = len - arr.length
+    if (missing === 0) {
+        return arr
+    }
     if (missing > 0) {
         for (let i = 0; i < missing; i++) {
             arr.push(padValue)
         }
-    } else if (missing < 0) {
+    } else {
+        // missing < 0
         arr.splice(len, -missing)
     }
     return arr
@@ -452,6 +456,10 @@ export const EdgeTrigger = {
 
 export type EdgeTrigger = keyof typeof EdgeTrigger
 
+export const ComponentTypeInput = "in" as const
+
+export const ComponentTypeOutput = "out" as const
+
 
 // More general-purpose utility functions
 
@@ -490,7 +498,7 @@ export function deepObjectEquals(v1: Record<string, unknown>, v2: Record<string,
         return false
     }
     for (const key of keys1) {
-        if (!deepEquals(v1[key], v2[key])) {
+        if (!deepArrayEquals(v1[key], v2[key])) {
             return false
         }
     }
@@ -499,7 +507,7 @@ export function deepObjectEquals(v1: Record<string, unknown>, v2: Record<string,
 
 
 
-export function deepEquals(v1: any, v2: any) {
+export function deepArrayEquals(v1: unknown, v2: unknown) {
     if (isArray(v1) && isArray(v2)) {
         if (v1.length !== v2.length) {
             return false
@@ -633,6 +641,13 @@ export function toLogicValueFromChar(char: string): LogicValue {
     }
 }
 
+export const InputOutputValueRepr = t.union([
+    LogicValueRepr,
+    t.string,
+    t.array(LogicValueRepr),
+])
+export type InputOutputValueRepr = t.TypeOf<typeof InputOutputValueRepr>
+
 export function allBooleans(values: LogicValue[]): values is boolean[] {
     for (const v of values) {
         if (v !== true && v !== false) {
@@ -661,7 +676,7 @@ export function hexStringRepr(values: boolean[], hexWidth: number): string {
     return parseInt(binStr, 2).toString(16).toUpperCase().padStart(hexWidth, "0")
 }
 
-export function wordFromBinaryOrHexRepr(wordRepr: string, numBits: number) {
+export function valuesFromBinaryOrHexRepr(wordRepr: string, numBits: number): LogicValue[] {
     const len = wordRepr.length
     const isBinary = len === numBits
     const binaryRepr = isBinary ? wordRepr : parseInt(wordRepr, 16).toString(2).padStart(numBits, "0")
@@ -671,6 +686,46 @@ export function wordFromBinaryOrHexRepr(wordRepr: string, numBits: number) {
     }
     return row
 }
+
+export function valuesFromReprForInput(repr: string | LogicValueRepr | LogicValueRepr[] | undefined, numBits: number): LogicValue[] {
+    if (repr === undefined || isString(repr) && repr.length === 0) {
+        // empty string or undefined
+        return ArrayFillWith<LogicValue>(false, numBits)
+    }
+    if (isArray(repr)) {
+        // array of LogicValueRepr
+        return ArrayClampOrPad(repr.map(v => toLogicValue(v)), numBits, false)
+    }
+    if (isNumber(repr)) {
+        // use that number for all bits
+        return ArrayFillWith<LogicValue>(toLogicValue(repr), numBits)
+    }
+    // by now, we have a bit string
+    return ArrayClampOrPad(Array.from(repr).reverse().map(v => toLogicValueFromChar(v)), numBits, false)
+}
+
+export function reprForLogicValues<AllowUndefined extends boolean>(values: LogicValue[], undefinedIfTrivial: AllowUndefined): LogicValueRepr | string | (AllowUndefined extends false ? never : undefined) {
+    const numBits = values.length
+    if (numBits === 1) {
+        const value = values[0]
+        return undefinedIfTrivial && value === false ? undefined as any : toLogicValueRepr(value)
+    }
+    if (undefinedIfTrivial) {
+        let nontrivial = false
+        for (let i = 0; i < numBits; i++) {
+            if (values[i] !== false) {
+                nontrivial = true
+                break
+            }
+        }
+        if (!nontrivial) {
+            return undefined as any
+        }
+    }
+
+    return values.map(toLogicValueRepr).reverse().join("")
+}
+
 
 
 // Enums or RichEnums used in several files

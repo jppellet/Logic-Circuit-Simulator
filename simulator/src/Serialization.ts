@@ -190,7 +190,7 @@ class _Serialization {
         if (isArray(parsed.tests)) {
             const testSuiteReprs = validateJson(parsed.tests, TestSuite.ReprArray, "tests")
             if (testSuiteReprs !== undefined) {
-                const testSuites = testSuiteReprs.map(ts => new TestSuite(ts))
+                const testSuites = testSuiteReprs.map(ts => new TestSuite([ts, componentList]))
                 parent.testSuites.set(testSuites)
             }
         }
