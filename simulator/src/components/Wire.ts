@@ -427,12 +427,13 @@ export class Wire extends Drawable {
             return
         }
 
-        let prevX = this.startNode.posX
-        let prevY = this.startNode.posY
-        let prevProlong = this.startNode.wireProlongDirection
-        const lastWaypointData = { posX: this.endNode.posX, posY: this.endNode.posY, orient: this.endNode.wireProlongDirection }
+
+        // eslint-disable-next-line prefer-const
+        let [startX, startY, prevX, prevY, prevProlong] = this.startNode.drawCoords
+        const [endLeadX, endLeadY, endNodeX, endNodeY, endNodeProlong] = this.endNode.drawCoords
+        const lastWaypointData = { posX: endNodeX, posY: endNodeY, orient: endNodeProlong }
         const allWaypoints = [...this._waypoints, lastWaypointData]
-        let svgPathDesc = "M" + prevX + " " + prevY + " "
+        let svgPathDesc = "M" + startX + " " + startY + " " + "L" + prevX + " " + prevY + " "
         const wireStyle = this.style ?? this.startNode.parent.editor.options.wireStyle
         for (let i = 0; i < allWaypoints.length; i++) {
             const waypoint = allWaypoints[i]
@@ -469,6 +470,8 @@ export class Wire extends Drawable {
             prevY = nextY
             prevProlong = Orientation.invert(nextProlong)
         }
+
+        svgPathDesc += "L" + endLeadX + " " + endLeadY
 
         const path = g.createPath(svgPathDesc)
 

@@ -125,3 +125,4 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
  * Unify click-and-drag also from left buttons instead of click-and-move
  * Name field for non-input components, done with component anchoring
  * Lock component to some "parent" to move them more intuitively
+ * Draw wires from edge of component to the other edge when connected

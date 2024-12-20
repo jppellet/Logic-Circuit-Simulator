@@ -185,7 +185,7 @@ export abstract class GateBase<
         }
 
         const gateWidth = (2 * Math.max(2, this.numBits)) * GRID_STEP
-        let gateLeft = this.posX - gateWidth / 2
+        const gateLeft = this.posX - gateWidth / 2
         let gateRight = this.posX + gateWidth / 2
         let nameDeltaX = 0
 
@@ -205,48 +205,25 @@ export abstract class GateBase<
             g.fill()
             g.stroke()
         }
-        const drawWireEnds = (shortUp = false, shortDown = false, isORLike = false) => {
-            for (let i = 0; i < numBits; i++) {
-                const input = this.inputs.In[i]
-                const short = i === 0 ? shortUp : shortDown
-                let rightEnd = gateLeft + (isORLike ? type.includes("x") ? -1 : 5 : 0)
-                if (short) {
-                    rightEnd -= 9
-                }
-                if (isORLike) {
-                    if (numBits === 3) {
-                        rightEnd += 1
-                        if (i === 1) {
-                            rightEnd += 4
-                        }
-                    } else if (numBits === 4) {
-                        rightEnd += 2
-                        if (i === 1 || i === 2) {
-                            rightEnd += 8
-                        }
-                    } else if (numBits > 4) {
-                        rightEnd += 76
-                    }
-                }
-                drawWireLineToComponent(g, input, rightEnd, input.posYInParentTransform)
-            }
-            drawWireLineToComponent(g, output, gateRight - 1, this.posY)
-        }
 
         const showAsFake = isFake && this.parent.mode >= Mode.FULL
         const gateBorderColor: ColorString = showAsFake ? COLOR_DARK_RED : COLOR_COMPONENT_BORDER
         const gateFill = showAsFake ? PATTERN_STRIPED_GRAY : COLOR_BACKGROUND
-        const prepareMainFill = () => {
-            g.lineWidth = 3
-            g.strokeStyle = gateBorderColor
-            g.fillStyle = gateFill
+
+        // inputs and output
+        for (let i = 0; i < numBits; i++) {
+            drawWireLineToComponent(g, this.inputs.In[i])
         }
+        drawWireLineToComponent(g, output)
+
+        // prepare main fill
+        g.lineWidth = 3
+        g.strokeStyle = gateBorderColor
+        g.fillStyle = gateFill
 
         switch (type) {
             case "not":
             case "buf": {
-                drawWireEnds()
-                prepareMainFill()
                 g.beginPath()
                 g.moveTo(gateLeft, top)
                 g.lineTo(gateRight, this.posY)
@@ -265,10 +242,6 @@ export abstract class GateBase<
             case "nand":
             case "nimply":
             case "rnimply": {
-                const shortDown = type === "nimply"
-                const shortUp = type === "rnimply"
-                drawWireEnds(shortUp, shortDown)
-                prepareMainFill()
                 g.beginPath()
                 g.moveTo(this.posX, bottom)
                 g.lineTo(gateLeft, bottom)
@@ -286,9 +259,9 @@ export abstract class GateBase<
                 if (type.startsWith("nand")) {
                     drawRightCircle()
                 }
-                if (shortDown) {
+                if (type === "nimply") {
                     drawLeftCircle(false)
-                } else if (shortUp) {
+                } else if (type === "rnimply") {
                     drawLeftCircle(true)
                 }
                 nameDeltaX -= 1
@@ -301,10 +274,6 @@ export abstract class GateBase<
             case "xnor":
             case "imply":
             case "rimply": {
-                const shortUp = type === "imply"
-                const shortDown = type === "rimply"
-                drawWireEnds(shortUp, shortDown, true)
-                prepareMainFill()
                 g.beginPath()
                 g.moveTo(gateLeft, top)
                 g.lineTo(this.posX - 15, top)
@@ -317,21 +286,26 @@ export abstract class GateBase<
                 g.closePath()
                 g.fill()
                 g.stroke()
-                const savedGateLeft = gateLeft
-                gateLeft += 4
                 if (type.startsWith("nor") || type.startsWith("xnor")) {
                     drawRightCircle()
                 }
-                if (shortUp) {
+                if (type === "imply") {
                     drawLeftCircle(true)
-                } else if (shortDown) {
+                } else if (type === "rimply") {
                     drawLeftCircle(false)
                 }
                 if (type.startsWith("x")) {
-                    gateLeft = savedGateLeft - 2
+                    // clear the "middle"
                     g.beginPath()
-                    g.moveTo(savedGateLeft - 6, bottom)
-                    g.quadraticCurveTo(this.posX - 14, this.posY, savedGateLeft - 6, top)
+                    g.moveTo(gateLeft - 3, bottom)
+                    g.quadraticCurveTo(this.posX - 11, this.posY, gateLeft - 3, top)
+                    g.lineWidth = 3
+                    g.strokeStyle = COLOR_BACKGROUND
+                    g.stroke()
+                    // left additional line for x gates
+                    g.beginPath()
+                    g.moveTo(gateLeft - 6, bottom)
+                    g.quadraticCurveTo(this.posX - 14, this.posY, gateLeft - 6, top)
                     g.lineWidth = 3
                     g.strokeStyle = gateBorderColor
                     g.stroke()
@@ -342,9 +316,6 @@ export abstract class GateBase<
 
             case "txa":
             case "txna": {
-                const shortLeft = type === "txna"
-                drawWireEnds(shortLeft, false)
-                prepareMainFill()
                 g.beginPath()
                 g.moveTo(gateLeft, bottom)
                 g.lineTo(gateLeft, top)
@@ -352,7 +323,7 @@ export abstract class GateBase<
                 g.lineTo(gateLeft + 2, this.posY + 0.5)
                 g.fill()
                 g.stroke()
-                if (shortLeft) {
+                if (type === "txna") {
                     drawLeftCircle(true)
                 }
                 break
@@ -360,9 +331,6 @@ export abstract class GateBase<
 
             case "txb":
             case "txnb": {
-                const shortLeft = type === "txnb"
-                drawWireEnds(false, shortLeft)
-                prepareMainFill()
                 g.beginPath()
                 g.moveTo(gateLeft, top)
                 g.lineTo(gateLeft, bottom)
@@ -370,15 +338,13 @@ export abstract class GateBase<
                 g.lineTo(gateLeft + 2, this.posY - 0.5)
                 g.fill()
                 g.stroke()
-                if (shortLeft) {
+                if (type === "txnb") {
                     drawLeftCircle(false)
                 }
                 break
             }
 
             case "?": {
-                drawWireEnds()
-                prepareMainFill()
                 g.strokeStyle = COLOR_UNKNOWN
                 g.beginPath()
                 g.moveTo(gateLeft, top)
@@ -548,8 +514,8 @@ export const Gate1Def =
             gridWidth: 7, gridHeight: 4,
         }),
         makeNodes: () => ({
-            ins: { In: [[-4, 0, "w"]] },
-            outs: { Out: [+4, 0, "e"] },
+            ins: { In: [[-4, 0, "w", { leadLength: 20 }]] },
+            outs: { Out: [+4, 0, "e", { leadLength: 20 }] },
         }),
         initialValue: () => false as LogicValue,
     })
@@ -614,15 +580,16 @@ export const GateNDef =
             gridWidth: 7 + Math.max(0, numBits - 2) * 2,
             gridHeight: 4 + Math.max(0, numBits - 2) * 2,
         }),
-        makeNodes: ({ numBits }) => {
+        makeNodes: ({ numBits, gridWidth }) => {
             const outX = 4 + (numBits - 2)
             const inX = -outX
+            const leadLength = gridWidth * GRID_STEP / 3
             return {
                 ins: {
-                    In: groupVertical("w", inX, 0, numBits),
+                    In: groupVertical("w", inX, 0, numBits, undefined, { leadLength }),
                 },
                 outs: {
-                    Out: [outX, 0, "e"],
+                    Out: [outX, 0, "e", { leadLength: 20 }],
                 },
             }
         },

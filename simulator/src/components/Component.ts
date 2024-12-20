@@ -2,7 +2,7 @@ import * as t from "io-ts"
 import JSON5 from "json5"
 import type { ComponentKey, DefAndParams, LibraryButtonOptions, LibraryButtonProps, LibraryItem } from "../ComponentMenu"
 import { DrawParams, LogicEditor } from "../LogicEditor"
-import { COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, DrawingRect, GRID_STEP, drawClockInput, drawComponentName, drawLabel, drawWireLineToComponent, isTrivialNodeName, shouldShowNode, useCompact } from "../drawutils"
+import { COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, DrawingRect, GRID_STEP, drawClockInput, drawComponentName, drawLabel, drawWireLineToComponent, isTrivialNodeName, shouldShowWiresTo, useCompact } from "../drawutils"
 import { IconName, ImageName } from "../images"
 import { S, Template } from "../strings"
 import { ArrayFillUsing, ArrayOrDirect, EdgeTrigger, Expand, FixedArrayMap, HasField, HighImpedance, InteractionResult, LogicValue, LogicValueRepr, Mode, Unknown, brand, deepArrayEquals, isArray, isBoolean, isNumber, isRecord, isString, mergeWhereDefined, toLogicValueRepr, typeOrUndefined, validateJson } from "../utils"
@@ -196,10 +196,19 @@ export const ComponentNameRepr = typeOrUndefined(
     ])
 )
 
-export type NodeOutDesc = readonly [x: number, y: number, orient: Orientation, fullName?: string, opts?: { hasTriangle?: boolean, labelName?: string }]
-export type NodeInDesc = readonly [x: number, y: number, orient: Orientation, fullName?: string, opts?: { hasTriangle?: boolean, labelName?: string, prefersSpike?: boolean, isClock?: boolean }]
+type NodeOutDescOptions = { hasTriangle?: boolean, labelName?: string, leadLength?: number }
+export type NodeOutDesc =
+    | readonly [x: number, y: number, orient: Orientation, opts?: NodeOutDescOptions]
+    | readonly [x: number, y: number, orient: Orientation, fullName?: string, opts?: NodeOutDescOptions]
+
+
+type NodeInDescOptions = { hasTriangle?: boolean, labelName?: string, leadLength?: number, prefersSpike?: boolean, isClock?: boolean }
+export type NodeInDesc =
+    | readonly [x: number, y: number, orient: Orientation, opts?: NodeInDescOptions]
+    | readonly [x: number, y: number, orient: Orientation, fullName?: string, opts?: NodeInDescOptions]
+
 export type NodeDesc = NodeOutDesc | NodeInDesc
-export type NodeDescInGroup = readonly [x: number, y: number, shortNameOverride?: string]
+export type NodeDescInGroup = readonly [x: number, y: number, shortNameOverride?: string, opts?: NodeInDescOptions]
 export type NodeGroupDesc<D extends NodeDesc> = ReadonlyArray<D>
 export type NodeGroupMultiDesc<D extends NodeDesc> = ReadonlyArray<NodeGroupDesc<D>>
 export type NodeRec<D extends NodeDesc> = Record<string, D | NodeGroupDesc<D> | NodeGroupMultiDesc<D>>
@@ -417,6 +426,7 @@ export abstract class ComponentBase<
             _gridOffsetY: number,
             hasTriangle: boolean,
             orient: Orientation,
+            leadLength: number | undefined,
         ) => TNode) {
 
         const nodes: Record<string, TNode | ReadonlyArray<TNode> | ReadonlyArray<ReadonlyArray<TNode>>> = {}
@@ -426,10 +436,20 @@ export abstract class ComponentBase<
         if (nodeRec !== undefined) {
             const makeNode = (group: NodeGroup<TNode> | undefined, shortName: string, desc: TDesc) => {
                 const spec = specs[nextSpecIndex++]
-                const [offsetX, offsetY, orient, nameOverride, options_] = desc
-                const options = options_ as NodeInDesc[4] // bleh
+                const [offsetX, offsetY, orient, nameOrOptions, options_] = desc
+                let nameOverride: string | undefined = undefined
+                let options: NodeInDescOptions | undefined = undefined
+                if (isString(nameOrOptions)) {
+                    nameOverride = nameOrOptions
+                } else if (nameOrOptions !== undefined) {
+                    options = nameOrOptions
+                }
+                if (options_ !== undefined) {
+                    options = options_
+                }
                 const isClock = options?.isClock ?? false
                 const prefersSpike = options?.prefersSpike ?? false
+                const leadLength = options?.leadLength
                 const hasTriangle = options?.hasTriangle ?? false
                 if (group !== undefined && nameOverride !== undefined) {
                     // names in groups are considered short names to be used as labels
@@ -449,6 +469,7 @@ export abstract class ComponentBase<
                     offsetY,
                     hasTriangle,
                     orient,
+                    leadLength,
                 )
                 if (prefersSpike || isClock) {
                     if (newNode instanceof NodeIn) {
@@ -874,12 +895,11 @@ export abstract class ComponentBase<
             return
         }
 
-        const offset = node.hasTriangle ? 3 : 0
-        drawWireLineToComponent(g, node, ...this.anchorFor(node, bounds, offset), node.hasTriangle)
+        drawWireLineToComponent(g, node)
     }
 
     protected drawGroupBox(g: GraphicsRendering, group: NodeGroup<Node>, bounds: DrawingRect) {
-        if (!shouldShowNode(group.nodes)) {
+        if (!shouldShowWiresTo(group.nodes)) {
             return
         }
 
@@ -1459,15 +1479,15 @@ export abstract class ParametrizedComponentBase<
 //
 
 export function group<const TDescArr extends readonly NodeDescInGroup[]>(orient: Orientation, nodes: TDescArr) {
-    return FixedArrayMap(nodes, ([x, y, name]) => [x, y, orient, name] as const)
+    return FixedArrayMap(nodes, ([x, y, name, opts]) => [x, y, orient, name, opts] as const)
 }
 
-export function groupVertical(orient: "e" | "w", x: number, yCenter: number, num: number, spacing?: number) {
+export function groupVertical(orient: "e" | "w", x: number, yCenter: number, num: number, spacing?: number, opts?: NodeInDescOptions) {
     const spacing_ = spacing ?? (useCompact(num) ? 1 : 2)
     const span = (num - 1) * spacing_
     const yTop = yCenter - span / 2
     return group(orient,
-        ArrayFillUsing(i => [x, yTop + i * spacing_], num)
+        ArrayFillUsing(i => [x, yTop + i * spacing_, undefined, opts], num)
     )
 }
 
@@ -1482,12 +1502,12 @@ export function groupVerticalMulti(orient: "e" | "w", x: number, yCenter: number
     ), numOuter)
 }
 
-export function groupHorizontal(orient: "n" | "s", xCenter: number, y: number, num: number, spacing?: number) {
+export function groupHorizontal(orient: "n" | "s", xCenter: number, y: number, num: number, spacing?: number, opts?: NodeInDescOptions) {
     const spacing_ = spacing ?? (useCompact(num) ? 1 : 2)
     const span = (num - 1) * spacing_
     const xRight = xCenter + span / 2
     return group(orient,
-        ArrayFillUsing(i => [xRight - i * spacing_, y], num)
+        ArrayFillUsing(i => [xRight - i * spacing_, y, undefined, opts], num)
     )
 }
 

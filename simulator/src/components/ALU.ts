@@ -40,7 +40,7 @@ export const ALUDef =
             const top = -bottom
             const topGroupBits = usesExtendedOpcode ? 5 : 3
             // top group is built together
-            const topGroup = groupHorizontal("n", 0, top, topGroupBits)
+            const topGroup = groupHorizontal("n", 0, top, topGroupBits, undefined, { leadLength: 20 })
             const cin = topGroup.pop()!
             // extracted to be mapped correctly when switching between reduced/extended opcodes
             const opMode = topGroup.pop()!
@@ -50,13 +50,13 @@ export const ALUDef =
                     B: groupVertical("w", -outputX, inputCenterY, numBits),
                     Op: topGroup,
                     Mode: opMode,
-                    Cin: [cin[0], cin[1], "n", `Cin (${S.Components.ALU.InputCinDesc})`],
+                    Cin: [cin[0], cin[1], "n", `Cin (${S.Components.ALU.InputCinDesc})`, { leadLength: 10 }],
                 },
                 outs: {
                     S: groupVertical("e", outputX, 0, numBits),
-                    V: [0, bottom, "s", "V (oVerflow)"],
-                    Z: [2, bottom, "s", "Z (Zero)"],
-                    Cout: [-2, bottom, "s", `Cout (${S.Components.ALU.OutputCoutDesc})`],
+                    V: [0, bottom, "s", "V (oVerflow)", { leadLength: 20 }],
+                    Z: [2, bottom, "s", "Z (Zero)", { leadLength: 20 }],
+                    Cout: [-2, bottom, "s", `Cout (${S.Components.ALU.OutputCoutDesc})`, { leadLength: 20 }],
                 },
             }
         },
@@ -169,24 +169,24 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
 
         // inputs
         for (const input of this.inputs.A) {
-            drawWireLineToComponent(g, input, left, input.posYInParentTransform)
+            drawWireLineToComponent(g, input)
         }
         for (const input of this.inputs.B) {
-            drawWireLineToComponent(g, input, left, input.posYInParentTransform)
+            drawWireLineToComponent(g, input)
         }
         for (const input of this.inputs.Op) {
-            drawWireLineToComponent(g, input, input.posXInParentTransform, lowerTop)
+            drawWireLineToComponent(g, input)
         }
-        drawWireLineToComponent(g, this.inputs.Mode, this.inputs.Mode.posXInParentTransform, lowerTop)
-        drawWireLineToComponent(g, this.inputs.Cin, this.inputs.Cin.posXInParentTransform, lowerTop)
+        drawWireLineToComponent(g, this.inputs.Mode)
+        drawWireLineToComponent(g, this.inputs.Cin)
 
         // outputs
         for (const output of this.outputs.S) {
-            drawWireLineToComponent(g, output, right, output.posYInParentTransform)
+            drawWireLineToComponent(g, output)
         }
-        drawWireLineToComponent(g, this.outputs.Z, this.outputs.Z.posXInParentTransform, bottom - 17)
-        drawWireLineToComponent(g, this.outputs.V, this.outputs.V.posXInParentTransform, bottom - 9)
-        drawWireLineToComponent(g, this.outputs.Cout, this.outputs.Cout.posXInParentTransform, bottom - 3)
+        drawWireLineToComponent(g, this.outputs.Z)
+        drawWireLineToComponent(g, this.outputs.V)
+        drawWireLineToComponent(g, this.outputs.Cout)
 
         // outline
         g.fillStyle = COLOR_BACKGROUND

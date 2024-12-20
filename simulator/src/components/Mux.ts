@@ -55,7 +55,7 @@ export const MuxDef =
             return {
                 ins: {
                     I: groupOfInputs,
-                    S: groupHorizontal(controlPinsAtBottom ? "s" : "n", 0, selY, numSel),
+                    S: groupHorizontal(controlPinsAtBottom ? "s" : "n", 0, selY, numSel, undefined, { leadLength: 35 }),
                 },
                 outs: {
                     Z: groupVertical("e", outX, 0, numTo),
@@ -127,18 +127,18 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
         // inputs
         for (const inputGroup of this.inputs.I) {
             for (const input of inputGroup) {
-                drawWireLineToComponent(g, input, left, input.posYInParentTransform)
+                drawWireLineToComponent(g, input)
             }
         }
 
         // selectors
         for (const sel of this.inputs.S) {
-            drawWireLineToComponent(g, sel, sel.posXInParentTransform, top + dy)
+            drawWireLineToComponent(g, sel)
         }
 
         // outputs
         for (const output of this.outputs.Z) {
-            drawWireLineToComponent(g, output, right, output.posYInParentTransform)
+            drawWireLineToComponent(g, output)
         }
 
         // background

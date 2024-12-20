@@ -42,10 +42,10 @@ export const PassthroughDef =
         }),
         makeNodes: ({ numBits }) => ({
             ins: {
-                In: groupVertical("w", -1, 0, numBits),
+                In: groupVertical("w", -1, 0, numBits, undefined, { leadLength: 10 }),
             },
             outs: {
-                Out: groupVertical("e", +1, 0, numBits),
+                Out: groupVertical("e", +1, 0, numBits, undefined, { leadLength: 10 }),
             },
         }),
         initialValue: (saved, { numBits }) => ArrayFillWith<LogicValue>(false, numBits),
@@ -165,10 +165,16 @@ export class Passthrough extends ParametrizedComponentBase<PassthroughRepr> {
         const height = this.unrotatedHeight
         const top = this.posY - height / 2
         const bottom = top + height
-        const left = this.posX - width / 2
-        const right = left + width
         const mouseoverMargin = 4
         const [topShift, bottomShift] = this._hShift
+
+        for (const input of this.inputs._all) {
+            drawWireLineToComponent(g, input)
+        }
+
+        for (const output of this.outputs._all) {
+            drawWireLineToComponent(g, output)
+        }
 
         g.beginPath()
         g.moveTo(this.posX + topShift, top)
@@ -187,14 +193,6 @@ export class Passthrough extends ParametrizedComponentBase<PassthroughRepr> {
         if (this.parent.mode >= Mode.CONNECT) {
             g.lineWidth = width
             g.stroke()
-        }
-
-        for (const input of this.inputs._all) {
-            drawWireLineToComponent(g, input, left + 2 + ((input.gridOffsetX + 1) * GRID_STEP), input.posYInParentTransform)
-        }
-
-        for (const output of this.outputs._all) {
-            drawWireLineToComponent(g, output, right - 2 + ((output.gridOffsetX - 1) * GRID_STEP), output.posYInParentTransform)
         }
     }
 

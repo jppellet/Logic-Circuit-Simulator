@@ -35,7 +35,7 @@ export const OutputDef =
         },
         makeNodes: ({ numBits }) => ({
             ins: {
-                In: groupVertical("w", numBits === 1 ? -3 : -2, 0, numBits),
+                In: groupVertical("w", numBits === 1 ? -3 : -2, 0, numBits, undefined, { hasTriangle: numBits !== 1 }),
             },
         }),
         initialValue: (saved, { numBits }) => ArrayFillWith<LogicValue>(false, numBits),
@@ -99,7 +99,7 @@ export class Output extends ParametrizedComponentBase<OutputRepr> {
     }
 
     private doDrawSingle(g: GraphicsRendering, ctx: DrawContext, input: NodeIn) {
-        drawWireLineToComponent(g, input, this.posX, this.posY)
+        drawWireLineToComponent(g, input)
 
         g.strokeStyle = ctx.borderColor
         g.fillStyle = ctx.borderColor
@@ -109,6 +109,7 @@ export class Output extends ParametrizedComponentBase<OutputRepr> {
             this.posX - INPUT_OUTPUT_DIAMETER / 2 - 5, this.posY + 5,
             this.posX - INPUT_OUTPUT_DIAMETER / 2 - 1, this.posY,
         )
+        g.lineWidth = 2
         g.fill()
         g.stroke()
 
@@ -139,7 +140,7 @@ export class Output extends ParametrizedComponentBase<OutputRepr> {
 
         // inputs
         for (const input of inputs) {
-            drawWireLineToComponent(g, input, left - 2, input.posYInParentTransform, true)
+            drawWireLineToComponent(g, input)
         }
 
         const displayValues = this.parent.editor.options.hideOutputColors ? ArrayFillWith(Unknown, this.numBits) : this.value

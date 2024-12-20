@@ -24,6 +24,7 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
     public readonly id: number
     private _isAlive = true
     private _value: LogicValue = false
+    private _leadLength: number
     protected _initialValue: LogicValue | undefined = undefined
     protected _forceValue: LogicValue | undefined
     protected _color: WireColor = DEFAULT_WIRE_COLOR
@@ -38,6 +39,7 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         private _gridOffsetY: number,
         public readonly hasTriangle: boolean,
         relativePosition: Orientation,
+        private readonly _leadLengthOverride: number | undefined,
     ) {
         super(component.parent)
         this.id = nodeSpec.id
@@ -55,10 +57,64 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         this.parent.nodeMgr.addLiveNode(this.asNode)
         this.updatePositionFromParent()
         this.doSetOrient(relativePosition)
+        this._leadLength = this.updateLeadLength()
     }
 
     private get asNode(): Node {
         return this as unknown as Node
+    }
+
+    public updateLeadLength() {
+        return this._leadLength = this._leadLengthOverride ?? this.defaultLeadLength(Orientation.isVertical(this.orient))
+    }
+
+    private defaultLeadLength(isVertical: boolean): number {
+        const bias = this.hasTriangle ? -2 : 0
+        if (isVertical) {
+            return bias + Math.abs(this._gridOffsetY) * GRID_STEP - this.component.unrotatedHeight / 2
+        }
+        return bias + Math.abs(this._gridOffsetX) * GRID_STEP - this.component.unrotatedWidth / 2
+    }
+
+    public get leadLength() {
+        return this._leadLength
+    }
+
+    /**
+     * @returns [leadEndX, leadEndY, nodeX, nodeY, wireProlongDirection]
+     */
+    public get drawCoords(): [number, number, number, number, Orientation] {
+        const dir = this.wireProlongDirection
+        const x = this.posX
+        const y = this.posY
+        switch (dir) {
+            case "e":
+                return [x + this.leadLength, y, x, y, dir]
+            case "w":
+                return [x - this.leadLength, y, x, y, dir]
+            case "n":
+                return [x, y - this.leadLength, x, y, dir]
+            case "s":
+                return [x, y + this.leadLength, x, y, dir]
+        }
+    }
+
+    /**
+     * @returns [leadEndX, leadEndY, nodeX, nodeY]
+     */
+    public get drawCoordsInParentTransform(): [number, number, number, number] {
+        const x = this.posXInParentTransform
+        const y = this.posYInParentTransform
+        switch (this.orient) {
+            case "e":
+                return [x - this.leadLength, y, x, y]
+            case "w":
+                return [x + this.leadLength, y, x, y]
+            case "n":
+                return [x, y + this.leadLength, x, y]
+            case "s":
+                return [x, y - this.leadLength, x, y]
+        }
     }
 
     public get anchor(): Component | undefined {
@@ -100,6 +156,7 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
     public override isOver(x: number, y: number) {
         return this.parent.mode >= Mode.CONNECT
             && isOverWaypoint(x, y, this.posX, this.posY)
+            && this.acceptsMoreConnections
     }
 
     public destroy() {
@@ -116,7 +173,7 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
 
     protected doDraw(g: GraphicsRendering, ctx: DrawContext) {
         const mode = this.parent.mode
-        if (mode < Mode.CONNECT && !this.forceDraw()) {
+        if ((mode < Mode.CONNECT && !this.forceDraw()) || !this.acceptsMoreConnections) {
             return
         }
 
@@ -205,6 +262,10 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         ) ?? [this.posX, this.posY]
     }
 
+    /**
+     * Points in the direction with which an outgoing wire from this node should start,
+     * e.g. to draw a smooth curve
+     */
     public get wireProlongDirection(): Orientation {
         switch (this.component.orient) {
             case "e":

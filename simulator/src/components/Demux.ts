@@ -58,7 +58,7 @@ export const DemuxDef =
             return {
                 ins: {
                     In: groupVertical("w", inX, 0, numFrom),
-                    S: groupHorizontal(controlPinsAtBottom ? "s" : "n", 0, selY, numSel),
+                    S: groupHorizontal(controlPinsAtBottom ? "s" : "n", 0, selY, numSel, undefined, { leadLength: 35 }),
                 },
                 outs: {
                     Z: groupOfOutputs,
@@ -148,19 +148,19 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
 
         // inputs
         for (const input of this.inputs.In) {
-            drawWireLineToComponent(g, input, left, input.posYInParentTransform)
+            drawWireLineToComponent(g, input)
         }
 
         // selectors
         for (const sel of this.inputs.S) {
-            drawWireLineToComponent(g, sel, sel.posXInParentTransform, top + dy)
+            drawWireLineToComponent(g, sel)
         }
 
 
         // outputs
         for (const outputGroup of this.outputs.Z) {
             for (const output of outputGroup) {
-                drawWireLineToComponent(g, output, right, output.posYInParentTransform)
+                drawWireLineToComponent(g, output)
             }
         }
 

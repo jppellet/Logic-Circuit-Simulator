@@ -211,7 +211,7 @@ export class DisplayBar extends DisplayBarBase<DisplayBarRepr, LogicValue> {
     public getWidthAndHeight() {
         const w = 10
         const h = 2
-        switch (this._display) {
+        switch (this._display ?? DisplayBarDef.aults.display) {
             case "h":
                 return [w * GRID_STEP, h * GRID_STEP] as const
             case "v":
@@ -251,7 +251,9 @@ export class DisplayBar extends DisplayBarBase<DisplayBarRepr, LogicValue> {
 
     private updateInputOffsetX() {
         const width = this.getWidthAndHeight()[0]
-        this.inputs.I.gridOffsetX = -pxToGrid(width / 2) - 2
+        const input = this.inputs.I
+        input.gridOffsetX = -pxToGrid(width / 2) - 1
+        input.updateLeadLength()
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

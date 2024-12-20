@@ -13,11 +13,11 @@ export const TristateBufferDef =
         size: { gridWidth: 7, gridHeight: 4 },
         makeNodes: () => ({
             ins: {
-                In: [-4, 0, "w"],
-                E: [0, -3, "n", "E (Enable)"],
+                In: [-4, 0, "w", { leadLength: 20 }],
+                E: [0, -3, "n", "E (Enable)", { leadLength: 20 }],
             },
             outs: {
-                Out: [+4, 0, "e"],
+                Out: [+4, 0, "e", { leadLength: 20 }],
             },
         }),
         initialValue: () => HighImpedance as LogicValue,
@@ -84,13 +84,16 @@ export class TristateBuffer extends ComponentBase<TristateBufferRepr> {
             g.stroke()
         }
 
-        g.fillStyle = COLOR_BACKGROUND
-        g.strokeStyle = COLOR_COMPONENT_BORDER
-        g.lineWidth = 3
+        drawWireLineToComponent(g, this.inputs.In)
+        drawWireLineToComponent(g, this.inputs.E)
+        drawWireLineToComponent(g, this.outputs.Out)
 
         const gateWidth = (2 * Math.max(2, this.inputs._all.length)) * GRID_STEP
         const gateLeft = this.posX - gateWidth / 2
         const gateRight = this.posX + gateWidth / 2
+        g.fillStyle = COLOR_BACKGROUND
+        g.strokeStyle = COLOR_COMPONENT_BORDER
+        g.lineWidth = 3
 
         g.beginPath()
         g.moveTo(gateLeft, top)
@@ -98,10 +101,6 @@ export class TristateBuffer extends ComponentBase<TristateBufferRepr> {
         g.lineTo(gateLeft, bottom)
         g.closePath()
         g.stroke()
-
-        drawWireLineToComponent(g, this.inputs.In, gateLeft - 1, this.inputs.In.posYInParentTransform)
-        drawWireLineToComponent(g, this.inputs.E, this.inputs.E.posXInParentTransform, this.posY - height / 4 - 1)
-        drawWireLineToComponent(g, this.outputs.Out, gateRight + 1, this.posY)
     }
 
 }

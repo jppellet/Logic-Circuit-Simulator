@@ -427,28 +427,39 @@ export function strokeBezier(g: GraphicsRendering, x0: number, y0: number, ancho
     g.stroke()
 }
 
-export function shouldShowNode(nodeOrArray: Node | readonly Node[]): boolean {
-    if (isArray(nodeOrArray)) {
-        return nodeOrArray.map(shouldShowNode).includes(true)
-    }
-    const node = nodeOrArray as Exclude<typeof nodeOrArray, readonly Node[]>
-    const editor = node.parent.editor
-    if (editor.mode <= Mode.TRYOUT && !editor.options.showDisconnectedPins && node.isDisconnected) {
-        return false
-    }
-    return true
+export function shouldShowWiresTo(nodes: readonly Node[]): boolean {
+    return nodes.map(shouldShowWireOrTriangleFor).some(x => x[0])
 }
 
-
-export function drawWireLineToComponent(g: GraphicsRendering, node: Node, x1: number, y1: number, withTriangle = false) {
-    if (!shouldShowNode(node)) {
-        return
+/**
+ * @returns [showWire, showTriangle]
+ */
+export function shouldShowWireOrTriangleFor(node: Node): [boolean, boolean] {
+    const editor = node.parent.editor
+    const isDisconnected = node.isDisconnected
+    if (editor.mode <= Mode.TRYOUT && !editor.options.showDisconnectedPins && isDisconnected) {
+        return [false, false]
     }
-    const neutral = node.parent.editor.options.hideWireColors
-    const x0 = node.posXInParentTransform
-    const y0 = node.posYInParentTransform
-    drawStraightWireLine(g, x0, y0, x1, y1, node.value, node.color, neutral, 0)
-    if (withTriangle) {
+    const showWire = isDisconnected
+    return [showWire, true]
+}
+
+export function shouldShowNodeLabel(nodeOrArray: Node | readonly Node[]): boolean {
+    if (isArray(nodeOrArray)) {
+        return nodeOrArray.map(shouldShowWireOrTriangleFor).some(x => x[1])
+    }
+    const node = nodeOrArray as Node
+    return shouldShowWireOrTriangleFor(node)[1]
+}
+
+export function drawWireLineToComponent(g: GraphicsRendering, node: Node) {
+    const [showWire, showTriangle] = shouldShowWireOrTriangleFor(node)
+    const [x1, y1, x0, y0] = node.drawCoordsInParentTransform
+    if (showWire) {
+        const neutral = node.parent.editor.options.hideWireColors
+        drawStraightWireLine(g, x0, y0, x1, y1, node.value, node.color, neutral, undefined)
+    }
+    if (showTriangle && node.hasTriangle) {
         g.strokeStyle = COLOR_COMPONENT_BORDER
         g.fillStyle = COLOR_COMPONENT_BORDER
         g.beginPath()
@@ -490,6 +501,7 @@ export function drawWireLineToComponent(g: GraphicsRendering, node: Node, x1: nu
         } else {
             console.log(`ERROR  wireLineToComponent cannot draw triangle as line is not vertical or horizontal between (${x0}, ${y0}) and (${x1}, ${y1})`)
         }
+        g.lineWidth = 2
         g.fill()
         g.stroke()
     }
@@ -642,18 +654,9 @@ export function drawWaypoint(g: GraphicsRendering, ctx: DrawContext, x: number, 
 
 export function drawClockInput(g: GraphicsRendering, left: number, clockNode: Node, trigger: EdgeTrigger) {
     const clockY = clockNode.posYInParentTransform
-    const clockLineOffset = 1
     g.strokeStyle = COLOR_COMPONENT_BORDER
     g.lineWidth = 2
 
-    // if (trigger === EdgeTrigger.falling) {
-    //     clockLineOffset += 7
-    //     g.beginPath()
-    //     circle(g, left - 5, clockY, 6)
-    //     g.fillStyle = COLOR_BACKGROUND
-    //     g.fill()
-    //     g.stroke()
-    // }
     g.beginPath()
     g.moveTo(left + 1, clockY - 4)
     g.lineTo(left + 9, clockY)
@@ -665,7 +668,7 @@ export function drawClockInput(g: GraphicsRendering, left: number, clockNode: No
         g.fill()
     }
 
-    drawWireLineToComponent(g, clockNode, left - clockLineOffset, clockY, false)
+    drawWireLineToComponent(g, clockNode)
 }
 
 
@@ -678,7 +681,6 @@ export function drawLabel(ctx: DrawContextExt, compOrient: Orientation, text: st
         return
     }
 
-    let nodeHidden = false
     if (referenceNode === undefined) {
         if (!isNumber(x)) {
             referenceNode = x
@@ -686,10 +688,12 @@ export function drawLabel(ctx: DrawContextExt, compOrient: Orientation, text: st
             referenceNode = y
         }
     }
+
+    let showLabel = true
     if (referenceNode !== undefined) {
-        nodeHidden = !shouldShowNode(referenceNode)
+        showLabel = shouldShowNodeLabel(referenceNode)
     }
-    if (nodeHidden) {
+    if (!showLabel) {
         return
     }
 

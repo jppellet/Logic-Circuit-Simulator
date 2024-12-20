@@ -78,7 +78,7 @@ export abstract class InputBase<
     }
 
     private doDrawSingle(g: GraphicsRendering, ctx: DrawContext, output: NodeOut) {
-        drawWireLineToComponent(g, output, this.posX + 8, this.posY)
+        drawWireLineToComponent(g, output)
 
         const displayValue = this.parent.editor.options.hideInputColors ? Unknown : output.value
 
@@ -103,6 +103,7 @@ export abstract class InputBase<
                 triangleRight, this.posY,
                 triangleLeft, this.posY - triangleVOffset,
             )
+            g.lineWidth = 2
             g.fill()
             g.stroke()
 
@@ -125,7 +126,7 @@ export abstract class InputBase<
 
     private doDrawMulti(g: GraphicsRendering, ctx: DrawContext, outputs: NodeOut[]) {
         const bounds = this.bounds()
-        const { left, top, width, right } = bounds
+        const { left, top, width } = bounds
         const outline = bounds.outline(g)
 
         // background
@@ -134,7 +135,7 @@ export abstract class InputBase<
 
         // outputs
         for (const output of outputs) {
-            drawWireLineToComponent(g, output, right + 3, output.posYInParentTransform, true)
+            drawWireLineToComponent(g, output)
         }
 
         const displayValues = this.parent.editor.options.hideInputColors
@@ -268,7 +269,7 @@ export const InputDef =
         },
         makeNodes: ({ numBits }) => ({
             outs: {
-                Out: groupVertical("e", numBits === 1 ? 3 : 2, 0, numBits),
+                Out: groupVertical("e", numBits === 1 ? 3 : 2, 0, numBits, undefined, { hasTriangle: numBits !== 1 }),
             },
         }),
         initialValue: (saved, { numBits }) => {
