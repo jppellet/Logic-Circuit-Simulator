@@ -1483,26 +1483,31 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             this._mode = MAX_MODE_WHEN_EMBEDDED
         }
         const modeStr = Mode[mode].toLowerCase()
-        const [fullJson, compressedUriSafeJson] = this.fullJsonStateAndCompressedForUri()
+        const { fullJson, compressedJsonForUri, showOnlyArr } = this.fullJsonStateAndCompressedForUri(true)
 
         console.log("JSON:\n" + fullJson)
 
-        const fullUrl = this.fullUrlForMode(mode, compressedUriSafeJson)
+        const fullUrl = this.fullUrlForMode(mode, compressedJsonForUri, showOnlyArr)
         this.html.embedUrl.value = fullUrl
 
-        const modeParam = mode === MAX_MODE_WHEN_EMBEDDED ? "" : `:mode: ${modeStr}\n`
+        const modeParam = mode === MAX_MODE_WHEN_EMBEDDED ? "" : `:mode: ${modeStr}`
         const embedHeight = this.guessAdequateCanvasSize(true)[1]
 
+        const showOnlySpaceDelim = showOnlyArr === undefined ? undefined : showOnlyArr.join(" ")
         const markdownBlock =
-            this._exportformat === "superfence" ? `\`\`\`{.logic height=${embedHeight} mode=${modeStr}}\n${fullJson}\n\`\`\``
+            this._exportformat === "superfence"
+                // superfence
+                ? `\`\`\`{.logic height=${embedHeight} mode=${modeStr}${showOnlySpaceDelim === undefined ? '' : `showonly=${showOnlySpaceDelim}`}}\n${fullJson}\n\`\`\``
                 // default, myst-style
-                : `\`\`\`{logic}\n:height: ${embedHeight}\n${modeParam}\n${fullJson}\n\`\`\``
+                : `\`\`\`{logic}\n:height: ${embedHeight}\n${modeParam}\n${showOnlySpaceDelim === undefined ? '' : `:showonly: ${showOnlySpaceDelim}\n`}\n${fullJson}\n\`\`\``
         this.html.embedMarkdown.value = markdownBlock
 
-        const iframeEmbed = `<iframe style="width: 100%; height: ${embedHeight}px; border: 0" src="${fullUrl}"></iframe>`
+        const showOnlyHtmlAttr = showOnlySpaceDelim === undefined ? "" : ` showonly="${showOnlySpaceDelim}"`
+
+        const iframeEmbed = `<iframe style="width: 100%; height: ${embedHeight}px; border: 0"${showOnlyHtmlAttr} src="${fullUrl}"></iframe>`
         this.html.embedIframe.value = iframeEmbed
 
-        const webcompEmbed = `<div style="width: 100%; height: ${embedHeight}px">\n  <logic-editor mode="${Mode[mode].toLowerCase()}">\n    <script type="application/json">\n      ${fullJson.replace(/\n/g, "\n      ")}\n    </script>\n  </logic-editor>\n</div>`
+        const webcompEmbed = `<div style="width: 100%; height: ${embedHeight}px">\n  <logic-editor mode="${Mode[mode].toLowerCase()}"${showOnlyHtmlAttr}>\n    <script type="application/json">\n      ${fullJson.replace(/\n/g, "\n      ")}\n    </script>\n  </logic-editor>\n</div>`
         this.html.embedWebcomp.value = webcompEmbed
 
 
@@ -1510,7 +1515,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         // const qrcodeImg = this.html.embedUrlQRCode
         // qrcodeImg.src = dataUrl
 
-        this.saveToUrl(compressedUriSafeJson)
+        this.saveToUrl(compressedJsonForUri, showOnlyArr)
 
         if (!showModal(this.html.embedDialog)) {
             // alert("The <dialog> API is not supported by this browser")
@@ -1526,27 +1531,36 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     }
 
     public saveCurrentStateToUrl() {
-        const [fullJson, compressedUriSafeJson] = this.fullJsonStateAndCompressedForUri()
+        const { fullJson, compressedJsonForUri, showOnlyArr } = this.fullJsonStateAndCompressedForUri(true)
         console.log("Saved to URL compressed version of:\n" + fullJson)
-        this.saveToUrl(compressedUriSafeJson)
+        this.saveToUrl(compressedJsonForUri, showOnlyArr)
     }
 
     public save() {
         return Serialization.buildCircuitObject(this)
     }
 
-    public saveToUrl(compressedUriSafeJson: string) {
+    public saveToUrl(compressedUriSafeJson: string, showOnly: string[] | undefined) {
         if (this._isSingleton) {
-            history.pushState(null, "", this.fullUrlForMode(MAX_MODE_WHEN_SINGLETON, compressedUriSafeJson))
+            history.pushState(null, "", this.fullUrlForMode(MAX_MODE_WHEN_SINGLETON, compressedUriSafeJson, showOnly))
             this.clearDirty()
             this.showMessage(S.Messages.SavedToUrl)
         }
     }
 
-    private fullJsonStateAndCompressedForUri(): [string, string] {
+    /**
+     * @param removeShowOnly if showOnly should be removed from the JSON (first returned value.). It is always removed from the compressed version for the URL, since it is an explicit URL parameter.
+     */
+    private fullJsonStateAndCompressedForUri(removeShowOnly: boolean): { fullJson: string, compressedJsonForUri: string, showOnlyArr: string[] | undefined } {
+        let showOnlyArr: string[] | undefined = undefined
         const jsonObj = Serialization.buildCircuitObject(this)
-        const jsonFull = Serialization.stringifyObject(jsonObj, false)
-        Serialization.removeShowOnlyFrom(jsonObj)
+        if (removeShowOnly) {
+            showOnlyArr = Serialization.removeShowOnlyFrom(jsonObj)
+        }
+        const fullJson = Serialization.stringifyObject(jsonObj, false)
+        if (!removeShowOnly) {
+            showOnlyArr = Serialization.removeShowOnlyFrom(jsonObj)
+        }
         const jsonForUri = Serialization.stringifyObject(jsonObj, true)
 
         // console.log("Full JSON:\n" + jsonFull)
@@ -1556,13 +1570,13 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         // const encodedJson1 = btoa(json).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "%3D")
 
         // this can compress to like 40-50% of the original size
-        const compressedUriSafeJson = LZString.compressToEncodedURIComponent(jsonForUri)
-        return [jsonFull, compressedUriSafeJson]
+        const compressedJsonForUri = LZString.compressToEncodedURIComponent(jsonForUri)
+        return { fullJson, compressedJsonForUri, showOnlyArr }
     }
 
-    private fullUrlForMode(mode: Mode, compressedUriSafeJson: string): string {
+    private fullUrlForMode(mode: Mode, compressedUriSafeJson: string, showOnlyArr: string[] | undefined): string {
         const loc = window.location
-        const showOnlyParam = this._options.showOnly === undefined ? "" : `&${ATTRIBUTE_NAMES.showonly}=${this._options.showOnly.join(",")}`
+        const showOnlyParam = showOnlyArr === undefined ? "" : `&${ATTRIBUTE_NAMES.showonly}=${showOnlyArr.join(",")}`
         const currentLang = getLang()
         const hasCorrectLangParam = new URL(loc.href).searchParams.get(ATTRIBUTE_NAMES.lang) === currentLang
         const langParam = !hasCorrectLangParam ? "" // no param, keep default lang
@@ -1624,10 +1638,10 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
 
         // else, add metadata
-        const compressedUriSafeJson = this.fullJsonStateAndCompressedForUri()[1]
+        const { compressedJsonForUri } = this.fullJsonStateAndCompressedForUri(false)
         const pngBareData = new Uint8Array(await pngBareBlob.arrayBuffer())
         const pngChunks = pngMeta.extractChunks(pngBareData)
-        pngMeta.insertMetadata(pngChunks, { "tEXt": { "Description": compressedUriSafeJson } })
+        pngMeta.insertMetadata(pngChunks, { "tEXt": { "Description": compressedJsonForUri } })
         return new Blob([pngMeta.encodeChunks(pngChunks)], { type: "image/png" })
     }
 

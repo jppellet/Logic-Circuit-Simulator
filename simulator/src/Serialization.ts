@@ -437,10 +437,18 @@ class _Serialization {
         // }
     }
 
-    public removeShowOnlyFrom(dataObject: Circuit): void {
+    public removeShowOnlyFrom(dataObject: Circuit): string[] | undefined {
         if (dataObject.opts !== undefined) {
+            const showOnly = dataObject.opts.showOnly
             delete dataObject.opts.showOnly
+            if (Object.keys(dataObject.opts).length === 0) {
+                delete dataObject.opts
+            }
+            if (isArray(showOnly) && showOnly.every(isString)) {
+                return showOnly
+            }
         }
+        return undefined
     }
 
     public stringifyObject(_dataObject: Partial<Circuit>, compact: boolean): string {
