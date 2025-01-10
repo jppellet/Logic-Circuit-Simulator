@@ -1089,7 +1089,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     }
 
     public tryLoadFrom(file: File) {
-        if (file.type === "application/json" || file.type === "text/plain") {
+        if (file.type === "application/json" || file.type === "application/json5" || file.type === "text/plain") {
             // JSON files can be circuits or libraries
             const reader = new FileReader()
             reader.onload = () => {
@@ -1507,7 +1507,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const iframeEmbed = `<iframe style="width: 100%; height: ${embedHeight}px; border: 0"${showOnlyHtmlAttr} src="${fullUrl}"></iframe>`
         this.html.embedIframe.value = iframeEmbed
 
-        const webcompEmbed = `<div style="width: 100%; height: ${embedHeight}px">\n  <logic-editor mode="${Mode[mode].toLowerCase()}"${showOnlyHtmlAttr}>\n    <script type="application/json">\n      ${fullJson.replace(/\n/g, "\n      ")}\n    </script>\n  </logic-editor>\n</div>`
+        const webcompEmbed = `<div style="width: 100%; height: ${embedHeight}px">\n  <logic-editor mode="${Mode[mode].toLowerCase()}"${showOnlyHtmlAttr}>\n    <script type="application/json5">\n      ${fullJson.replace(/\n/g, "\n      ")}\n    </script>\n  </logic-editor>\n</div>`
         this.html.embedWebcomp.value = webcompEmbed
 
 

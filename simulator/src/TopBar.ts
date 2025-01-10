@@ -204,7 +204,7 @@ export class TopBar {
 
 
     private openHandler() {
-        this.editor.runFileChooser("text/plain|image/png|application/json", file => {
+        this.editor.runFileChooser("text/plain|image/png|application/json|application/json5", file => {
             this.editor.tryLoadFrom(file)
         })
     }

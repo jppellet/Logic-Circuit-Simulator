@@ -339,7 +339,7 @@ export class UIEventManager {
                 const dataItems = e.dataTransfer.items
                 if (dataItems !== undefined) {
                     for (const dataItem of dataItems) {
-                        if (dataItem.kind === "string" && (dataItem.type === "application/json" || dataItem.type === "text/plain")) {
+                        if (dataItem.kind === "string" && (dataItem.type === "application/json" || dataItem.type === "application/json5" || dataItem.type === "text/plain")) {
                             dataItem.getAsString(content => {
                                 e.dataTransfer!.dropEffect = "copy"
                                 editor.loadCircuitOrLibrary(content)

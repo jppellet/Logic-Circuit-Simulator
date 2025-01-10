@@ -72,14 +72,14 @@ class _Serialization {
 
     public saveCircuitToFile(editor: LogicEditor) {
         const jsonStr = this.stringifyObject(this.buildCircuitObject(editor), false)
-        const blob = new Blob([jsonStr], { type: 'application/json' })
+        const blob = new Blob([jsonStr], { type: 'application/json5' })
         const filename = editor.documentDisplayName + ".json"
         saveAs(blob, filename)
     }
 
     public saveLibraryToFile(editor: LogicEditor) {
         const jsonStr = this.stringifyObject(this.buildLibraryObject(editor), false)
-        const blob = new Blob([jsonStr], { type: 'application/json' })
+        const blob = new Blob([jsonStr], { type: 'application/json5' })
         const filename = editor.documentDisplayName + "-lib.json"
         saveAs(blob, filename)
     }

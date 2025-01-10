@@ -7,10 +7,12 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
 
 ## High priority
 
+ * waypoint positioning when embedded right-click
  * New custom components should show up in library even with showonly
  * Take undo snapshot after key events too
  * Adder orientation
  * More consistently set things dirty
+ * lorsque les pages s’affichent, il se peut que les icônes du haut soient affichées avec les textes, ce qui fait dépasser la fenêtre de Logic de la colonne. (https://mooc-forums.inria.fr/moocnsi/t/simulateur-de-systemes-logiques-en-ligne/6215/117)
  * Ce qui serait super, ce serait de pouvoir valider les résultats des élèves. Ce qui serait top top, ce serait d’avoir un bouton « valider », qui testerait toutes les combinaisons d’entrées et les comparerait avec les sorties attendues. Je pense que c’est quelque chose qui pourrait se faire surtout avec des options supplémentaires dans le JSON. Ce qui serait ultra top, ce serait que les tests se fassent « à l’écran », avec les entrées qui changent et les sorties qui sont en vert quand tout va bien et en rouge quand ça se passe mal. À la rigueur, ça peut s’arrêter à la première erreur -> https://mooc-forums.inria.fr/moocnsi/t/simulateur-de-systemes-logiques-en-ligne/6215/110
 
 
