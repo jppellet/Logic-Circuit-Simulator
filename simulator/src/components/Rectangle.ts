@@ -393,8 +393,7 @@ export class Rectangle extends ComponentBase<RectangleRepr> {
 
         const tryX = (left + right) / 2
         const tryY = (top + bottom) / 2
-        const newPos = this.trySetPosition(tryX, tryY, true)
-        const [x, y] = newPos?.pos ?? [tryX, tryY]
+        const [x, y] = this.trySetPosition(tryX, tryY, true) ?? [tryX, tryY]
 
         left = Math.floor((left + Math.max(0, tryX - x)) / GRID_STEP) * GRID_STEP
         top = Math.floor((top + Math.max(0, tryY - y)) / GRID_STEP) * GRID_STEP

@@ -30,7 +30,7 @@ import { Tests } from "./Tests"
 import { TestsPalette } from "./TestsPalette"
 import { Timeline } from "./Timeline"
 import { TopBar } from "./TopBar"
-import { EditorSelection, UIEventManager } from "./UIEventManager"
+import { EditorSelection, MouseDragEvent, TouchDragEvent, UIEventManager } from "./UIEventManager"
 import { UndoManager } from './UndoManager'
 import { Component, ComponentBase } from "./components/Component"
 import { CustomComponent } from "./components/CustomComponent"
@@ -1334,17 +1334,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         return this._messageBar?.showMessage(msg, duration) ?? (() => undefined)
     }
 
-    public lengthOfPath(svgPathDesc: string): number {
-        // we have to recreate a new path each time, otherwise
-        // Firefox caches the length and returns the same value
-        const p = document.createElementNS('http://www.w3.org/2000/svg', "path")
-        p.setAttributeNS(null, "d", svgPathDesc)
-        const length = p.getTotalLength()
-        // console.log(`p=${svgPathDesc}, l=${length}`)
-        return length
-    }
-
-    public offsetXYForContextMenu(e: MouseEvent | TouchEvent, snapToGrid = false): [number, number] {
+    public offsetXYForContextMenu(e: MouseEvent | TouchEvent | MouseDragEvent | TouchDragEvent, snapToGrid = false): [number, number] {
         const mainCanvas = this.html.mainCanvas
         let x, y
 
@@ -1352,6 +1342,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             const canvasRect = mainCanvas.getBoundingClientRect()
             x = e.clientX - canvasRect.x
             y = e.clientY - canvasRect.y
+        } else if ("dragStartX" in e) {
+            return [e.dragStartX, e.dragStartY]
         } else {
             [x, y] = this.offsetXY(e)
         }
@@ -1363,7 +1355,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         return [x, y]
     }
 
-    public offsetXY(e: MouseEvent | TouchEvent): [number, number] {
+    public offsetXY(e: MouseEvent | TouchEvent, skipScaling: boolean = false): [number, number] {
         const [unscaledX, unscaledY] = (() => {
             const mainCanvas = this.html.mainCanvas
             let target = e.target
@@ -1414,7 +1406,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 }
             }
         })()
-        const currentScale = this._actualZoomFactor
+        const currentScale = skipScaling ? 1 : this._actualZoomFactor
         return [unscaledX / currentScale, unscaledY / currentScale]
     }
 

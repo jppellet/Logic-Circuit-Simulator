@@ -7,6 +7,7 @@ import { RecalcManager, RedrawManager } from "../RedrawRecalcManager"
 import { type SVGRenderingContext } from "../SVGRenderingContext"
 import { TestSuites } from "../TestSuite"
 import { TestsPalette } from "../TestsPalette"
+import { MouseDragEvent, TouchDragEvent } from "../UIEventManager"
 import { UndoManager } from "../UndoManager"
 import { COLOR_COMPONENT_BORDER, COLOR_MOUSE_OVER, COLOR_MOUSE_OVER_DANGER, ColorString, DrawZIndex, GRID_STEP, inRect } from "../drawutils"
 import { fixedWidthInContextMenu, Modifier, ModifierObject, span } from "../htmlgen"
@@ -511,13 +512,13 @@ export abstract class DrawableWithPosition extends Drawable implements HasPositi
         return this.parent.mode >= Mode.CONNECT && inRect(this._posX, this._posY, this.width, this.height, x, y)
     }
 
-    protected trySetPosition(posX: number, posY: number, snapToGrid: boolean): undefined | { pos: [number, number], delta: [number, number] } {
+    protected trySetPosition(posX: number, posY: number, snapToGrid: boolean): undefined | [number, number] {
         const newPos = this.tryMakePosition(posX, posY, snapToGrid)
         if (newPos === undefined) {
             return
         }
-        const delta = this.doSetPosition(newPos[0], newPos[1])
-        return { pos: newPos, delta }
+        this.doSetPosition(newPos[0], newPos[1])
+        return newPos
     }
 
     protected tryMakePosition(posX: number, posY: number, snapToGrid: boolean): undefined | [number, number] {
@@ -530,13 +531,15 @@ export abstract class DrawableWithPosition extends Drawable implements HasPositi
         return undefined
     }
 
-    protected doSetPosition(posX: number, posY: number): [number, number] {
-        const posChange: [number, number] = [posX - this._posX, posY - this._posY]
+    protected doSetPosition(posX: number, posY: number) {
+        const delta: [number, number] = [posX - this._posX, posY - this._posY]
         this._posX = posX
         this._posY = posY
         this.setNeedsRedraw("position changed")
-        return posChange
+        this.positionChanged(delta)
     }
+
+    protected abstract positionChanged(delta: [number, number]): void
 
     protected makeOrientationAndPosMenuItems(): MenuItems {
         const s = S.Components.Generic.contextMenu
@@ -675,8 +678,7 @@ export abstract class DrawableWithDraggablePosition extends DrawableWithPosition
     public setPosition(x: number, y: number, snapToGrid: boolean) {
         const newPos = this.tryMakePosition(x, y, snapToGrid)
         if (newPos !== undefined) { // position would change indeed
-            const delta = this.doSetPosition(...newPos)
-            this.positionChanged(delta)
+            this.doSetPosition(...newPos)
         }
     }
 
@@ -691,15 +693,12 @@ export abstract class DrawableWithDraggablePosition extends DrawableWithPosition
         return { wantsDragEvents: true }
     }
 
-    public override mouseDragged(e: MouseEvent | TouchEvent) {
+    public override mouseDragged(e: MouseDragEvent | TouchDragEvent) {
         if (this.parent.mode >= Mode.CONNECT && !this.lockPos) {
             this.parent.ifEditing?.moveMgr.setDrawableMoving(this, e)
             const [x, y] = this.parent.editor.offsetXY(e)
             const snapToGrid = !e.metaKey
-            const newPos = this.updateSelfPositionIfNeeded(x, y, snapToGrid, e)
-            if (newPos !== undefined) { // position changed
-                this.positionChanged(newPos.delta)
-            }
+            this.updateSelfPositionIfNeeded(x, y, snapToGrid, e)
         }
     }
 
@@ -709,11 +708,7 @@ export abstract class DrawableWithDraggablePosition extends DrawableWithPosition
         return InteractionResult.fromBoolean(result)
     }
 
-    protected positionChanged(__delta: [number, number]) {
-        // do nothing by default
-    }
-
-    protected updateSelfPositionIfNeeded(x: number, y: number, snapToGrid: boolean, e: MouseEvent | TouchEvent): undefined | { pos: [number, number], delta: [number, number] } {
+    protected updateSelfPositionIfNeeded(x: number, y: number, snapToGrid: boolean, e: MouseDragEvent | TouchDragEvent): undefined | [number, number] {
         if (this._isMovingWithContext === undefined) {
             return undefined
         }
@@ -745,11 +740,10 @@ export abstract class DrawableWithDraggablePosition extends DrawableWithPosition
         if (e.altKey && this.parent.mode >= Mode.DESIGN && (clone = this.makeClone(true)) !== undefined) {
             this._isMovingWithContext.createdClone = clone
             this.parent.editor.eventMgr.setCurrentMouseOverComp(clone)
-            return { pos: newPos, delta: [0, 0] }
         } else {
-            const delta = this.doSetPosition(...newPos)
-            return { pos: newPos, delta }
+            this.doSetPosition(...newPos)
         }
+        return newPos
     }
 
     protected makeClone(__setSpawning: boolean): DrawableWithDraggablePosition | undefined {

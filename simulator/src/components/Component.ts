@@ -2,6 +2,7 @@ import * as t from "io-ts"
 import JSON5 from "json5"
 import type { ComponentKey, DefAndParams, LibraryButtonOptions, LibraryButtonProps, LibraryItem } from "../ComponentMenu"
 import { DrawParams, LogicEditor } from "../LogicEditor"
+import { MouseDragEvent, TouchDragEvent } from "../UIEventManager"
 import { COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, DrawingRect, GRID_STEP, drawClockInput, drawComponentName, drawLabel, drawWireLineToComponent, isTrivialNodeName, shouldShowWiresTo, useCompact } from "../drawutils"
 import { IconName, ImageName } from "../images"
 import { S, Template } from "../strings"
@@ -1086,7 +1087,7 @@ export abstract class ComponentBase<
         // by default, do nothing
     }
 
-    protected override updateSelfPositionIfNeeded(x: number, y: number, snapToGrid: boolean, e: MouseEvent | TouchEvent): undefined | { pos: [number, number], delta: [number, number] } {
+    protected override updateSelfPositionIfNeeded(x: number, y: number, snapToGrid: boolean, e: MouseDragEvent | TouchDragEvent): undefined | [number, number] {
         if (this._state === ComponentState.SPAWNING) {
             return this.trySetPosition(x, y, snapToGrid)
         }
@@ -1094,9 +1095,7 @@ export abstract class ComponentBase<
     }
 
     protected override positionChanged(delta: [number, number]) {
-        super.positionChanged(delta)
         this.updateNodePositions()
-
         for (const anchored of this._anchoredDrawables) {
             anchored.setPosition(anchored.posX + delta[0], anchored.posY + delta[1], false)
         }

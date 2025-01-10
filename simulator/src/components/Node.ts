@@ -352,6 +352,10 @@ export class NodeIn extends NodeBase<NodeIn> {
         return this._incomingWire === null
     }
 
+    protected override positionChanged(__delta: [number, number]) {
+        this._incomingWire?.invalidateWirePath()
+    }
+
     public get forceValue() {
         return undefined
     }
@@ -414,6 +418,14 @@ export class NodeOut extends NodeBase<NodeOut> {
 
     public get isDisconnected() {
         return this._outgoingWires.length === 0
+    }
+
+    protected override positionChanged(__delta: [number, number]) {
+        if (this._outgoingWires !== undefined) {
+            for (const wire of this._outgoingWires) {
+                wire.invalidateWirePath()
+            }
+        }
     }
 
     public findWireTo(node: NodeIn): Wire | undefined {

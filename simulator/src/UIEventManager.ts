@@ -2,10 +2,10 @@ import { createPopper, Instance as PopperInstance } from '@popperjs/core'
 import { ButtonDataset } from './ComponentFactory'
 import { Component, ComponentBase, ComponentState } from './components/Component'
 import { CustomComponent } from './components/CustomComponent'
-import { Drawable, DrawableWithPosition, MenuData, MenuItem } from "./components/Drawable"
+import { Drawable, DrawableWithDraggablePosition, DrawableWithPosition, MenuData, MenuItem } from "./components/Drawable"
 import { Node } from "./components/Node"
 import { Waypoint, Wire } from './components/Wire'
-import { dist, DrawZIndex, setColorMouseOverIsDanger } from "./drawutils"
+import { dist, DrawZIndex, GRID_STEP, setColorMouseOverIsDanger } from "./drawutils"
 import { applyModifiersTo, attr, button, cls, emptyMod, i, li, Modifier, ModifierObject, mods, setupSvgIcon, span, type, ul } from './htmlgen'
 import { IconName, makeIcon } from './images'
 import { LogicEditor, MouseAction, MouseActionParams } from './LogicEditor'
@@ -20,8 +20,21 @@ type MouseDownData = {
     triggeredContextMenu: boolean
 }
 
+export type MouseDragEvent = MouseEvent & { dragStartX: number, dragStartY: number }
+export type TouchDragEvent = TouchEvent & { dragStartX: number, dragStartY: number }
+
+function setDragStartData(e: MouseEvent | TouchEvent, dragStartX: number, dragStartY: number): asserts e is MouseDragEvent | TouchDragEvent {
+    const _e = e as any
+    _e.dragStartX = dragStartX
+    _e.dragStartY = dragStartY
+}
+
 export class EditorSelection {
 
+    /**
+     * The elements that are selected, independently of the potential
+     * rectangle that is currently drawn
+     */
     public previouslySelectedElements = new Set<Drawable>()
 
     public constructor(
@@ -140,6 +153,8 @@ export class UIEventManager {
                     }
                 }
                 if (fireDrag) {
+                    const [dragStartX, dragStartY] = this.editor.offsetXY(e, true)
+                    setDragStartData(e, dragStartX, dragStartY)
                     if (startMouseDownData.mainComp instanceof Drawable) {
                         this._currentHandlers.mouseDraggedOn(startMouseDownData.mainComp, e)
                     }
@@ -653,6 +668,8 @@ export class UIEventManager {
                 // cancel it all
                 this._currentMouseDownData = null
             } else {
+                const initialXY = this._currentMouseDownData.initialXY
+                setDragStartData(e, initialXY[0], initialXY[1])
                 if (this._currentMouseDownData.mainComp instanceof Drawable) {
                     // check if the drag is too small to be taken into account now
                     // (e.g., touchmove is fired very quickly)
@@ -781,6 +798,8 @@ export class UIEventManager {
                         triggeredContextMenu: false,
                     }
                 }
+                const [x, y] = editor.offsetXY(e, true)
+                setDragStartData(e, x, y)
                 this._currentHandlers.mouseDraggedOn(newComponent, e)
             }
 
@@ -858,7 +877,7 @@ abstract class ToolHandlers {
     public mouseDownOn(__comp: Drawable, __e: MouseEvent | TouchEvent) {
         return { wantsDragEvents: true }
     }
-    public mouseDraggedOn(__comp: Drawable, __e: MouseEvent | TouchEvent) {
+    public mouseDraggedOn(__comp: Drawable, __e: MouseDragEvent | TouchDragEvent) {
         // empty
     }
     public mouseUpOn(__comp: Drawable, __e: MouseEvent | TouchEvent): InteractionResult {
@@ -879,7 +898,7 @@ abstract class ToolHandlers {
     public mouseDownOnBackground(__e: MouseEvent | TouchEvent) {
         // empty
     }
-    public mouseDraggedOnBackground(__e: MouseEvent | TouchEvent) {
+    public mouseDraggedOnBackground(__e: MouseDragEvent | TouchDragEvent) {
         // empty
     }
     public mouseUpOnBackground(__e: MouseEvent | TouchEvent) {
@@ -925,7 +944,7 @@ class EditHandlers extends ToolHandlers {
     public override mouseDownOn(comp: Drawable, e: MouseEvent | TouchEvent) {
         return comp.mouseDown(e)
     }
-    public override mouseDraggedOn(comp: Drawable, e: MouseEvent | TouchEvent) {
+    public override mouseDraggedOn(comp: Drawable, e: MouseDragEvent | TouchDragEvent) {
         comp.mouseDragged(e)
     }
     public override mouseUpOn(comp: Drawable, e: MouseEvent | TouchEvent) {
@@ -969,7 +988,7 @@ class EditHandlers extends ToolHandlers {
             editor.editTools.redrawMgr.addReason("selection rect changed", null)
         }
     }
-    public override mouseDraggedOnBackground(e: MouseEvent | TouchEvent) {
+    public override mouseDraggedOnBackground(e: MouseDragEvent | TouchDragEvent) {
         const editor = this.editor
         const allowSelection = editor.mode >= Mode.CONNECT
         if (allowSelection) {
@@ -1178,7 +1197,7 @@ class MoveHandlers extends ToolHandlers {
             }
         }
     }
-    public override mouseDraggedOnBackground(e: MouseEvent) {
+    public override mouseDraggedOnBackground(e: MouseDragEvent) {
         for (const comp of this.editor.components.all()) {
             comp.mouseDragged(e)
         }
