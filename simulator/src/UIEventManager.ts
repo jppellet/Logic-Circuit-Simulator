@@ -551,12 +551,47 @@ export class UIEventManager {
                     }
                     return
 
+                case "arrowright":
+                    if (this.moveSelection(ctrlOrCommand ? 1 : GRID_STEP / 2, 0, e.altKey)) {
+                        return
+                    }
+                    break
+                case "arrowleft":
+                    if (this.moveSelection(ctrlOrCommand ? -1 : -GRID_STEP / 2, 0, e.altKey)) {
+                        return
+                    }
+                    break
+                case "arrowdown":
+                    if (this.moveSelection(0, ctrlOrCommand ? 1 : GRID_STEP / 2, e.altKey)) {
+                        return
+                    }
+                    break
+                case "arrowup":
+                    if (this.moveSelection(0, ctrlOrCommand ? -1 : -GRID_STEP / 2, e.altKey)) {
+                        return
+                    }
+                    break
+                // default:
+                // console.log("keydown %o %o", e, keyLower)
             }
 
             if (this._currentMouseOverComp !== null) {
                 this._currentMouseOverComp.keyDown(e)
             }
         }))
+    }
+
+    private moveSelection(dx: number, dy: number, snapToGrid: boolean): boolean {
+        const sel = this.currentSelection
+        if (sel === undefined) {
+            return false
+        }
+        for (const comp of sel.previouslySelectedElements) {
+            if (comp instanceof DrawableWithDraggablePosition) {
+                comp.setPosition(comp.posX + dx, comp.posY + dy, snapToGrid)
+            }
+        }
+        return true
     }
 
     public registerTitleDragListenersOn(title: HTMLDivElement, closeHandler?: () => unknown) {
