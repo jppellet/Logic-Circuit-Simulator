@@ -571,9 +571,9 @@ export class UIEventManager {
                         return
                     }
                     break
-                // default:
-                // console.log("keydown %o %o", e, keyLower)
             }
+
+            // console.log("keydown %o %o, comp: %o", e, keyLower, this._currentMouseOverComp)
 
             if (this._currentMouseOverComp !== null) {
                 this._currentMouseOverComp.keyDown(e)
@@ -583,7 +583,7 @@ export class UIEventManager {
 
     private moveSelection(dx: number, dy: number, snapToGrid: boolean): boolean {
         const sel = this.currentSelection
-        if (sel === undefined) {
+        if (sel === undefined || sel.previouslySelectedElements.size === 0) {
             return false
         }
         for (const comp of sel.previouslySelectedElements) {
