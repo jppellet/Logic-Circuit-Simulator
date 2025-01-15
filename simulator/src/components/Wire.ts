@@ -1,12 +1,12 @@
 import { Bezier, Offset } from "bezier-js"
 import * as t from "io-ts"
-import { COLOR_ANCHOR_NEW, COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, NodeStyle, WAYPOINT_DIAMETER, WIRE_WIDTH, colorForLogicValue, drawAnchorTo, drawStraightWireLine, drawWaypoint, isOverWaypoint, strokeWireOutline, strokeWireOutlineAndSingleValue, strokeWireValue } from "../drawutils"
+import { COLOR_ANCHOR_NEW, COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, NodeStyle, OPACITY_HIDDEN_ITEMS, WAYPOINT_DIAMETER, WIRE_WIDTH, colorForLogicValue, drawAnchorTo, drawStraightWireLine, drawWaypoint, isOverWaypoint, strokeWireOutline, strokeWireOutlineAndSingleValue, strokeWireValue } from "../drawutils"
 import { span, style, title } from "../htmlgen"
 import { DrawParams } from "../LogicEditor"
 import { S } from "../strings"
 import { Timestamp } from "../Timeline"
 import { MouseDragEvent, TouchDragEvent } from "../UIEventManager"
-import { InteractionResult, LogicValue, Mode, isArray, toLogicValueRepr, typeOrUndefined } from "../utils"
+import { InteractionResult, LogicValue, Mode, isArray, isString, toLogicValueRepr, typeOrNull, typeOrUndefined } from "../utils"
 import { Component, NodeGroup } from "./Component"
 import { DrawContext, Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, GraphicsRendering, MenuData, Orientation, Orientations_, PositionSupportRepr } from "./Drawable"
 import { Node, NodeIn, NodeOut, WireColor, tryMakeRepeatableNodeAction } from "./Node"
@@ -21,7 +21,10 @@ export class Waypoint extends DrawableWithDraggablePosition {
     public static get Repr() {
         return t.union([
             // alternatives with more fields first
-            t.tuple([t.number, t.number, t.keyof(Orientations_), t.partial({ lockPos: t.boolean, anchor: t.string })]),
+            t.tuple([t.number, t.number, t.keyof(Orientations_), typeOrNull(t.string), t.partial({
+                lockPos: t.boolean,
+            })]),
+            t.tuple([t.number, t.number, t.keyof(Orientations_), t.string]),
             t.tuple([t.number, t.number, t.keyof(Orientations_)]),
             t.tuple([t.number, t.number]),
         ], "Wire")
@@ -31,11 +34,12 @@ export class Waypoint extends DrawableWithDraggablePosition {
         if (saved === undefined) {
             return undefined
         }
+        const [posX, posY, orient, anchor, options] = saved
         return {
-            pos: [saved[0], saved[1]],
-            anchor: saved[3]?.anchor,
-            lockPos: saved[3]?.lockPos,
-            orient: saved[2],
+            pos: [posX, posY],
+            anchor: anchor === null ? undefined : anchor,
+            lockPos: options?.lockPos,
+            orient,
             ref: undefined,
         }
     }
@@ -48,15 +52,23 @@ export class Waypoint extends DrawableWithDraggablePosition {
     }
 
     public toJSON(): WaypointRepr {
-        if (this.lockPos || this.anchor !== undefined) {
-            return [this.posX, this.posY, this.orient, {
-                lockPos: this.lockPos === false ? undefined : this.lockPos,
-                anchor: this.anchor?.ref,
+        // check to determine representation (orientation, anchor, lockPos, etc.)
+        const anchor = this.anchor?.ref
+        if (this.lockPos) {
+            // full representation with obj as last element
+            return [this.posX, this.posY, this.orient, anchor ?? null, {
+                lockPos: this.lockPos,
             }]
         }
+        if (anchor !== undefined) {
+            // representation with string as last element
+            return [this.posX, this.posY, this.orient, anchor]
+        }
         if (this.orient !== Orientation.default) {
+            // representation with 3 elements
             return [this.posX, this.posY, this.orient]
         }
+        // minimal representation with 2 elements
         return [this.posX, this.posY]
     }
 
@@ -104,8 +116,14 @@ export class Waypoint extends DrawableWithDraggablePosition {
             return
         }
 
+        if (this.wire.behavesHidden) {
+            return
+        }
+
+        g.globalAlpha = this.wire.isHidden ? OPACITY_HIDDEN_ITEMS : 1.0
         const neutral = this.parent.editor.options.hideWireColors
         drawWaypoint(g, ctx, this.posX, this.posY, NodeStyle.WAYPOINT, this.wire.startNode.value, ctx.isMouseOver, neutral, false, false, false)
+        g.globalAlpha = 1.0
     }
 
     public override makeContextMenu(): MenuData {
@@ -228,11 +246,13 @@ export class Wire extends Drawable {
     public setWaypoints(reprs: WaypointRepr[], componentsByRef: Record<string, Component>) {
         this._waypoints = reprs.map(repr => {
             const wp = new Waypoint(this, repr)
-            const anchorRef = repr[3]?.anchor
-            if (anchorRef !== undefined) {
+            const anchorRef = repr[3]
+            if (isString(anchorRef)) {
                 const anchor = componentsByRef[anchorRef]
                 if (anchor !== undefined) {
                     wp.anchor = anchor
+                } else {
+                    console.warn(`Couldn't find anchor '${anchorRef}' for waypoint of wire between ${this._startNode.component.ref} and ${this._endNode.component.ref}`)
                 }
             }
             return wp
@@ -297,7 +317,7 @@ export class Wire extends Drawable {
         return this._isHidden
     }
 
-    private get behavesHidden() {
+    public get behavesHidden() {
         return this._isHidden && !this.parent.editor.options.showHiddenWires
     }
 
@@ -480,6 +500,8 @@ export class Wire extends Drawable {
             return
         }
 
+        g.globalAlpha = this._isHidden ? OPACITY_HIDDEN_ITEMS : 1.0
+
         const wirePath = this.wirePath
         wirePath.draw(g)
 
@@ -519,6 +541,8 @@ export class Wire extends Drawable {
                 strokeWireValue(g, value, [lengthToDraw, totalLength], neutral, drawParams.drawTimeAnimationFraction)
             }
         }
+
+        g.globalAlpha = 1.0
 
         if (isAnimating && !this.parent.editor.timeline.isPaused) {
             this.setNeedsRedraw("propagating value", true)
@@ -1212,6 +1236,12 @@ export class LinkManager {
         this._wires.splice(this._wires.indexOf(wire), 1)
         this.parent.ifEditing?.redrawMgr.addReason("deleted wire", null)
         return true
+    }
+
+    public invalidateAllWirePaths() {
+        for (const wire of this._wires) {
+            wire.invalidateWirePath()
+        }
     }
 
     public clearAll() {

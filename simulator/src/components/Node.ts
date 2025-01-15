@@ -80,6 +80,8 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         return this._leadLength
     }
 
+    public abstract get connectedWires(): readonly Wire[]
+
     /**
      * @returns [leadEndX, leadEndY, nodeX, nodeY, wireProlongDirection]
      */
@@ -235,8 +237,6 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
 
     public abstract get acceptsMoreConnections(): boolean
 
-    public abstract get isDisconnected(): boolean
-
     public get posXInParentTransform() {
         return this.component.posX + this._gridOffsetX * GRID_STEP
     }
@@ -338,6 +338,10 @@ export class NodeIn extends NodeBase<NodeIn> {
         }
     }
 
+    public get connectedWires() {
+        return this._incomingWire === null ? [] : [this._incomingWire]
+    }
+
     protected preDestroy() {
         if (this._incomingWire !== null) {
             this.parent.linkMgr.deleteWire(this._incomingWire)
@@ -345,10 +349,6 @@ export class NodeIn extends NodeBase<NodeIn> {
     }
 
     public get acceptsMoreConnections() {
-        return this._incomingWire === null
-    }
-
-    public get isDisconnected() {
         return this._incomingWire === null
     }
 
@@ -405,6 +405,10 @@ export class NodeOut extends NodeBase<NodeOut> {
         return this._outgoingWires
     }
 
+    public get connectedWires() {
+        return this._outgoingWires
+    }
+
     protected preDestroy() {
         // we need to make a copy of the array because the wires will remove themselves from the array
         for (const wire of [...this._outgoingWires]) {
@@ -414,10 +418,6 @@ export class NodeOut extends NodeBase<NodeOut> {
 
     public get acceptsMoreConnections() {
         return true
-    }
-
-    public get isDisconnected() {
-        return this._outgoingWires.length === 0
     }
 
     protected override positionChanged(__delta: [number, number]) {

@@ -133,6 +133,8 @@ export let COLOR_RECTANGLE_BACKGROUND: { [C in RectangleColor]: ColorString }
 export let COLOR_RECTANGLE_BORDER: { [C in RectangleColor]: ColorString }
 export let PATTERN_STRIPED_GRAY: CanvasPattern
 
+export const OPACITY_HIDDEN_ITEMS = 0.3
+
 let _currentModeIsDark = false
 doSetColors(_currentModeIsDark)
 
@@ -427,39 +429,40 @@ export function strokeBezier(g: GraphicsRendering, x0: number, y0: number, ancho
     g.stroke()
 }
 
-export function shouldShowWiresTo(nodes: readonly Node[]): boolean {
-    return nodes.map(shouldShowWireOrTriangleFor).some(x => x[0])
+export function shouldDrawLeadsTo(nodes: readonly Node[]): boolean {
+    return nodes.map(whatToDrawForNode).some(x => x.drawLead)
 }
 
 /**
  * @returns [showWire, showTriangle]
  */
-export function shouldShowWireOrTriangleFor(node: Node): [boolean, boolean] {
+export function whatToDrawForNode(node: Node): { drawLabel: boolean, drawLead: boolean, drawTriangle: boolean, drawHiddenMark: boolean } {
     const editor = node.parent.editor
-    const isDisconnected = node.isDisconnected
-    if (editor.mode <= Mode.TRYOUT && !editor.options.showDisconnectedPins && isDisconnected) {
-        return [false, false]
+    const wires = node.connectedWires
+    const connected = wires.length > 0
+    if (editor.mode <= Mode.TRYOUT && !connected && !editor.options.showDisconnectedPins) {
+        return { drawLabel: false, drawLead: false, drawTriangle: false, drawHiddenMark: false }
     }
-    const showWire = isDisconnected
-    return [showWire, true]
+    const drawHiddenMark = connected && wires.some(w => w.isHidden)
+    return { drawLabel: true, drawLead: !connected || drawHiddenMark, drawTriangle: node.hasTriangle, drawHiddenMark }
 }
 
-export function shouldShowNodeLabel(nodeOrArray: Node | readonly Node[]): boolean {
+export function shouldDrawNodeLabel(nodeOrArray: Node | readonly Node[]): boolean {
     if (isArray(nodeOrArray)) {
-        return nodeOrArray.map(shouldShowWireOrTriangleFor).some(x => x[1])
+        return nodeOrArray.map(whatToDrawForNode).some(x => x.drawLabel)
     }
     const node = nodeOrArray as Node
-    return shouldShowWireOrTriangleFor(node)[1]
+    return whatToDrawForNode(node).drawLabel
 }
 
 export function drawWireLineToComponent(g: GraphicsRendering, node: Node) {
-    const [showWire, showTriangle] = shouldShowWireOrTriangleFor(node)
+    const { drawLead, drawTriangle, drawHiddenMark } = whatToDrawForNode(node)
     const [x1, y1, x0, y0] = node.drawCoordsInParentTransform
-    if (showWire) {
+    if (drawLead) {
         const neutral = node.parent.editor.options.hideWireColors
         drawStraightWireLine(g, x0, y0, x1, y1, node.value, node.color, neutral, undefined)
     }
-    if (showTriangle && node.hasTriangle) {
+    if (drawTriangle) {
         g.strokeStyle = COLOR_COMPONENT_BORDER
         g.fillStyle = COLOR_COMPONENT_BORDER
         g.beginPath()
@@ -503,6 +506,19 @@ export function drawWireLineToComponent(g: GraphicsRendering, node: Node) {
         }
         g.lineWidth = 2
         g.fill()
+        g.stroke()
+    }
+    if (drawHiddenMark) {
+        g.lineWidth = 2
+        g.strokeStyle = COLOR_WIRE[node.color]
+        g.beginPath()
+        if (Orientation.isVertical(node.orient)) {
+            g.moveTo(x0 + 5, y0 + 1.5)
+            g.lineTo(x0 - 5, y0 - 1.5)
+        } else {
+            g.moveTo(x0 + 1.5, y0 - 5)
+            g.lineTo(x0 - 1.5, y0 + 5)
+        }
         g.stroke()
     }
 }
@@ -684,7 +700,7 @@ export function drawLabel(ctx: DrawContextExt, compOrient: Orientation, text: st
 
     let showLabel = true
     if (referenceNode !== undefined) {
-        showLabel = shouldShowNodeLabel(referenceNode)
+        showLabel = shouldDrawNodeLabel(referenceNode)
     }
     if (!showLabel) {
         return
