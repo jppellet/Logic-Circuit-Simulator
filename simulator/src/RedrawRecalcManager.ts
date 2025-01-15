@@ -5,10 +5,11 @@ import { Dict } from "./utils"
 export class RedrawManager {
 
     private _canvasRedrawReasons: Dict<unknown[]> = {}
+    private _maskWasInvalidated = false
     private _isPropagating = false
     private _isEmpty = true
 
-    public addReason(reason: string, comp: Drawable | null, isPropagation: boolean = false) {
+    public addReason(reason: string, comp: Drawable | null, invalidateMask: boolean = false, isPropagation: boolean = false) {
         const compObj = comp
         const compList = this._canvasRedrawReasons[reason]
         if (compList === undefined) {
@@ -16,44 +17,54 @@ export class RedrawManager {
         } else {
             compList.push(compObj)
         }
+        if (invalidateMask) {
+            this._maskWasInvalidated = true
+        }
         if (isPropagation) {
             this._isPropagating = true
         }
         this._isEmpty = false
     }
 
-    public getReasonsAndClear(): string | undefined {
+    public getReasonsAndClear(): [getReasons: () => string, redrawMask: boolean] | undefined {
         if (this._isEmpty) {
             return undefined
         }
 
-        const reasonParts: string[] = []
-        for (const reason of Object.keys(this._canvasRedrawReasons)) {
-            reasonParts.push(reason)
-            const linkedComps = this._canvasRedrawReasons[reason]!
-            reasonParts.push(" (", String(linkedComps.length), "×)", ": ")
-            for (const comp of linkedComps) {
-                if (comp !== null) {
-                    const compAny = comp as any
-                    reasonParts.push(compAny.constructor?.name ?? "Component")
-                    if (compAny.type !== undefined) {
-                        reasonParts.push("_", compAny.type)
+        const redrawReasons = this._canvasRedrawReasons
+        const getReasons = () => {
+            const reasonParts: string[] = []
+            for (const reason of Object.keys(redrawReasons)) {
+                reasonParts.push(reason)
+                const linkedComps = redrawReasons[reason]!
+                reasonParts.push(" (", String(linkedComps.length), "×)", ": ")
+                for (const comp of linkedComps) {
+                    if (comp !== null) {
+                        const compAny = comp as any
+                        reasonParts.push(compAny.constructor?.name ?? "Component")
+                        if (compAny.type !== undefined) {
+                            reasonParts.push("_", compAny.type)
+                        }
+                        if (compAny.name !== undefined) {
+                            reasonParts.push("('", compAny.name, "')")
+                        }
+                        reasonParts.push("; ")
                     }
-                    if (compAny.name !== undefined) {
-                        reasonParts.push("('", compAny.name, "')")
-                    }
-                    reasonParts.push("; ")
                 }
+                reasonParts.pop()
+                reasonParts.push("\n    ")
             }
             reasonParts.pop()
-            reasonParts.push("\n    ")
+            return reasonParts.join("")
         }
-        reasonParts.pop()
+
+        const redrawMask = this._maskWasInvalidated
 
         this._canvasRedrawReasons = {}
         this._isPropagating = false
+        this._maskWasInvalidated = false
         this._isEmpty = true
-        return reasonParts.join("")
+        return [getReasons, redrawMask]
     }
 
     public hasReasons(): boolean {

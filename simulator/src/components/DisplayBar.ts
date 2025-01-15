@@ -246,7 +246,7 @@ export class DisplayBar extends DisplayBarBase<DisplayBarRepr, LogicValue> {
     private doSetDisplay(newDisplay: DisplayBarType) {
         this._display = newDisplay
         this.updateInputOffsetX()
-        this.setNeedsRedraw("display mode changed")
+        this.setNeedsRedraw("display mode changed", true)
     }
 
     private updateInputOffsetX() {

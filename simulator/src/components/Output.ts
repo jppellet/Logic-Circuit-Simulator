@@ -196,7 +196,7 @@ export class Output extends ParametrizedComponentBase<OutputRepr> {
             // should never happen, all our inputs are west
             return
         }
-        
+
         switch (Orientation.add(comp.orient, outNode.orient)) {
             case "e":
                 // nothing to do

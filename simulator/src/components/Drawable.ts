@@ -157,7 +157,7 @@ export abstract class Drawable {
 
     protected constructor(parent: DrawableParent) {
         this.parent = parent
-        this.setNeedsRedraw("newly created")
+        this.setNeedsRedraw("newly created", true)
     }
 
     public get ref() {
@@ -171,8 +171,8 @@ export abstract class Drawable {
         this._ref = id
     }
 
-    protected setNeedsRedraw(reason: string, isPropagation: boolean = false) {
-        this.parent.ifEditing?.redrawMgr.addReason(reason, this, isPropagation)
+    protected setNeedsRedraw(reason: string, invalidateMask: boolean = false, isPropagation: boolean = false) {
+        this.parent.ifEditing?.redrawMgr.addReason(reason, this, invalidateMask, isPropagation)
     }
 
     public get drawZIndex(): DrawZIndex {
@@ -476,7 +476,7 @@ export abstract class DrawableWithPosition extends Drawable implements HasPositi
 
     public doSetOrient(newOrient: Orientation) {
         this._orient = newOrient
-        this.setNeedsRedraw("orientation changed")
+        this.setNeedsRedraw("orientation changed", true)
     }
 
     public get width(): number {
@@ -535,7 +535,7 @@ export abstract class DrawableWithPosition extends Drawable implements HasPositi
         const delta: [number, number] = [posX - this._posX, posY - this._posY]
         this._posX = posX
         this._posY = posY
-        this.setNeedsRedraw("position changed")
+        this.setNeedsRedraw("position changed", true)
         this.positionChanged(delta)
     }
 

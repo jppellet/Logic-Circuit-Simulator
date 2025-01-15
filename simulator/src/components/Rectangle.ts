@@ -226,7 +226,7 @@ export class Rectangle extends ComponentBase<RectangleRepr> {
 
     private doSetStrokeWidth(strokeWidth: number) {
         this._strokeWidth = strokeWidth
-        this.setNeedsRedraw("stroke width changed")
+        this.setNeedsRedraw("stroke width changed", true)
     }
 
     private doSetCaption(caption: string | undefined) {
@@ -370,7 +370,7 @@ export class Rectangle extends ComponentBase<RectangleRepr> {
     private doSetDimensions(w: number, h: number) {
         this._w = w
         this._h = h
-        this.setNeedsRedraw("size changed")
+        this.setNeedsRedraw("size changed", true)
     }
 
     public wrapContents(selectedComps: Set<Drawable>) {

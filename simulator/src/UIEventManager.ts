@@ -891,7 +891,7 @@ export class UIEventManager {
         const numDeleted = this.editor.editorRoot.components.tryDeleteWhere(cond, onlyOne).length
         if (numDeleted > 0) {
             this.clearPopperIfNecessary()
-            this.editor.editTools.redrawMgr.addReason("component(s) deleted", null)
+            this.editor.editTools.redrawMgr.addReason("component(s) deleted", null, true)
         }
         return numDeleted
     }

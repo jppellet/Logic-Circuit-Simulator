@@ -7,7 +7,6 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
 
 ## High priority
 
- * waypoint positioning when embedded right-click
  * New custom components should show up in library even with showonly
  * Take undo snapshot after key events too
  * Adder orientation
@@ -44,6 +43,7 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
 
 ### DONE
  
+ * Waypoint positioning when embedded right-click
  * Allow non-preset clock periods
  * Allow editing custom component
  * Copy-paste

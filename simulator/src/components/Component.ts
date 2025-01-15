@@ -1028,7 +1028,7 @@ export abstract class ComponentBase<
 
 
         this.parent.ifEditing?.undoMgr.takeSnapshot()
-        this.parent.ifEditing?.redrawMgr.addReason("component replaced", newComp)
+        this.parent.ifEditing?.redrawMgr.addReason("component replaced", newComp, true)
 
         return newComp
     }
@@ -1215,7 +1215,7 @@ export abstract class ComponentBase<
         const deleteItem = MenuData.item("trash", s.Delete, () => {
             const deleted = this.parent.components.tryDelete(this)
             if (deleted) {
-                this.setNeedsRedraw("deleted component")
+                this.setNeedsRedraw("deleted component", true)
                 return InteractionResult.SimpleChange
             }
             return InteractionResult.NoChange

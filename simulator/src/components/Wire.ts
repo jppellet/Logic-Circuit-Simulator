@@ -310,7 +310,7 @@ export class Wire extends Drawable {
 
     public doSetStyle(style: WireStyle | undefined) {
         this._style = style
-        this.setNeedsRedraw("style changed")
+        this.setNeedsRedraw("style changed", true)
     }
 
     public get isHidden() {
@@ -323,7 +323,7 @@ export class Wire extends Drawable {
 
     public doSetHidden(hidden: boolean) {
         this._isHidden = hidden
-        this.setNeedsRedraw("hidden changed")
+        this.setNeedsRedraw("hidden changed", true)
     }
 
     public setStartNode(startNode: NodeOut, now?: Timestamp) {
@@ -461,7 +461,7 @@ export class Wire extends Drawable {
         if (i !== -1) {
             this._waypoints.splice(i, 1)
             this.invalidateWirePath()
-            this.setNeedsRedraw("waypoint deleted")
+            this.setNeedsRedraw("waypoint deleted", true)
         }
     }
 
@@ -545,7 +545,7 @@ export class Wire extends Drawable {
         g.globalAlpha = 1.0
 
         if (isAnimating && !this.parent.editor.timeline.isPaused) {
-            this.setNeedsRedraw("propagating value", true)
+            this.setNeedsRedraw("propagating value", false, true)
         }
     }
 
@@ -1234,7 +1234,7 @@ export class LinkManager {
         }
         // remove wire from array
         this._wires.splice(this._wires.indexOf(wire), 1)
-        this.parent.ifEditing?.redrawMgr.addReason("deleted wire", null)
+        this.parent.ifEditing?.redrawMgr.addReason("deleted wire", null, true)
         return true
     }
 
@@ -1250,7 +1250,7 @@ export class LinkManager {
             wire.destroy()
         }
         this._wires.splice(0, this._wires.length)
-        this.parent.ifEditing?.redrawMgr.addReason("deleted wires", null)
+        this.parent.ifEditing?.redrawMgr.addReason("deleted wires", null, true)
     }
 
 }
