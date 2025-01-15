@@ -827,6 +827,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         ).render()
         wireStylePopup.addEventListener("change", this.wrapHandler(() => {
             this._options.wireStyle = wireStylePopup.value as WireStyle
+            this.linkMgr.invalidateAllWirePaths()
             this.editTools.redrawMgr.addReason("wire style changed", null)
         }))
         settingsPalette.appendChild(
@@ -1750,7 +1751,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             console.group(msg)
         }
 
-        testCase.tryFixReferences(this.components)
+        testCase.tryFixReferences(this.editorRoot.components)
         const oldInValues = new Map<Input, LogicValue[]>()
         try {
             for (const [input, valueRepr] of testCase.in) {
@@ -2307,7 +2308,7 @@ export class LogicStatic {
                         in: { in0: 1, in1: 1 },
                         out: { out0: 0 },
                     }],
-                }, this.singleton.components])
+                }, this.singleton.editorRoot.components])
                 const _opts = isRecord(options) ? options : {}
                 const results = await this.singleton.runTestSuite(testSuite, _opts)
                 if (results === undefined) {

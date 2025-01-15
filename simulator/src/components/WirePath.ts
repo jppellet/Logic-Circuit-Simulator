@@ -45,13 +45,7 @@ export class WirePath {
     }
 
     public isOver(x: number, y: number): boolean {
-        const i = this.partIndexIfMouseover(x, y)
-        if (i === undefined) {
-            return false
-        }
-        console.log(`i = ${i} for ${x}, ${y}`)
-        return true
-        // return this.partIndexIfMouseover(x, y) !== undefined
+        return this.partIndexIfMouseover(x, y) !== undefined
     }
 
     public partIndexIfMouseover(x: number, y: number): undefined | number {

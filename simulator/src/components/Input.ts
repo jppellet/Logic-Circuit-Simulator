@@ -187,9 +187,12 @@ export abstract class InputBase<
                 this.doSetName(inNode.shortName)
             }
         }
+        
         if (outNode.orient !== "e") {
+            // should never happen, all our outputs are east
             return
         }
+
         switch (Orientation.add(comp.orient, inNode.orient)) {
             case "w":
                 // nothing to do

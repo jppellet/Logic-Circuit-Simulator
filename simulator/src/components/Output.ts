@@ -192,10 +192,12 @@ export class Output extends ParametrizedComponentBase<OutputRepr> {
             }
         }
 
-        if (outNode.orient !== "w") {
+        if (inNode.orient !== "w") {
+            // should never happen, all our inputs are west
             return
         }
-        switch (Orientation.add(comp.orient, inNode.orient)) {
+        
+        switch (Orientation.add(comp.orient, outNode.orient)) {
             case "e":
                 // nothing to do
                 return
