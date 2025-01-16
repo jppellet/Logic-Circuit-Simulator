@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, COLOR_DARK_RED, COLOR_GATE_NAMES, COLOR_UNKNOWN, ColorString, GRID_STEP, PATTERN_STRIPED_GRAY, circle, drawWireLineToComponent } from "../drawutils"
+import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, COLOR_DARK_RED, COLOR_GATE_NAMES, COLOR_MOUSE_OVER, COLOR_UNKNOWN, ColorString, GRID_STEP, PATTERN_STRIPED_GRAY, circle, drawWireLineToComponent, useCompact } from "../drawutils"
 import { Modifier, ModifierObject, asValue, b, cls, div, emptyMod, mods, table, tbody, td, th, thead, tooltipContent, tr } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillUsing, Expand, InteractionResult, LogicValue, Mode, RichStringEnum, Unknown, deepArrayEquals, isUnknown, typeOrUndefined } from "../utils"
@@ -9,6 +9,8 @@ import { Gate1Type, Gate1TypeRepr, Gate1Types, Gate2OnlyTypes, Gate2toNTypes, Ga
 
 type GateRepr = Gate1Repr | GateNRepr
 
+const LEAD_LENGTH_NORMAL = 20
+const LEAD_LENGTH_OR_STYLE = 25
 
 export abstract class GateBase<
     TRepr extends GateRepr,
@@ -33,6 +35,7 @@ export abstract class GateBase<
         super(parent, SubclassDef, saved)
 
         this._type = type
+        // this.updateLeadsFor(type) // done in subclass after it can set numBits
         this._poseAs = saved?.poseAs as TGateType ?? undefined
         this._showAsUnknown = saved?.showAsUnknown ?? false
     }
@@ -57,8 +60,45 @@ export abstract class GateBase<
 
     protected doSetType(newType: TGateType) {
         this._type = newType
+        this.updateLeadsFor(newType)
         this.setNeedsRecalc()
         this.setNeedsRedraw("gate type changed")
+    }
+
+    protected updateLeadsFor(type: TGateType) {
+        const isOrStyle = type === "or" || type === "nor" || type === "imply" || type === "rimply"
+        const leadLength = isOrStyle ? LEAD_LENGTH_OR_STYLE : LEAD_LENGTH_NORMAL
+        const ins = this.inputs.In
+        ins.forEach(node => node.updateLeadLength(leadLength))
+        // very empirical way to make the gates look better
+        if (isOrStyle) {
+            const numBits = this.numBits
+            if (numBits >= 6 || numBits === 4) {
+                // shorter first and last
+                ins[0].updateLeadLength(leadLength - 3)
+                ins[numBits - 1].updateLeadLength(leadLength - 3)
+                if (numBits >= 8) {
+                    // shorter on edge of gate
+                    const numCoveredByGate = 6
+                    const iTopGate = (numBits - numCoveredByGate) / 2
+                    const iBottomGate = iTopGate + numCoveredByGate - 1
+                    ins[iTopGate].updateLeadLength(leadLength - 3)
+                    ins[iBottomGate].updateLeadLength(leadLength - 3)
+                    if (numBits >= 24) {
+                        // shorter on arms' ends
+                        ins[1].updateLeadLength(leadLength - 2)
+                        ins[numBits - 2].updateLeadLength(leadLength - 2)
+                        // above gate
+                        ins[iTopGate - 1].updateLeadLength(leadLength - 2)
+                        ins[iTopGate - 2].updateLeadLength(leadLength - 2)
+                        // below gate
+                        ins[iBottomGate + 1].updateLeadLength(leadLength - 2)
+                        ins[iBottomGate + 2].updateLeadLength(leadLength - 2)
+                    }
+                }
+            }
+        }
+
     }
 
     public get poseAs() {
@@ -162,52 +202,24 @@ export abstract class GateBase<
         const numBits = this.numBits
         const output = this.outputs.Out
 
-        const width = this.unrotatedWidth
-        const height = this.unrotatedHeight
-        const top = this.posY - height / 2
-        const bottom = top + height
-        const left = this.posX - width / 2
+        const { top, left, bottom, right, height } = this.bounds()
+        const drawArms = numBits >= 4 && numBits !== 5
+        const armsOffset = GRID_STEP / (useCompact(numBits) ? 2 : 1)
+        const armsTop = this.inputs.In[0].posYInParentTransform - armsOffset
+        const armsBottom = this.inputs.In[numBits - 1].posYInParentTransform + armsOffset
         const pi2 = Math.PI / 2
-
-        if (ctx.isMouseOver) {
-            const frameWidth = 2
-            const frameMargin = 2
-            g.lineWidth = frameWidth
-            g.strokeStyle = ctx.borderColor
-            g.beginPath()
-            g.rect(
-                left - frameWidth - frameMargin,
-                top - frameWidth - frameMargin,
-                width + 2 * (frameWidth + frameMargin),
-                height + 2 * (frameWidth + frameMargin)
-            )
-            g.stroke()
-        }
-
-        const gateWidth = (2 * Math.max(2, this.numBits)) * GRID_STEP
-        const gateLeft = this.posX - gateWidth / 2
-        let gateRight = this.posX + gateWidth / 2
         let nameDeltaX = 0
 
-        const drawRightCircle = () => {
-            gateRight += 5
+        const drawInversionCircle = (x: number, y: number) => {
             g.beginPath()
-            circle(g, gateRight, this.posY, 8)
-            g.fillStyle = COLOR_BACKGROUND
-            g.fill()
-            g.stroke()
-            gateRight += 4
-        }
-        const drawLeftCircle = (up: boolean) => {
-            g.beginPath()
-            circle(g, gateLeft - 5, this.posY - (up ? 1 : -1) * GRID_STEP, 8)
+            circle(g, x, y, 8)
             g.fillStyle = COLOR_BACKGROUND
             g.fill()
             g.stroke()
         }
 
         const showAsFake = isFake && this.parent.mode >= Mode.FULL
-        const gateBorderColor: ColorString = showAsFake ? COLOR_DARK_RED : COLOR_COMPONENT_BORDER
+        const gateBorderColor: ColorString = ctx.isMouseOver ? COLOR_MOUSE_OVER : (showAsFake ? COLOR_DARK_RED : COLOR_COMPONENT_BORDER)
         const gateFill = showAsFake ? PATTERN_STRIPED_GRAY : COLOR_BACKGROUND
 
         // inputs and output
@@ -225,16 +237,16 @@ export abstract class GateBase<
             case "not":
             case "buf": {
                 g.beginPath()
-                g.moveTo(gateLeft, top)
-                g.lineTo(gateRight, this.posY)
-                g.lineTo(gateLeft, bottom)
+                g.moveTo(left, top)
+                g.lineTo(right, this.posY)
+                g.lineTo(left, bottom)
                 g.closePath()
                 g.fill()
                 g.stroke()
                 if (type === "not") {
-                    drawRightCircle()
+                    drawInversionCircle(right + 5, this.posY)
                 }
-                nameDeltaX -= 6
+                nameDeltaX = -7
                 break
             }
 
@@ -242,12 +254,13 @@ export abstract class GateBase<
             case "nand":
             case "nimply":
             case "rnimply": {
+                const arcBeginX = right - height / 2
                 g.beginPath()
-                g.moveTo(this.posX, bottom)
-                g.lineTo(gateLeft, bottom)
-                g.lineTo(gateLeft, top)
-                g.lineTo(this.posX, top)
-                g.arc(this.posX, this.posY, height / 2, -pi2, pi2)
+                g.moveTo(arcBeginX, bottom)
+                g.lineTo(left, bottom)
+                g.lineTo(left, top)
+                g.lineTo(arcBeginX, top)
+                g.arc(arcBeginX, this.posY, height / 2, -pi2, pi2)
                 g.closePath()
                 g.fill()
                 g.lineWidth = 1
@@ -257,14 +270,19 @@ export abstract class GateBase<
                 g.stroke()
                 g.beginPath()
                 if (type.startsWith("nand")) {
-                    drawRightCircle()
+                    drawInversionCircle(right + 5, this.posY)
                 }
                 if (type === "nimply") {
-                    drawLeftCircle(false)
+                    drawInversionCircle(left - 5, this.posY + GRID_STEP)
                 } else if (type === "rnimply") {
-                    drawLeftCircle(true)
+                    drawInversionCircle(left - 5, this.posY - GRID_STEP)
                 }
-                nameDeltaX -= 1
+                nameDeltaX = -2
+                if (drawArms) {
+                    g.moveTo(left, armsTop)
+                    g.lineTo(left, armsBottom)
+                    g.stroke()
+                }
                 break
             }
 
@@ -274,57 +292,78 @@ export abstract class GateBase<
             case "xnor":
             case "imply":
             case "rimply": {
+                const leftCurve = 12
                 g.beginPath()
-                g.moveTo(gateLeft, top)
-                g.lineTo(this.posX - 15, top)
-                g.bezierCurveTo(this.posX + 10, top, gateRight - 5, this.posY - 8,
-                    gateRight, this.posY)
-                g.bezierCurveTo(gateRight - 5, this.posY + 8, this.posX + 10, bottom,
-                    this.posX - 15, bottom)
-                g.lineTo(gateLeft, bottom)
-                g.quadraticCurveTo(this.posX - 8, this.posY, gateLeft, top)
+                g.moveTo(this.posX - 15, top)
+                g.bezierCurveTo(this.posX + 10, top, right - 5, this.posY - 8,
+                    right, this.posY)
+                g.bezierCurveTo(right - 5, this.posY + 8, this.posX + 10, bottom,
+                    left, bottom)
+                g.quadraticCurveTo(left + leftCurve, this.posY, left, top)
                 g.closePath()
                 g.fill()
                 g.stroke()
+
+                const armsHeight = armsBottom - bottom
+                const armsCurvature = Math.min(leftCurve, armsHeight / 4)
+                if (drawArms) {
+                    g.beginPath()
+                    g.moveTo(left, bottom)
+                    g.quadraticCurveTo(left + armsCurvature, bottom + armsHeight / 2, left, armsBottom)
+                    g.moveTo(left, top)
+                    g.quadraticCurveTo(left + armsCurvature, top - armsHeight / 2, left, armsTop)
+                    g.stroke()
+                }
+
                 if (type.startsWith("nor") || type.startsWith("xnor")) {
-                    drawRightCircle()
+                    drawInversionCircle(right + 5, this.posY)
                 }
                 if (type === "imply") {
-                    drawLeftCircle(true)
+                    drawInversionCircle(left - 2, this.posY - GRID_STEP)
                 } else if (type === "rimply") {
-                    drawLeftCircle(false)
+                    drawInversionCircle(left - 2, this.posY + GRID_STEP)
                 }
                 if (type.startsWith("x")) {
-                    // clear the "middle"
-                    g.beginPath()
-                    g.moveTo(gateLeft - 3, bottom)
-                    g.quadraticCurveTo(this.posX - 11, this.posY, gateLeft - 3, top)
                     g.lineWidth = 3
+                    const leftXorCurve = (delta: number) => {
+                        g.beginPath()
+                        if (drawArms) {
+                            g.moveTo(left - delta, armsBottom)
+                            g.quadraticCurveTo(left + armsCurvature - delta, bottom + armsHeight / 2, left - delta, bottom)
+                            g.quadraticCurveTo(left + leftCurve - delta, this.posY, left - delta, top)
+                            g.quadraticCurveTo(left + armsCurvature - delta, top - armsHeight / 2, left - delta, armsTop)
+                        } else {
+                            // simple
+                            g.moveTo(left - delta, bottom)
+                            g.quadraticCurveTo(left + leftCurve - delta, this.posY, left - delta, top)
+                        }
+                    }
+
+                    // clear the "middle"
+                    leftXorCurve(3)
                     g.strokeStyle = COLOR_BACKGROUND
                     g.stroke()
+
                     // left additional line for x gates
-                    g.beginPath()
-                    g.moveTo(gateLeft - 6, bottom)
-                    g.quadraticCurveTo(this.posX - 14, this.posY, gateLeft - 6, top)
-                    g.lineWidth = 3
+                    leftXorCurve(6)
                     g.strokeStyle = gateBorderColor
                     g.stroke()
                 }
-                nameDeltaX -= 1
+                nameDeltaX = 1
                 break
             }
 
             case "txa":
             case "txna": {
                 g.beginPath()
-                g.moveTo(gateLeft, bottom)
-                g.lineTo(gateLeft, top)
-                g.lineTo(gateRight, this.posY + 0.5)
-                g.lineTo(gateLeft + 2, this.posY + 0.5)
+                g.moveTo(left, bottom)
+                g.lineTo(left, top)
+                g.lineTo(right, this.posY + 0.5)
+                g.lineTo(left + 2, this.posY + 0.5)
                 g.fill()
                 g.stroke()
                 if (type === "txna") {
-                    drawLeftCircle(true)
+                    drawInversionCircle(left - 5, this.posY - GRID_STEP)
                 }
                 break
             }
@@ -332,35 +371,41 @@ export abstract class GateBase<
             case "txb":
             case "txnb": {
                 g.beginPath()
-                g.moveTo(gateLeft, top)
-                g.lineTo(gateLeft, bottom)
-                g.lineTo(gateRight, this.posY - 0.5)
-                g.lineTo(gateLeft + 2, this.posY - 0.5)
+                g.moveTo(left, top)
+                g.lineTo(left, bottom)
+                g.lineTo(right, this.posY - 0.5)
+                g.lineTo(left + 2, this.posY - 0.5)
                 g.fill()
                 g.stroke()
                 if (type === "txnb") {
-                    drawLeftCircle(false)
+                    drawInversionCircle(left - 5, this.posY + GRID_STEP)
                 }
                 break
             }
 
             case "?": {
-                g.strokeStyle = COLOR_UNKNOWN
+                const gateRightSquare = left + (bottom - top)
+                g.strokeStyle = ctx.isMouseOver ? COLOR_MOUSE_OVER : COLOR_UNKNOWN
                 g.beginPath()
-                g.moveTo(gateLeft, top)
-                g.lineTo(gateRight, top)
-                g.lineTo(gateRight, bottom)
-                g.lineTo(gateLeft, bottom)
+                g.moveTo(left, top)
+                g.lineTo(gateRightSquare, top)
+                g.lineTo(gateRightSquare, bottom)
+                g.lineTo(left, bottom)
                 g.closePath()
                 g.fill()
                 g.stroke()
+                if (drawArms) {
+                    g.moveTo(left, armsTop)
+                    g.lineTo(left, armsBottom)
+                    g.stroke()
+                }
                 g.lineWidth = 0
 
                 ctx.inNonTransformedFrame(() => {
                     g.fillStyle = COLOR_UNKNOWN
                     g.textAlign = "center"
                     g.font = "bold 20px sans-serif"
-                    g.fillText('?', this.posX, this.posY)
+                    g.fillText('?', (left + gateRightSquare) / 2, this.posY)
                 })
                 break
             }
@@ -511,7 +556,8 @@ export const Gate1Def =
         },
         idPrefix: ({ type }) => type,
         size: () => ({
-            gridWidth: 7, gridHeight: 4,
+            gridWidth: 4,
+            gridHeight: 4,
         }),
         makeNodes: () => ({
             ins: { In: [[-4, 0, "w", { leadLength: 20 }]] },
@@ -568,7 +614,7 @@ export const GateNDef =
         },
         valueDefaults: {},
         params: {
-            bits: param(2, [2, 3, 4, 7, 8, 16]),
+            bits: param(2, [2, 3, 4, 5, 6, 7, 8, 12, 16, 24, 32]),
             type: param("and" as GateNType),
         },
         validateParams: ({ type: paramType, bits }, jsonType, defaults) => {
@@ -576,20 +622,21 @@ export const GateNDef =
             return { type, numBits: bits }
         },
         idPrefix: ({ type }) => type,
-        size: ({ numBits }) => ({
-            gridWidth: 7 + Math.max(0, numBits - 2) * 2,
-            gridHeight: 4 + Math.max(0, numBits - 2) * 2,
-        }),
-        makeNodes: ({ numBits, gridWidth }) => {
-            const outX = 4 + (numBits - 2)
-            const inX = -outX
-            const leadLength = gridWidth * GRID_STEP / 3
+        size: ({ numBits }) => {
+            const tall = numBits !== 2 && numBits !== 4 && numBits !== 6
+            return {
+                gridWidth: 4,
+                gridHeight: tall ? 5 : 4,
+            }
+        },
+        makeNodes: ({ numBits }) => {
+            const leadLength = 20
             return {
                 ins: {
-                    In: groupVertical("w", inX, 0, numBits, undefined, { leadLength }),
+                    In: groupVertical("w", -4, 0, numBits, undefined, { leadLength }),
                 },
                 outs: {
-                    Out: [outX, 0, "e", { leadLength: 20 }],
+                    Out: [4, 0, "e", { leadLength }],
                 },
             }
         },
@@ -606,6 +653,7 @@ export class GateN extends GateBase<GateNRepr> {
     public constructor(parent: DrawableParent, params: GateNParams, saved?: GateNRepr) {
         super(parent, GateNDef.with(params), params.type, saved)
         this.numBits = params.numBits
+        this.updateLeadsFor(params.type)
     }
 
     protected gateTypes(numBits: number) {

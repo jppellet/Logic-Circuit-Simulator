@@ -64,8 +64,8 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         return this as unknown as Node
     }
 
-    public updateLeadLength() {
-        return this._leadLength = this._leadLengthOverride ?? this.defaultLeadLength(Orientation.isVertical(this.orient))
+    public updateLeadLength(leadLengthOverride?: number) {
+        return this._leadLength = leadLengthOverride ?? this._leadLengthOverride ?? this.defaultLeadLength(Orientation.isVertical(this.orient))
     }
 
     private defaultLeadLength(isVertical: boolean): number {

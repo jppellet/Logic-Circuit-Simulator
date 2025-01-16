@@ -80,7 +80,7 @@ export class RedrawManager {
 export class RecalcManager {
 
     private _propagateQueue: Array<Component> = []
-    private _recalcQueue: Array<[Component, boolean]> = []
+    private _recalcQueue: Array<[Component, force: boolean]> = []
     public debug = false
 
     public enqueueForPropagate(comp: Component) {

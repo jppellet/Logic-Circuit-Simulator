@@ -43,6 +43,7 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
 
 ### DONE
  
+ * Fix drawing of gates with many inputs
  * Waypoint positioning when embedded right-click
  * Allow non-preset clock periods
  * Allow editing custom component
