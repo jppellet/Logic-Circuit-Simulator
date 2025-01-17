@@ -14,6 +14,7 @@ import { EdgeTrigger, FixedArray, FixedArrayAssert, InBrowser, isArray, isHighIm
 
 export const GRID_STEP = 10
 export const WIRE_WIDTH = 8
+export const WIRE_WIDTH_HALF_SQUARED = (WIRE_WIDTH / 2) ** 2
 export const WAYPOINT_DIAMETER = 8
 const WAYPOINT_HIT_RANGE = WAYPOINT_DIAMETER + 5
 
@@ -26,10 +27,13 @@ export function clampZoom(zoom: number) {
     return Math.max(0.1, Math.min(10, zoom / 100))
 }
 
-export function dist(x0: number, y0: number, x1: number, y1: number): number {
+/**
+ * Squared to avoid the square root operation
+ */
+export function distSquared(x0: number, y0: number, x1: number, y1: number): number {
     const dx = x1 - x0
     const dy = y1 - y0
-    return Math.sqrt(dx * dx + dy * dy)
+    return dx * dx + dy * dy
 }
 
 export function inRect(centerX: number, centerY: number, width: number, height: number, pointX: number, pointY: number): boolean {
@@ -610,7 +614,7 @@ export function strokeWireValue(g: GraphicsRendering, value: LogicValue, lengthT
 }
 
 export function isOverWaypoint(x: number, y: number, waypointX: number, waypointY: number): boolean {
-    return dist(x, y, waypointX, waypointY) < WAYPOINT_HIT_RANGE / 2
+    return distSquared(x, y, waypointX, waypointY) < (WAYPOINT_HIT_RANGE / 2) ** 2
 }
 
 export enum NodeStyle {
@@ -1000,6 +1004,162 @@ export function drawAnchorTo(g: GraphicsRendering, sX: number, sY: number, tX: n
     g.lineTo(sb[0], sb[1])
     g.closePath()
     g.fill()
+}
+
+// Bézier utils
+
+export type LineCoords = readonly [
+    /* 0 */ startX: number,
+    /* 1 */ startY: number,
+    /* 2 */ endX: number,
+    /* 3 */ endY: number,
+]
+
+/**
+ * Note that the control points are at the end such that the second pair of coordinates is the end of the curve, just like for LineCoords.
+ */
+export type BezierCoordsInit = readonly [
+    /* 0 */ startX: number,
+    /* 1 */ startY: number,
+    /* 2 */ endX: number,
+    /* 3 */ endY: number,
+    /* 4 */ control1X: number,
+    /* 5 */ control1Y: number,
+    /* 6 */ control2X: number,
+    /* 7 */ control2Y: number,
+]
+
+export type BezierCoordsMeta = {
+    boundingBox: [left: number, top: number, right: number, bottom: number],
+    tStepSize: number,
+}
+
+export type BezierCoords = readonly [...BezierCoordsInit, meta: BezierCoordsMeta]
+
+
+export function bezierPoint(t: number, coords: BezierCoordsInit | BezierCoords): [number, number] {
+    const u = 1 - t
+    const f1 = u ** 3
+    const f2 = 3 * u ** 2 * t
+    const f3 = 3 * u * t ** 2
+    const f4 = t ** 3
+    const x = f1 * coords[0] + f2 * coords[4] + f3 * coords[6] + f4 * coords[2]
+    const y = f1 * coords[1] + f2 * coords[5] + f3 * coords[7] + f4 * coords[3]
+    return [x, y]
+}
+
+/**
+ * Find the t values for the X or Y extrema of a cubic Bézier curve in one dimension
+ * @param forY false for x, true for y
+ * @returns the t values for the extrema
+ */
+function bezierExtrema(coords: BezierCoordsInit, forY: boolean): number[] {
+    const di = Number(forY)
+    const start = coords[0 + di] as number
+    const end = coords[2 + di] as number
+    const c1 = coords[4 + di] as number
+    const c2 = coords[6 + di] as number
+
+    // a, b, c factors of the quadradic equation that is given by setting
+    // the derivative of the bezier curve to zero (for x or y)
+    const a = -3 * start + 9 * c1 - 9 * c2 + 3 * end
+    const b = 6 * start - 12 * c1 + 6 * c2
+    const c = -3 * start + 3 * c1
+
+    const roots: number[] = []
+    let r
+    if (Math.abs(a) < 1e-6) {
+        // Quadratic or linear case
+        if (Math.abs(b) > 1e-6 && (r = -c / b) > 0 && r < 1) {
+            roots.push(r)
+        }
+    } else {
+        // Solve quadratic equation: at^2 + bt + c = 0
+        const discriminant = b ** 2 - 4 * a * c
+        if (discriminant >= 0) {
+            const sqrtD = Math.sqrt(discriminant)
+            r = (-b - sqrtD) / (2 * a)
+            if (r > 0 && r < 1) {
+                roots.push(r)
+            }
+            r = (-b + sqrtD) / (2 * a)
+            if (r > 0 && r < 1) {
+                roots.push(r)
+            }
+        }
+    }
+
+    return roots
+}
+
+export function bezierBoundingBox(coords: BezierCoordsInit, margin: number): [left: number, top: number, right: number, bottom: number] {
+    const xExtrema = bezierExtrema(coords, false)
+    const yExtrema = bezierExtrema(coords, true)
+
+    const ts = [0, 1, ...xExtrema, ...yExtrema]
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+
+    for (const t of ts) {
+        const [x, y] = bezierPoint(t, coords)
+        minX = Math.min(minX, x)
+        maxX = Math.max(maxX, x)
+        minY = Math.min(minY, y)
+        maxY = Math.max(maxY, y)
+    }
+
+    return [minX - margin, minY - margin, maxX + margin, maxY + margin]
+}
+
+export function isPointOnStraightWire(x: number, y: number, coords: LineCoords): boolean {
+    const [x1, y1, x2, y2] = coords
+    const length2 = (x2 - x1) ** 2 + (y2 - y1) ** 2
+
+    // if the segment length is zero, check if the point matches the start
+    if (length2 === 0) {
+        return x === x1 && y === y1
+    }
+
+    // projection of the point onto the segment (t parameter, 0 <= t <= 1)
+    const t = ((x - x1) * (x2 - x1) + (y - y1) * (y2 - y1)) / length2
+    if (t < 0 || t > 1) {
+        return false
+    }
+
+    // closest point on the segment to the given point
+    const closestX = x1 + t * (x2 - x1)
+    const closestY = y1 + t * (y2 - y1)
+    const dist2 = (x - closestX) ** 2 + (y - closestY) ** 2
+    return dist2 <= WIRE_WIDTH_HALF_SQUARED
+}
+
+export function makeBezierCoords(coords: BezierCoordsInit): BezierCoords {
+    const [startX, startY, endX, endY] = coords
+    const endpointDist = Math.sqrt((endX - startX) ** 2 + (endY - startY) ** 2)
+    const numPoints = Math.max(3, Math.ceil(endpointDist / WIRE_WIDTH * 1.25))
+    const tStepSize = 1 / numPoints
+    const boundingBox = bezierBoundingBox(coords, WIRE_WIDTH / 2)
+    const bezierMEta = { tStepSize, boundingBox }
+    return [...coords, bezierMEta]
+}
+
+export function isPointOnBezierWire(x: number, y: number, coords: BezierCoords): boolean {
+    const bezierMeta = coords[8]
+    // fast reject outside bounding box
+    const [left, top, right, bottom] = bezierMeta.boundingBox
+    if (x < left || x > right || y < top || y > bottom) {
+        return false
+    }
+    const stepSize = bezierMeta.tStepSize
+    // sample a series of points on the curve and check if the point is close to any of them
+    for (let t = 0; t <= 1; t += stepSize) {
+        const [wx, wy] = bezierPoint(t, coords)
+        const dist2 = (wx - x) ** 2 + (wy - y) ** 2
+        if (dist2 <= WIRE_WIDTH_HALF_SQUARED) {
+            return true
+        }
+    }
+    return false
 }
 
 //

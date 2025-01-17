@@ -5,7 +5,7 @@ import { CustomComponent } from './components/CustomComponent'
 import { Drawable, DrawableWithDraggablePosition, DrawableWithPosition, MenuData, MenuItem } from "./components/Drawable"
 import { Node } from "./components/Node"
 import { Waypoint, Wire } from './components/Wire'
-import { dist, DrawZIndex, GRID_STEP, setColorMouseOverIsDanger } from "./drawutils"
+import { distSquared, DrawZIndex, GRID_STEP, setColorMouseOverIsDanger } from "./drawutils"
 import { applyModifiersTo, attr, button, cls, emptyMod, i, li, Modifier, ModifierObject, mods, setupSvgIcon, span, type, ul } from './htmlgen'
 import { IconName, makeIcon } from './images'
 import { LogicEditor, MouseAction, MouseActionParams } from './LogicEditor'
@@ -714,10 +714,10 @@ export class UIEventManager {
 
                     if (!fireDragEvent) {
                         // we check if we should fire a drag event and cancel it if the move is too small,
-                        const d = dist(...this.editor.offsetXY(e), ...this._currentMouseDownData.initialXY)
+                        const d2 = distSquared(...this.editor.offsetXY(e), ...this._currentMouseDownData.initialXY)
                         // NaN is returned when no input point was specified and
                         // dragging should then happen regardless
-                        fireDragEvent = isNaN(d) || d >= 5
+                        fireDragEvent = isNaN(d2) || d2 >= 5 * 5 // 5 pixels
                     }
 
                     if (fireDragEvent) {

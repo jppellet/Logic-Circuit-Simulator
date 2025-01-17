@@ -1,6 +1,6 @@
 import { Bezier, Offset } from "bezier-js"
 import * as t from "io-ts"
-import { COLOR_ANCHOR_NEW, COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, NodeStyle, OPACITY_HIDDEN_ITEMS, WAYPOINT_DIAMETER, WIRE_WIDTH, colorForLogicValue, drawAnchorTo, drawStraightWireLine, drawWaypoint, isOverWaypoint, strokeWireOutline, strokeWireOutlineAndSingleValue, strokeWireValue } from "../drawutils"
+import { BezierCoords, COLOR_ANCHOR_NEW, COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, LineCoords, NodeStyle, OPACITY_HIDDEN_ITEMS, WAYPOINT_DIAMETER, WIRE_WIDTH, colorForLogicValue, drawAnchorTo, drawStraightWireLine, drawWaypoint, isOverWaypoint, makeBezierCoords, strokeWireOutline, strokeWireOutlineAndSingleValue, strokeWireValue } from "../drawutils"
 import { span, style, title } from "../htmlgen"
 import { DrawParams } from "../LogicEditor"
 import { S } from "../strings"
@@ -11,7 +11,7 @@ import { Component, NodeGroup } from "./Component"
 import { DrawContext, Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, GraphicsRendering, MenuData, Orientation, Orientations_, PositionSupportRepr } from "./Drawable"
 import { Node, NodeIn, NodeOut, WireColor, tryMakeRepeatableNodeAction } from "./Node"
 import { Passthrough, PassthroughDef } from "./Passthrough"
-import { BezierCoords, LineCoords, WirePath } from "./WirePath"
+import { WirePath } from "./WirePath"
 
 
 type WaypointRepr = t.TypeOf<typeof Waypoint.Repr>
@@ -70,6 +70,11 @@ export class Waypoint extends DrawableWithDraggablePosition {
         }
         // minimal representation with 2 elements
         return [this.posX, this.posY]
+    }
+
+    public override doSetOrient(newOrient: Orientation) {
+        super.doSetOrient(newOrient)
+        this.wire.invalidateWirePath()
     }
 
     public get unrotatedWidth(): number {
@@ -274,7 +279,7 @@ export class Wire extends Drawable {
                 const deltaX = nextX - prevX
                 const deltaY = nextY - prevY
                 const nextProlong = waypoint.orient
-                let x, y, x1, y1
+                let c1x, c1y, c2x, c2y
                 if (wireStyle === WireStyles.straight || (wireStyle === WireStyles.auto && (prevX === nextX || prevY === nextY))) {
                     // straight line
                     pathParts.push([prevX, prevY, nextX, nextY])
@@ -284,9 +289,9 @@ export class Wire extends Drawable {
                     const bezierAnchorPointDistY = Math.max(25, Math.abs(deltaY) / 3);
 
                     // first anchor point
-                    [x, y] = bezierAnchorForWire(prevProlong, prevX, prevY, bezierAnchorPointDistX, bezierAnchorPointDistY);
-                    [x1, y1] = bezierAnchorForWire(nextProlong, nextX, nextY, bezierAnchorPointDistX, bezierAnchorPointDistY)
-                    pathParts.push([prevX, prevY, nextX, nextY, x, y, x1, y1])
+                    [c1x, c1y] = bezierAnchorForWire(prevProlong, prevX, prevY, bezierAnchorPointDistX, bezierAnchorPointDistY);
+                    [c2x, c2y] = bezierAnchorForWire(nextProlong, nextX, nextY, bezierAnchorPointDistX, bezierAnchorPointDistY)
+                    pathParts.push(makeBezierCoords([prevX, prevY, nextX, nextY, c1x, c1y, c2x, c2y]))
                 }
 
                 prevX = nextX
@@ -337,6 +342,8 @@ export class Wire extends Drawable {
         if (now !== undefined) {
             this.propagateNewValue(this._startNode.value, now)
         }
+
+        this.invalidateWirePath()
     }
 
     public setEndNode(endNode: NodeIn) {
@@ -350,6 +357,8 @@ export class Wire extends Drawable {
         endNode.incomingWire = this
         endNode.value = this._startNode.value
         endNode.doSetColor(this._startNode.color)
+
+        this.invalidateWirePath()
     }
 
     public propagateNewValue(newValue: LogicValue, logicalTime: Timestamp) {
@@ -382,9 +391,6 @@ export class Wire extends Drawable {
     }
 
     public get isAlive() {
-        // the start node should be alive and the end node
-        // should either be null (wire being drawn) or alive
-        // (wire set) for the wire to be alive
         return this.startNode.isAlive && this.endNode.isAlive
     }
 
@@ -521,7 +527,6 @@ export class Wire extends Drawable {
         // outline
         const color = this._startNode.color
         strokeWireOutline(g, color, ctx.isMouseOver)
-
         // single value
         if (this._propagatingValues.length === 1) {
             // no need to compute the length of the path, which is costly
@@ -541,6 +546,8 @@ export class Wire extends Drawable {
                 strokeWireValue(g, value, [lengthToDraw, totalLength], neutral, drawParams.drawTimeAnimationFraction)
             }
         }
+
+        // wirePath.drawBezierDebug(g)
 
         g.globalAlpha = 1.0
 

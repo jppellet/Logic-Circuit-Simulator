@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, GRID_STEP, INPUT_OUTPUT_DIAMETER, circle, colorForLogicValue, dist, drawComponentName, drawValueText, drawValueTextCentered, drawWireLineToComponent, isTrivialNodeName, triangle, useCompact } from "../drawutils"
+import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, GRID_STEP, INPUT_OUTPUT_DIAMETER, circle, colorForLogicValue, distSquared, drawComponentName, drawValueText, drawValueTextCentered, drawWireLineToComponent, isTrivialNodeName, triangle, useCompact } from "../drawutils"
 import { mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, ComponentTypeOutput, LogicValue, Mode, Unknown, reprForLogicValues, toLogicValueRepr, typeOrUndefined } from "../utils"
@@ -68,7 +68,7 @@ export class Output extends ParametrizedComponentBase<OutputRepr> {
 
     public override isOver(x: number, y: number) {
         if (this.numBits === 1) {
-            return this.parent.mode >= Mode.CONNECT && dist(x, y, this.posX, this.posY) < INPUT_OUTPUT_DIAMETER / 2
+            return this.parent.mode >= Mode.CONNECT && distSquared(x, y, this.posX, this.posY) < (INPUT_OUTPUT_DIAMETER / 2) ** 2
         }
         return super.isOver(x, y)
     }

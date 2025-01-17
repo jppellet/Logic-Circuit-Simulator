@@ -1,12 +1,5 @@
-import { dist, WIRE_WIDTH } from "../drawutils"
+import { BezierCoords, bezierPoint, circle, isPointOnBezierWire, isPointOnStraightWire, LineCoords, WIRE_WIDTH } from "../drawutils"
 import { GraphicsRendering } from "./Drawable"
-
-export type LineCoords = readonly [startX: number, startY: number, endX: number, endY: number]
-
-/**
- * Note that the control points are at the end such that the second pair of coordinates is the end of the curve, just like for LineCoords.
- */
-export type BezierCoords = readonly [startX: number, startY: number, endX: number, endY: number, control1X: number, control1Y: number, control2X: number, control2Y: number]
 
 export class WirePath {
 
@@ -44,19 +37,46 @@ export class WirePath {
 
     }
 
+    public drawBezierDebug(g: GraphicsRendering) {
+        g.strokeStyle = "red"
+        g.lineWidth = 1
+        for (const part of this.parts) {
+            if (part.length === 4) {
+                continue
+            }
+            // bounding box
+            const bezierMeta = part[8]
+            const [left, top, right, bottom] = bezierMeta.boundingBox
+            g.strokeRect(left, top, right - left, bottom - top)
+
+            const stepSize = bezierMeta.tStepSize
+            // sample a series of points on the curve and check if the point is close to any of them
+            for (let t = 0; t <= 1; t += stepSize) {
+                const [x, y] = bezierPoint(t, part)
+                g.beginPath()
+                circle(g, x, y, WIRE_WIDTH)
+                g.stroke()
+            }
+        }
+    }
+
     public isOver(x: number, y: number): boolean {
         return this.partIndexIfMouseover(x, y) !== undefined
     }
 
     public partIndexIfMouseover(x: number, y: number): undefined | number {
-        const tol = WIRE_WIDTH / (10 * 2)
         for (let i = 0; i < this.parts.length - 1; i++) {
-            const [startX, startY, endX, endY] = this.parts[i]
-            const sumDist = dist(startX, startY, x, y) + dist(endX, endY, x, y)
-            const wireLength = dist(startX, startY, endX, endY)
-            // TODO use something smarter to account for bezier paths
-            if (sumDist >= wireLength - tol && sumDist <= wireLength + tol) {
-                return i
+            const part = this.parts[i]
+            if (part.length === 4) {
+                // line
+                if (isPointOnStraightWire(x, y, part)) {
+                    return i
+                }
+            } else {
+                // bezier
+                if (isPointOnBezierWire(x, y, part)) {
+                    return i
+                }
             }
         }
         return undefined
@@ -77,5 +97,5 @@ export class WirePath {
         return pathDescParts.join(" ")
     }
 
-
 }
+

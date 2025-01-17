@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, GRID_STEP, INPUT_OUTPUT_DIAMETER, circle, colorForLogicValue, dist, drawComponentName, drawValueText, drawValueTextCentered, drawWireLineToComponent, inRect, isTrivialNodeName, triangle, useCompact } from "../drawutils"
+import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, GRID_STEP, INPUT_OUTPUT_DIAMETER, circle, colorForLogicValue, distSquared, drawComponentName, drawValueText, drawValueTextCentered, drawWireLineToComponent, inRect, isTrivialNodeName, triangle, useCompact } from "../drawutils"
 import { mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, ComponentTypeInput, HighImpedance, InputOutputValueRepr, InteractionResult, LogicValue, Mode, Unknown, reprForLogicValues, toLogicValueRepr, typeOrUndefined, valuesFromReprForInput } from "../utils"
@@ -42,7 +42,7 @@ export abstract class InputBase<
 
     public override isOver(x: number, y: number) {
         if (this.numBits === 1) {
-            return dist(x, y, this.posX, this.posY) < INPUT_OUTPUT_DIAMETER / 2
+            return distSquared(x, y, this.posX, this.posY) < (INPUT_OUTPUT_DIAMETER / 2) ** 2
         }
         return inRect(this.posX, this.posY, this.width, this.height, x, y)
     }
@@ -187,7 +187,7 @@ export abstract class InputBase<
                 this.doSetName(inNode.shortName)
             }
         }
-        
+
         if (outNode.orient !== "e") {
             // should never happen, all our outputs are east
             return
