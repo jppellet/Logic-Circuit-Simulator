@@ -145,6 +145,8 @@ export class Waypoint extends DrawableWithDraggablePosition {
 export const WireStyles = {
     auto: "auto",
     straight: "straight",
+    hv: "hv",
+    vh: "vh",
     bezier: "bezier",
 } as const
 
@@ -271,7 +273,9 @@ export class Wire extends Drawable {
             const [endLeadX, endLeadY, endNodeX, endNodeY, endNodeProlong] = this.endNode.drawCoords
             const lastWaypointData = { posX: endNodeX, posY: endNodeY, orient: endNodeProlong }
             const allWaypoints = [...this._waypoints, lastWaypointData]
-            const pathParts: Array<LineCoords | BezierCoords> = [[startX, startY, prevX, prevY]]
+
+            const pathParts: Array<LineCoords | BezierCoords> =
+                [[startX, startY, prevX, prevY]] // first part, start lead
             const wireStyle = this.style ?? this.startNode.parent.editor.options.wireStyle
             for (const waypoint of allWaypoints) {
                 const nextX = waypoint.posX
@@ -283,6 +287,22 @@ export class Wire extends Drawable {
                 if (wireStyle === WireStyles.straight || (wireStyle === WireStyles.auto && (prevX === nextX || prevY === nextY))) {
                     // straight line
                     pathParts.push([prevX, prevY, nextX, nextY])
+                } else if (wireStyle === WireStyles.hv) {
+                    // horizontal then vertical line
+                    if (prevX !== nextX) {
+                        pathParts.push([prevX, prevY, nextX, prevY])
+                    }
+                    if (prevY !== nextY) {
+                        pathParts.push([nextX, prevY, nextX, nextY])
+                    }
+                } else if (wireStyle === WireStyles.vh) {
+                    // vertical then horizontal line
+                    if (prevY !== nextY) {
+                        pathParts.push([prevX, prevY, prevX, nextY])
+                    }
+                    if (prevX !== nextX) {
+                        pathParts.push([prevX, nextY, nextX, nextY])
+                    }
                 } else {
                     // bezier curve
                     const bezierAnchorPointDistX = Math.max(25, Math.abs(deltaX) / 3)
@@ -298,6 +318,7 @@ export class Wire extends Drawable {
                 prevY = nextY
                 prevProlong = Orientation.invert(nextProlong)
             }
+            // last part, end lead
             pathParts.push([prevX, prevY, endLeadX, endLeadY])
 
             this._wirePath = new WirePath(pathParts)
@@ -315,6 +336,7 @@ export class Wire extends Drawable {
 
     public doSetStyle(style: WireStyle | undefined) {
         this._style = style
+        this.invalidateWirePath()
         this.setNeedsRedraw("style changed", true)
     }
 
@@ -653,6 +675,8 @@ export class Wire extends Drawable {
                     MenuData.sep(),
                     makeItemDisplayStyle(s.WireStyleAuto, WireStyles.auto),
                     makeItemDisplayStyle(s.WireStyleStraight, WireStyles.straight),
+                    makeItemDisplayStyle(s.WireStyleSquareHV, WireStyles.hv),
+                    makeItemDisplayStyle(s.WireStyleSquareVH, WireStyles.vh),
                     makeItemDisplayStyle(s.WireStyleCurved, WireStyles.bezier),
                 ]),
 

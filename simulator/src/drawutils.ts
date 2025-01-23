@@ -1092,7 +1092,7 @@ function bezierExtrema(coords: BezierCoordsInit, forY: boolean): number[] {
     return roots
 }
 
-export function bezierBoundingBox(coords: BezierCoordsInit, margin: number): [left: number, top: number, right: number, bottom: number] {
+function bezierBoundingBox(coords: BezierCoordsInit, margin: number): [left: number, top: number, right: number, bottom: number] {
     const xExtrema = bezierExtrema(coords, false)
     const yExtrema = bezierExtrema(coords, true)
 
@@ -1145,13 +1145,15 @@ export function makeBezierCoords(coords: BezierCoordsInit): BezierCoords {
 
 export function isPointOnBezierWire(x: number, y: number, coords: BezierCoords): boolean {
     const bezierMeta = coords[8]
+
     // fast reject outside bounding box
     const [left, top, right, bottom] = bezierMeta.boundingBox
     if (x < left || x > right || y < top || y > bottom) {
         return false
     }
-    const stepSize = bezierMeta.tStepSize
+    
     // sample a series of points on the curve and check if the point is close to any of them
+    const stepSize = bezierMeta.tStepSize
     for (let t = 0; t <= 1; t += stepSize) {
         const [wx, wy] = bezierPoint(t, coords)
         const dist2 = (wx - x) ** 2 + (wy - y) ** 2

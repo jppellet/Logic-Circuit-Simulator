@@ -182,7 +182,7 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
             if (!isUnknown(sel)) {
                 const selectedOutputs = this.outputs.Z[sel]
                 const anchorDiffX = (right - left) / 3
-                const wireStyleStraight = this.parent.editor.options.wireStyle === WireStyles.straight
+                const wireStyleBezier = this.parent.editor.options.wireStyle === WireStyles.bezier
                 const timeFraction = ctx.drawParams.drawTimeAnimationFraction
 
                 for (let i = 0; i < this.inputs.In.length; i++) {
@@ -191,7 +191,7 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
                     const fromY = fromNode.posYInParentTransform
                     const toY = selectedOutputs[i].posYInParentTransform
                     g.moveTo(left + 1, fromY)
-                    if (wireStyleStraight) {
+                    if (!wireStyleBezier) {
                         g.lineTo(left + 3, fromY)
                         g.lineTo(right - 3, toY)
                         g.lineTo(right - 1, toY)

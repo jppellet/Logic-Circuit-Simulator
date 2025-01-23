@@ -820,10 +820,13 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const showAnchorsCheckbox = makeCheckbox("showAnchors", S.Settings.showAnchors)
         const showIdsCheckbox = makeCheckbox("showIDs", S.Settings.showIds)
         // 
+        const sw = S.Components.Wire.contextMenu
         const wireStylePopup = select(
-            option(attr("value", WireStyles.auto), S.Settings.WireStyleAuto),
-            option(attr("value", WireStyles.straight), S.Settings.WireStyleLine),
-            option(attr("value", WireStyles.bezier), S.Settings.WireStyleCurve),
+            option(attr("value", WireStyles.auto), sw.WireStyleAuto),
+            option(attr("value", WireStyles.straight), sw.WireStyleStraight),
+            option(attr("value", WireStyles.hv), sw.WireStyleSquareHV),
+            option(attr("value", WireStyles.vh), sw.WireStyleSquareVH),
+            option(attr("value", WireStyles.bezier), sw.WireStyleCurved),
         ).render()
         wireStylePopup.addEventListener("change", this.wrapHandler(() => {
             this._options.wireStyle = wireStylePopup.value as WireStyle

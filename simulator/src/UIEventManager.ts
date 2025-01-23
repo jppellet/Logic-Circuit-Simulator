@@ -206,12 +206,14 @@ export class UIEventManager {
         const findMouseOver: () => Drawable | null = () => {
             // easy optimization: maybe we're still over the
             // same component as before, so quickly check this
-            if (this._currentMouseOverComp !== null && this._currentMouseOverComp.drawZIndex !== 0) {
+            const prevMouseOver = this._currentMouseOverComp
+            if (prevMouseOver !== null && prevMouseOver.drawZIndex !== 0) {
                 // second condition says: always revalidate the mouseover of background components (with z index 0)
 
+                // we always revalidate wires
                 // if we're setting an anchor, we only want components, not drawables
-                const rejectThis = settingAnchor && !(this._currentMouseOverComp instanceof ComponentBase)
-                if (!rejectThis && this._currentMouseOverComp.isOver(x, y)) {
+                const rejectThis = prevMouseOver instanceof Wire || (settingAnchor && !(prevMouseOver instanceof ComponentBase))
+                if (!rejectThis && prevMouseOver.isOver(x, y)) {
                     return this._currentMouseOverComp
                 }
             }

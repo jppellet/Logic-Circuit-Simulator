@@ -176,11 +176,7 @@ const Strings_fr = {
         zoomLevelField: tuple("Zoom:", "%"),
         showUserDataLink: tuple("Voir les", "données liées"),
         userDataHeader: "Les données suivantes sont exportées avec le circuit:",
-
         wireStyle: "Style des fils:",
-        WireStyleAuto: "Auto",
-        WireStyleLine: "Ligne",
-        WireStyleCurve: "Courbe",
     },
     Tests: {
         Title: "Tests",
@@ -775,8 +771,10 @@ const Strings_fr = {
 
                 WireStyle: "Style",
                 WireStyleDefault: "Par défaut",
-                WireStyleAuto: "Automatique",
-                WireStyleStraight: "Ligne droite",
+                WireStyleAuto: "Auto",
+                WireStyleStraight: "Ligne",
+                WireStyleSquareHV: "H puis V",
+                WireStyleSquareVH: "V puis H",
                 WireStyleCurved: "Courbe",
 
                 HiddenWire: "Masquer le fil",
@@ -944,11 +942,7 @@ const Strings_en: Strings = {
         zoomLevelField: tuple("Zoom:", "%"),
         showUserDataLink: tuple("See ", "linked data"),
         userDataHeader: "This data is exported with the circuit:",
-
         wireStyle: "Wire style:",
-        WireStyleAuto: "Auto",
-        WireStyleLine: "Line",
-        WireStyleCurve: "Curve",
     },
     Tests: {
         Title: "Tests",
@@ -1543,8 +1537,10 @@ const Strings_en: Strings = {
 
                 WireStyle: "Style",
                 WireStyleDefault: "By Default",
-                WireStyleAuto: "Automatic",
-                WireStyleStraight: "Straight Line",
+                WireStyleAuto: "Auto",
+                WireStyleStraight: "Straight",
+                WireStyleSquareHV: "H then V",
+                WireStyleSquareVH: "V then H",
                 WireStyleCurved: "Curve",
 
                 HiddenWire: "Hide Wire",

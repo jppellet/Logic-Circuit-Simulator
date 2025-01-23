@@ -3,19 +3,16 @@ import { GraphicsRendering } from "./Drawable"
 
 export class WirePath {
 
-    public readonly pathDesc: string
     private _length: number | undefined = undefined
 
     public constructor(
         public parts: ReadonlyArray<LineCoords | BezierCoords>
-    ) {
-        this.pathDesc = this._buildPathDesc()
-    }
+    ) {}
 
     public get length(): number {
         if (this._length === undefined) {
             const helperElement = document.createElementNS('http://www.w3.org/2000/svg', "path")
-            helperElement.setAttributeNS(null, "d", this.pathDesc)
+            helperElement.setAttributeNS(null, "d", buildPathDesc(this.parts))
             this._length = helperElement.getTotalLength()
         }
         return this._length
@@ -82,20 +79,20 @@ export class WirePath {
         return undefined
     }
 
-    private _buildPathDesc(): string {
-        const start = this.parts[0]
-        const pathDescParts = [`M${start[0]} ${start[1]}`]
-        for (const part of this.parts) {
-            if (part.length === 4) {
-                // line
-                pathDescParts.push(`L${part[2]} ${part[3]}`)
-            } else {
-                // bezier
-                pathDescParts.push(`C${part[4]} ${part[5]},${part[6]} ${part[7]},${part[2]} ${part[3]}`)
-            }
-        }
-        return pathDescParts.join(" ")
-    }
-
 }
 
+
+function buildPathDesc(parts: ReadonlyArray<LineCoords | BezierCoords>): string {
+    const start = parts[0]
+    const pathDescParts = [`M${start[0]} ${start[1]}`]
+    for (const part of parts) {
+        if (part.length === 4) {
+            // line
+            pathDescParts.push(`L${part[2]} ${part[3]}`)
+        } else {
+            // bezier
+            pathDescParts.push(`C${part[4]} ${part[5]},${part[6]} ${part[7]},${part[2]} ${part[3]}`)
+        }
+    }
+    return pathDescParts.join(" ")
+}
