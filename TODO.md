@@ -43,6 +43,7 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
 
 ### DONE
  
+ * Control bits for most "controlled" components can be put at the bottom
  * Proper mouseover for bezier curves
  * Fix drawing of gates with many inputs
  * Waypoint positioning when embedded right-click

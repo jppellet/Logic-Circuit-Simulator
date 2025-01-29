@@ -1,20 +1,35 @@
-import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, drawWireLineToComponent, GRID_STEP } from "../drawutils"
+import * as t from "io-ts"
+import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, COLOR_MOUSE_OVER, drawWireLineToComponent, GRID_STEP } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
-import { HighImpedance, isHighImpedance, isUnknown, LogicValue, Unknown } from "../utils"
-import { ComponentBase, defineComponent, Repr } from "./Component"
-import { DrawableParent, DrawContext, GraphicsRendering } from "./Drawable"
+import { HighImpedance, isHighImpedance, isUnknown, LogicValue, typeOrUndefined, Unknown } from "../utils"
+import { defineParametrizedComponent, paramBool, ParametrizedComponentBase, Repr, ResolvedParams } from "./Component"
+import { DrawableParent, DrawContext, GraphicsRendering, MenuItems } from "./Drawable"
 
 export const TristateBufferDef =
-    defineComponent("tristate", {
+    defineParametrizedComponent("tristate", true, true, {
+        variantName: ({ bottom }) => `tristate${bottom ? "b" : ""}`,
         idPrefix: "tristate",
         button: { imgWidth: 50 },
+        repr: {
+            bottom: typeOrUndefined(t.boolean),
+        },
         valueDefaults: {},
-        size: { gridWidth: 7, gridHeight: 4 },
-        makeNodes: () => ({
+        params: {
+            bottom: paramBool(),
+        },
+        validateParams: ({ bottom }) => {
+            return { controlPinsAtBottom: bottom }
+        },
+        size: () => ({ gridWidth: 4, gridHeight: 4 }),
+        makeNodes: ({ controlPinsAtBottom }) => ({
             ins: {
                 In: [-4, 0, "w", { leadLength: 20 }],
-                E: [0, -3, "n", "E (Enable)", { leadLength: 20 }],
+                E: [0,
+                    controlPinsAtBottom ? 3 : -3,
+                    controlPinsAtBottom ? "s" : "n",
+                    "E (Enable)", { leadLength: 20 },
+                ],
             },
             outs: {
                 Out: [+4, 0, "e", { leadLength: 20 }],
@@ -24,15 +39,23 @@ export const TristateBufferDef =
     })
 
 type TristateBufferRepr = Repr<typeof TristateBufferDef>
+type TristateBufferParams = ResolvedParams<typeof TristateBufferDef>
 
-export class TristateBuffer extends ComponentBase<TristateBufferRepr> {
+export class TristateBuffer extends ParametrizedComponentBase<TristateBufferRepr> {
 
-    public constructor(parent: DrawableParent, saved?: TristateBufferRepr) {
-        super(parent, TristateBufferDef, saved)
+    public readonly controlPinsAtBottom: boolean
+
+    public constructor(parent: DrawableParent, params: TristateBufferParams, saved?: TristateBufferRepr) {
+        super(parent, TristateBufferDef.with(params), saved)
+
+        this.controlPinsAtBottom = params.controlPinsAtBottom
     }
 
     public toJSON() {
-        return this.toJSONBase()
+        return {
+            ... this.toJSONBase(),
+            bottom: this.controlPinsAtBottom === TristateBufferDef.aults.bottom ? undefined : this.controlPinsAtBottom,
+        }
     }
 
     public override makeTooltip() {
@@ -62,37 +85,16 @@ export class TristateBuffer extends ComponentBase<TristateBufferRepr> {
 
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
 
-        const width = this.unrotatedWidth
-        const height = this.unrotatedHeight
-        const left = this.posX - width / 2
-        // const right = left + width
-        const top = this.posY - height / 2
-        const bottom = top + height
-
-        if (ctx.isMouseOver) {
-            const frameWidth = 2
-            const frameMargin = 2
-            g.lineWidth = frameWidth
-            g.strokeStyle = ctx.borderColor
-            g.beginPath()
-            g.rect(
-                left - frameWidth - frameMargin,
-                top - frameWidth - frameMargin,
-                width + 2 * (frameWidth + frameMargin),
-                height + 2 * (frameWidth + frameMargin)
-            )
-            g.stroke()
-        }
-
         drawWireLineToComponent(g, this.inputs.In)
         drawWireLineToComponent(g, this.inputs.E)
         drawWireLineToComponent(g, this.outputs.Out)
 
+        const { top, bottom } = this.bounds()
         const gateWidth = (2 * Math.max(2, this.inputs._all.length)) * GRID_STEP
         const gateLeft = this.posX - gateWidth / 2
         const gateRight = this.posX + gateWidth / 2
         g.fillStyle = COLOR_BACKGROUND
-        g.strokeStyle = COLOR_COMPONENT_BORDER
+        g.strokeStyle = ctx.isMouseOver ? COLOR_MOUSE_OVER : COLOR_COMPONENT_BORDER
         g.lineWidth = 3
 
         g.beginPath()
@@ -101,6 +103,12 @@ export class TristateBuffer extends ComponentBase<TristateBufferRepr> {
         g.lineTo(gateLeft, bottom)
         g.closePath()
         g.stroke()
+    }
+
+    protected override makeComponentSpecificContextMenuItems(): MenuItems {
+        return [
+            this.makeChangeBooleanParamsContextMenuItem(S.Components.Generic.contextMenu.ParamControlBitAtBottom, this.controlPinsAtBottom, "bottom"),
+        ]
     }
 
 }

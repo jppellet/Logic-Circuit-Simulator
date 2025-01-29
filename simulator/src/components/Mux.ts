@@ -209,7 +209,7 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
             this.makeChangeParamsContextMenuItem("outputs", s.ParamNumTo, this.numTo, "to"),
             this.makeChangeParamsContextMenuItem("inputs", s.ParamNumFrom, this.numFrom, "from", [2, 4, 8, 16].map(x => x * this.numTo)),
             ["mid", MenuData.sep()],
-            this.makeChangeBooleanParamsContextMenuItem(s.ParamControlAtBottom, this.controlPinsAtBottom, "bottom"),
+            this.makeChangeBooleanParamsContextMenuItem(this.numSel === 1 ? S.Components.Generic.contextMenu.ParamControlBitAtBottom : S.Components.Generic.contextMenu.ParamControlBitsAtBottom, this.controlPinsAtBottom, "bottom"),
             ["mid", toggleShowWiringItem],
             ...this.makeForceOutputsContextMenuItem(true),
         ]

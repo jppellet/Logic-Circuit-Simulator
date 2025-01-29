@@ -203,6 +203,13 @@ export class UIEventManager {
     }
 
     public updateMouseOver([x, y]: [number, number], pullingWire: boolean, settingAnchor: boolean) {
+
+        // Mouseover search order:
+        // * Components - overlays
+        // * Components - normal, and nodes, sometimes
+        // * Wires, sometimes
+        // * Components - background
+
         const findMouseOver: () => Drawable | null = () => {
             // easy optimization: maybe we're still over the
             // same component as before, so quickly check this

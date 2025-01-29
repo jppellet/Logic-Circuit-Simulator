@@ -107,7 +107,7 @@ const componentsMenu: Array<Section> = [{
     items: [
         Gate1Def.button({ type: "not" }, "not"),
         Gate1Def.button({ type: "buf" }, "buf", { visible: withButton }),
-        TristateBufferDef.button("tri", { compat: "tri", visible: withButton }),
+        TristateBufferDef.button({ bottom: false }, "tri", { compat: "tri", visible: withButton }),
 
         GateNDef.button({ type: "and", bits: 2 }, "and"),
         GateNDef.button({ type: "or", bits: 2 }, "or"),
@@ -134,9 +134,9 @@ const componentsMenu: Array<Section> = [{
         GateNDef.button({ type: "nor", bits: 4 }, "nor4", { compat: "nor4", visible: ifShowOnly }),
         GateNDef.button({ type: "xnor", bits: 4 }, "xnor4", { compat: "xnor4", visible: ifShowOnly }),
 
-        ControlledInverterDef.button({ bits: 4 }, "ControlledInverter", { compat: "switched-inverter", visible: withButton }),
+        ControlledInverterDef.button({ bits: 4, bottom: false }, "ControlledInverter", { compat: "switched-inverter", visible: withButton }),
         GateArrayDef.button({ type: "and", bits: 4 }, "GateArray", { compat: "quad-gate", visible: withButton }),
-        TristateBufferArrayDef.button({ bits: 4 }, "TristateBufferArray", { visible: withButton }),
+        TristateBufferArrayDef.button({ bits: 4, bottom: false }, "TristateBufferArray", { visible: withButton }),
 
     ],
 }, {

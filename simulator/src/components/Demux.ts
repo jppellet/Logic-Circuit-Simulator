@@ -242,7 +242,7 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
             this.makeChangeParamsContextMenuItem("inputs", s.ParamNumFrom, this.numFrom, "from"),
             this.makeChangeParamsContextMenuItem("outputs", s.ParamNumTo, this.numTo, "to", [2, 4, 8, 16].map(x => x * this.numFrom)),
             ["mid", MenuData.sep()],
-            this.makeChangeBooleanParamsContextMenuItem(s.ParamControlAtBottom, this.controlPinsAtBottom, "bottom"),
+            this.makeChangeBooleanParamsContextMenuItem(this.numSel === 1 ? S.Components.Generic.contextMenu.ParamControlBitAtBottom : S.Components.Generic.contextMenu.ParamControlBitsAtBottom, this.controlPinsAtBottom, "bottom"),
             ["mid", toggleShowWiringItem],
             ["mid", toggleUseHighZItem],
             ...this.makeForceOutputsContextMenuItem(true),

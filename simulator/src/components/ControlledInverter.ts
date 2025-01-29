@@ -3,34 +3,40 @@ import { COLOR_COMPONENT_BORDER, COLOR_UNKNOWN, circle, colorForLogicValue } fro
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, LogicValue, Unknown, isHighImpedance, isUnknown, typeOrUndefined } from "../utils"
-import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupVertical, param } from "./Component"
+import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupVertical, param, paramBool } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
 
 
 export const ControlledInverterDef =
     defineParametrizedComponent("cnot-array", true, true, {
-        variantName: ({ bits }) => `cnot-array-${bits}`,
+        variantName: ({ bits, bottom }) => `cnot-array-${bits}${bottom ? "b" : ""}`,
         idPrefix: "cnot",
         button: { imgWidth: 50 },
         repr: {
             bits: typeOrUndefined(t.number),
+            bottom: typeOrUndefined(t.boolean),
         },
         valueDefaults: {},
         params: {
             bits: param(4, [2, 4, 8, 16]),
+            bottom: paramBool(),
         },
-        validateParams: ({ bits }) => ({
+        validateParams: ({ bits, bottom }) => ({
             numBits: bits,
+            controlPinsAtBottom: bottom,
         }),
 
         size: ({ numBits }) => ({
             gridWidth: 4,
             gridHeight: 8 + Math.max(0, numBits - 8),
         }),
-        makeNodes: ({ numBits, gridHeight }) => ({
+        makeNodes: ({ numBits, controlPinsAtBottom, gridHeight }) => ({
             ins: {
                 In: groupVertical("w", -3, 0, numBits),
-                S: [0, -(gridHeight / 2 + 1), "n"],
+                S: [0,
+                    -(gridHeight / 2 + 1) * (controlPinsAtBottom ? -1 : 1),
+                    controlPinsAtBottom ? "s" : "n",
+                ],
             },
             outs: {
                 Out: groupVertical("e", +3, 0, numBits),
@@ -47,16 +53,19 @@ export type ControlledInverterParams = ResolvedParams<typeof ControlledInverterD
 export class ControlledInverter extends ParametrizedComponentBase<ControlledInverterRepr> {
 
     public readonly numBits: number
+    public readonly controlPinsAtBottom: boolean
 
     public constructor(parent: DrawableParent, params: ControlledInverterParams, saved?: ControlledInverterRepr) {
         super(parent, ControlledInverterDef.with(params), saved)
         this.numBits = params.numBits
+        this.controlPinsAtBottom = params.controlPinsAtBottom
     }
 
     public toJSON() {
         return {
             ...this.toJSONBase(),
             bits: this.numBits === ControlledInverterDef.aults.bits ? undefined : this.numBits,
+            bottom: this.controlPinsAtBottom === ControlledInverterDef.aults.bottom ? undefined : this.controlPinsAtBottom,
         }
     }
 
@@ -89,14 +98,19 @@ export class ControlledInverter extends ParametrizedComponentBase<ControlledInve
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
         this.doDrawDefault(g, ctx, {
             skipLabels: true,
-            drawInside: ({ top, left, right }) => {
+            drawInside: ({ top, bottom, left, right }) => {
                 const invert = this.inputs.S.value
 
                 g.lineWidth = 2
                 g.strokeStyle = colorForLogicValue(invert)
                 g.beginPath()
-                g.moveTo(this.posX, top)
-                g.lineTo(this.posX, this.posY - 4)
+                if (this.controlPinsAtBottom) {
+                    g.moveTo(this.posX, bottom)
+                    g.lineTo(this.posX, this.posY + 4)
+                } else {
+                    g.moveTo(this.posX, top)
+                    g.lineTo(this.posX, this.posY - 4)
+                }
                 g.stroke()
 
                 g.strokeStyle = invert === true ? COLOR_COMPONENT_BORDER : COLOR_UNKNOWN
@@ -114,8 +128,10 @@ export class ControlledInverter extends ParametrizedComponentBase<ControlledInve
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {
+        const s = S.Components.Generic.contextMenu
         return [
-            this.makeChangeParamsContextMenuItem("inputs", S.Components.Generic.contextMenu.ParamNumBits, this.numBits, "bits"),
+            this.makeChangeParamsContextMenuItem("inputs", s.ParamNumBits, this.numBits, "bits"),
+            this.makeChangeBooleanParamsContextMenuItem(s.ParamControlBitAtBottom, this.controlPinsAtBottom, "bottom"),
             ...this.makeForceOutputsContextMenuItem(true),
         ]
     }

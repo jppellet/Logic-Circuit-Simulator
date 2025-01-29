@@ -276,6 +276,9 @@ const Strings_fr = {
 
                 ShowContent: "Montrer le contenu",
 
+                ParamControlBitAtBottom: "Bit de contrôle en bas",
+                ParamControlBitsAtBottom: "Bits de contrôle en bas",
+
                 ParamNumInputs: tuple("Nombre d’entrées", template("${val} entrée$s{val}")),
                 ParamNumBits: tuple("Nombre de bits", template("${val} bit$s{val}")),
                 ParamNumWords: tuple("Nombre de lignes", template("${val} ligne$s{val}")),
@@ -583,7 +586,6 @@ const Strings_fr = {
 
                 ParamNumFrom: tuple("Nombre d’entrées", template("${val} entrée$s{val}")),
                 ParamNumTo: tuple("Nombre de sorties", template("${val} sortie$s{val}")),
-                ParamControlAtBottom: "Bits de contrôle en bas",
             },
         },
         Output: {
@@ -1042,6 +1044,9 @@ const Strings_en: Strings = {
 
                 ShowContent: "Show Content",
 
+                ParamControlBitAtBottom: "Control Bit at Bottom",
+                ParamControlBitsAtBottom: "Control Bits at Bottom",
+
                 ParamNumInputs: tuple("Number of Inputs", template("${val} Input$s{val}")),
                 ParamNumBits: tuple("Number of Bits", template("${val} Bit$s{val}")),
                 ParamNumWords: tuple("Number of Lines", template("${val} Line$s{val}")),
@@ -1348,7 +1353,6 @@ const Strings_en: Strings = {
 
                 ParamNumFrom: tuple("Number of Inputs", template("${val} Input$s{val}")),
                 ParamNumTo: tuple("Number of Outputs", template("${val} Output$s{val}")),
-                ParamControlAtBottom: "Control Bits at Bottom",
             },
         },
         Output: {

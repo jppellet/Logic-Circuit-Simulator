@@ -1952,6 +1952,20 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     private doDrawWithContext(g: GraphicsRendering, width: number, height: number, baseTransform: DOMMatrixReadOnly, contentTransform: DOMMatrixReadOnly, skipBorder: boolean, transparentBackground: boolean, __redrawMask: boolean) {
 
+        // Draw order:
+        // * Clear
+        // * Highlight rectangles
+        // * Grid
+        // * Guidelines
+        // * Border
+        // * Components - background
+        // * Wires
+        // * Components - normal
+        // * Anchors
+        // * Components - overlays
+        // * Refs
+        // * Selection rect
+
         // TODO handle redrawMask
         // if (redrawMask) {
         //     console.log("would redraw mask")
