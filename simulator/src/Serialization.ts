@@ -192,6 +192,7 @@ class _Serialization {
             if (testSuiteReprs !== undefined) {
                 const testSuites = testSuiteReprs.map(ts => new TestSuite([ts, componentList]))
                 parent.testSuites.set(testSuites)
+                parent.ifEditing?.testsPalette.update()
             }
         }
         delete parsed.tests

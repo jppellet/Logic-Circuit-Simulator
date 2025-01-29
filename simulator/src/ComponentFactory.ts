@@ -2,6 +2,7 @@ import * as t from "io-ts"
 import JSON5 from "json5"
 import { LogicEditor } from "./LogicEditor"
 import { Serialization } from "./Serialization"
+import { TestCaseCombinational, TestCaseCombinationalRepr } from "./TestSuite"
 import { ALUDef } from "./components/ALU"
 import { AdderDef } from "./components/Adder"
 import { AdderArrayDef } from "./components/AdderArray"
@@ -45,7 +46,7 @@ import { ShiftRegisterDef } from "./components/ShiftRegister"
 import { TristateBufferDef } from "./components/TristateBuffer"
 import { TristateBufferArrayDef } from "./components/TristateBufferArray"
 import { S } from "./strings"
-import { isArray, isRecord, isString, validateJson } from "./utils"
+import { binaryStringRepr, isArray, isRecord, isString, validateJson, valuesReprForTest } from "./utils"
 
 // Generic interface to instantiate components from scratch (possibly with params) or from JSON
 type ComponentMaker<TParams extends Record<string, unknown>> = {
@@ -422,6 +423,55 @@ export class ComponentFactory {
         return undefined // success
     }
 
+    public tryMakeNewTestCase(editor: LogicEditor): TestCaseCombinational | string {
+        const s = S.Messages
+        const sc = S.Components.Custom.messages
+
+        const selectionAll = editor.eventMgr.currentSelection?.previouslySelectedElements
+        if (selectionAll === undefined) {
+            return sc.EmptySelection
+        }
+        const selectedComps = [...selectionAll].filter((e): e is Component => e instanceof ComponentBase)
+        if (selectedComps.length === 0) {
+            return sc.EmptySelection
+        }
+
+        const checkResult = this.checkComponentsForTestCase(selectedComps)
+        if (isString(checkResult)) {
+            return checkResult
+        }
+
+        const { inputs, outputs } = checkResult
+
+        const mkDesc = (inOut: Input | Output) => `${inOut.ref ?? "?"}${isString(inOut.name) ? ` (“${inOut.name}”)` : ""}: ${binaryStringRepr(inOut.value)}`
+
+        const joiner = "\n • "
+        const inputsStr = s.TestCaseInputToSet.expand({ n: inputs.length }) + joiner + inputs.map(mkDesc).join(joiner)
+        const outputsStr = s.TestCaseOuputToCheck.expand({ n: outputs.length }) + joiner + outputs.map(mkDesc).join(joiner)
+
+        const prompt = s.NewTestCaseTitle + `\n\n${inputsStr}\n\n${outputsStr}\n\n` + s.NewTestCaseSetName
+
+        const testCaseName = window.prompt(prompt)
+        if (testCaseName === null) {
+            return ""
+        }
+
+        const inMap: TestCaseCombinationalRepr["in"] = Object.create(null)
+        for (const input of inputs) {
+            inMap[input.ref ?? "?"] = valuesReprForTest(input.value)
+        }
+
+        const outMap: TestCaseCombinationalRepr["out"] = Object.create(null)
+        for (const output of outputs) {
+            outMap[output.ref ?? "?"] = valuesReprForTest(output.value)
+        }
+
+        return new TestCaseCombinational({
+            in: inMap, out: outMap,
+            name: testCaseName.length === 0 ? undefined : testCaseName,
+        }, editor.components)
+    }
+
     public tryModifyCustomComponent(def: CustomComponentDef, defRoot: CustomComponent): undefined | string {
         const s = S.Components.Custom.messages
         const components = [...defRoot.components.all()]
@@ -567,6 +617,22 @@ export class ComponentFactory {
         }
 
         return { components: componentsToInclude, inputs, outputs }
+    }
+
+    private checkComponentsForTestCase(components: Component[]): { inputs: Input[], outputs: Output[] } | string {
+        const s = S.Components.Custom.messages
+
+        const inputs = components.filter((e): e is Input => e instanceof Input)
+        if (inputs.length === 0) {
+            return s.NoInput
+        }
+
+        const outputs = components.filter((e): e is Output => e instanceof Output)
+        if (outputs.length === 0) {
+            return s.NoOutput
+        }
+
+        return { inputs, outputs }
     }
 
 }

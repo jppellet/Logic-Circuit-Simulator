@@ -185,6 +185,8 @@ const Strings_fr = {
         SetInputs: "Entrées",
         WantedOutputs: "Sorties",
         SetTheseInputs: "Régler ces entrées",
+        Run: "Tester",
+        RunTestSuite: "Exécuter les tests",
     },
     TopBar: {
         DirtyTooltip: "Le circuit a été modifié depuis la dernière sauvegarde.",
@@ -230,6 +232,11 @@ const Strings_fr = {
         NothingToRedo: "Rien à rétablir ou répéter",
 
         RunningTestCase: template("Exécution du test ${name}..."),
+        NewTestCaseTitle: "Création d’un nouveau test de circuit",
+        NewTestCaseSetName: "Entrez le nom du test:",
+        TestCaseInputToSet: template("Entrée$s{n} à régler:"),
+        TestCaseOuputToCheck: template("Sorties$s{n} attendue$s{n}:"),
+
     },
     Components: {
         Generic: {
@@ -239,6 +246,9 @@ const Strings_fr = {
 
                 MakeNewComponent: "Créer un nouveau composant…",
                 MakeNewComponentFailed: "Impossible de créer un nouveau composant.",
+
+                MakeNewTestCase: "Créer un nouveau test…",
+                MakeNewTestCaseFailed: "Impossible de créer un nouveau test.",
 
                 SetIdentifier: "Attribuer un identifiant…",
                 ChangeIdentifier: tuple("Changer l’identifiant (", ")…"),
@@ -953,6 +963,8 @@ const Strings_en: Strings = {
         SetInputs: "Inputs",
         WantedOutputs: "Outputs",
         SetTheseInputs: "Set these inputs",
+        Run: "Run",
+        RunTestSuite: "Run test suite",
     },
     TopBar: {
         DirtyTooltip: "The circuit has been modified since the last download/save",
@@ -998,6 +1010,11 @@ const Strings_en: Strings = {
         NothingToRedo: "Nothing to redo or repeat",
 
         RunningTestCase: template("Running test case ${name}..."),
+        NewTestCaseTitle: "Create a new test case",
+        NewTestCaseSetName: "Enter the name of the new test case:",
+        TestCaseInputToSet: template("Input$s{n} to set:"),
+        TestCaseOuputToCheck: template("Output$s{n} to check:"),
+
     },
     Components: {
         Generic: {
@@ -1007,6 +1024,9 @@ const Strings_en: Strings = {
 
                 MakeNewComponent: "Make New Component…",
                 MakeNewComponentFailed: "Cannot create new custom component.",
+
+                MakeNewTestCase: "Make New Test Case…",
+                MakeNewTestCaseFailed: "Cannot create new test case.",
 
                 SetIdentifier: "Set Identifier…",
                 ChangeIdentifier: tuple("Change Identifier (", ")…"),

@@ -194,6 +194,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     private _isSingleton = false
     private _maxInstanceMode: Mode = MAX_MODE_WHEN_EMBEDDED // can be set later
     private _isDirty = false
+    private _isRunningTests = false
     private _mode: Mode = DEFAULT_MODE
     private _initialData: InitialData | undefined = undefined
     private _options: EditorOptions = { ...DEFAULT_EDITOR_OPTIONS }
@@ -1671,12 +1672,31 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this._topBar?.setTestPaletteButtonVisible(testSuites.totalCases())
     }
 
+    public addTestCase(result: TestCaseCombinational) {
+        let testSuite: TestSuite
+        if (this.testSuites.suites.length > 0) {
+            testSuite = this.testSuites.suites[0]
+        } else {
+            testSuite = new TestSuite()
+            this.testSuites.push(testSuite)
+        }
+        testSuite.testCases.push(result)
+        this.ifEditing?.testsPalette.update()
+    }
+
     public async runTestSuite(testSuite: TestSuite, options?: { doLog?: boolean, fast?: boolean }): Promise<TestSuiteResults | undefined> {
+
+        if (this._isRunningTests) {
+            // cannot run tests while already running
+            return undefined
+        }
+
         const palette = this.editTools.testsPalette
         if (palette === undefined) {
             return undefined
         }
 
+        this._isRunningTests = true
         const oldMode = this.mode
         const fast = options?.fast ?? false
         const doLog = options?.doLog ?? false
@@ -1684,11 +1704,10 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         try {
             this.setMode(Mode.STATIC, false)
-            palette.clearAllSuites()
             this.setTestsPaletteVisible(true) // after setMode, which may hide it
 
             const results = new TestSuiteResults(testSuite)
-            const ui = palette.addTestSuite(testSuite)
+            const ui = palette.getOrMakeUIFor(testSuite)
 
             let isFirst = true
             let skip = false
@@ -1727,6 +1746,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             for (const [input, value] of allOldInValues) {
                 input.setValue(value)
             }
+            this._isRunningTests = false
             this.recalcPropagateAndDrawIfNeeded()
         }
     }
@@ -1735,6 +1755,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         for (const [input, valueRepr] of inputs) {
             if (!isString(input)) {
                 input.setValue(valuesFromReprForInput(valueRepr, input.numBits))
+            } else {
+                console.error(`Input component ${input} not found`)
             }
         }
         this.recalcPropagateAndDrawIfNeeded(false)
@@ -2384,7 +2406,6 @@ if (InBrowser) {
         template.innerHTML = LogicEditorTemplate
         const styles = [LogicEditorCSS, DialogPolyfillCSS]
         template.content.querySelector("#inlineStyle")!.innerHTML = styles.join("\n\n\n")
-
         template.content.querySelectorAll("i.svgicon").forEach(setupSvgIcon)
         return template
     })()

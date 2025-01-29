@@ -6,7 +6,7 @@ import { Drawable, DrawableWithDraggablePosition, DrawableWithPosition, MenuData
 import { Node } from "./components/Node"
 import { Waypoint, Wire } from './components/Wire'
 import { distSquared, DrawZIndex, GRID_STEP, setColorMouseOverIsDanger } from "./drawutils"
-import { applyModifiersTo, attr, button, cls, emptyMod, i, li, Modifier, ModifierObject, mods, setupSvgIcon, span, type, ul } from './htmlgen'
+import { applyModifiersTo, button, cls, emptyMod, li, Modifier, ModifierObject, mods, span, type, ul } from './htmlgen'
 import { IconName, makeIcon } from './images'
 import { LogicEditor, MouseAction, MouseActionParams } from './LogicEditor'
 import { getScrollParent, InteractionResult, Mode, targetIsFieldOrOtherInput, TimeoutHandle } from "./utils"
@@ -650,10 +650,8 @@ export class UIEventManager {
         })
 
         if (closeHandler) {
-            const closeButton = i(
-                cls("svgicon close-palette"), attr("data-icon", "close"),
-            ).render()
-            setupSvgIcon(closeButton)
+            const closeButton = makeIcon("close")
+            closeButton.classList.add("close-palette")
             closeButton.addEventListener("click", closeHandler)
             title.appendChild(closeButton)
         }

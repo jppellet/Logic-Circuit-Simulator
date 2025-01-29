@@ -671,6 +671,10 @@ export function binaryStringRepr(values: LogicValue[]): string {
     return binStr
 }
 
+export function valuesReprForTest(values: LogicValue[]): string | 0 | 1 {
+    return values.length === 1 ? toLogicValueRepr(values[0]) : binaryStringRepr(values)
+}
+
 export function hexStringRepr(values: boolean[], hexWidth: number): string {
     const binStr = binaryStringRepr(values)
     return parseInt(binStr, 2).toString(16).toUpperCase().padStart(hexWidth, "0")

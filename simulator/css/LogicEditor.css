@@ -139,18 +139,17 @@ logic-editor:not(:defined) {
 }
 
 .sim-mode-link {
-  opacity: 0.0;
   margin: -8px 0 -8px 5px;
   border: 1px solid rgba(0, 0, 0, 0);
   border-radius: 3px;
   padding: 5px;
 }
 
-.sim-toolbar-button-right.active .sim-mode-link {
-  opacity: 1.0;
+.sim-toolbar-button-right:not(.active) .sim-mode-link {
+  opacity: 0.0;
 }
 
-.sim-toolbar-button-right.active .sim-mode-link:hover {
+.sim-mode-link:hover {
   border-color: grey;
 }
 
@@ -690,6 +689,10 @@ svg text {
 
 .testcase-table td {
   padding-left: 10px;
+}
+
+.testcase-table :is(td, th) {
+  white-space: nowrap;
 }
 
 .testcase-table :is(td, th):first-child {

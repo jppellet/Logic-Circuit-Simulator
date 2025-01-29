@@ -46,6 +46,7 @@ import settings from '../img/icons/settings.icon.svg'; // @ts-ignore
 import slanted from '../img/icons/slanted.icon.svg'; // @ts-ignore
 import step from '../img/icons/step.icon.svg'; // @ts-ignore
 import strokewidth from '../img/icons/strokewidth.icon.svg'; // @ts-ignore
+import testcase from '../img/icons/testcase.icon.svg'; // @ts-ignore
 import timer from '../img/icons/timer.icon.svg'; // @ts-ignore
 import trash from '../img/icons/trash.icon.svg'; // @ts-ignore
 import undo from '../img/icons/undo.icon.svg'; // @ts-ignore
@@ -166,6 +167,7 @@ const icons = {
     slanted,
     step,
     strokewidth,
+    testcase,
     timer,
     trash,
     undo,

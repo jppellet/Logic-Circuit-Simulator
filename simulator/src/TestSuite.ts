@@ -7,7 +7,9 @@ import { type Output } from "./components/Output"
 import { S } from "./strings"
 import { ADTCase, ADTWith, ComponentTypeInput, ComponentTypeOutput, InputOutputValueRepr, isString, LogicValue, reprForLogicValues } from "./utils"
 
-export type TestCaseCombinationalRepr = t.TypeOf<typeof TestCaseCombinational.Repr>
+
+export type TestCaseValueMap<IO extends Input | Output> = Map<IO | string, InputOutputValueRepr>
+
 
 function buildMap<IO extends Input | Output>(repr: Record<string, InputOutputValueRepr>, compList: ComponentList, isInputOutput: (comp: Component | undefined) => comp is IO): TestCaseValueMap<IO> {
     const map: TestCaseValueMap<IO> = new Map()
@@ -43,7 +45,7 @@ function isOutput(comp: Component | undefined): comp is Output {
     return comp?.def.type === ComponentTypeOutput
 }
 
-export type TestCaseValueMap<IO extends Input | Output> = Map<IO | string, InputOutputValueRepr>
+export type TestCaseCombinationalRepr = t.TypeOf<typeof TestCaseCombinational.Repr>
 
 export class TestCaseCombinational {
 
@@ -131,7 +133,7 @@ export class TestSuite {
             this.isHidden = repr.hidden ?? false
             this.testCases = repr.cases.map(tc => new TestCaseCombinational(tc, compList))
         } else {
-            this.name = S.Tests.DefaultTestSuiteName
+            this.name = undefined
             this.isHidden = false
             this.testCases = []
         }
@@ -162,15 +164,19 @@ export type TestCaseResultFail = ADTCase<TestCaseResult, "fail">
 
 export class TestSuiteResults {
 
+    public readonly testCaseResults: Array<[TestCaseCombinational, TestCaseResult]> = []
+
     public constructor(
         public readonly testSuite: TestSuite
     ) {
     }
 
-    public readonly testCaseResults: Array<[TestCaseCombinational, TestCaseResult]> = []
-
     public addTestCaseResult(testCase: TestCaseCombinational, result: TestCaseResult) {
         this.testCaseResults.push([testCase, result])
+    }
+
+    public isAllPass(): boolean {
+        return this.testCaseResults.every(([, result]) => result._tag === "pass")
     }
 
     public dump() {
@@ -214,7 +220,10 @@ export class TestSuites {
     public set(testSuites: readonly TestSuite[]) {
         this._testSuites.length = 0
         this._testSuites.push(...testSuites)
-        this.parent.ifEditing?.testsPalette.updateWith(this)
+    }
+
+    public push(testSuite: TestSuite) {
+        this._testSuites.push(testSuite)
     }
 
 }

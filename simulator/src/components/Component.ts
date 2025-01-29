@@ -1182,8 +1182,8 @@ export abstract class ComponentBase<
     private makeBaseContextMenu(editor: LogicEditor): MenuItems {
         const s = S.Components.Generic.contextMenu
 
-        // only allow to make new custom components in main editor
-        const makeNewComponentItems: MenuItems =
+        // only allow to make new custom components or test cases in main editor
+        const makeNewComponentOrTestCaseItems: MenuItems =
             editor.eventMgr.currentSelectionEmpty() || !this.parent.isMainEditor() ? [] : [
                 ["start", MenuData.item("newcomponent", s.MakeNewComponent, () => {
                     const error = editor.factory.tryMakeNewCustomComponent(editor)
@@ -1193,6 +1193,17 @@ export abstract class ComponentBase<
                         }
                     } else {
                         editor.updateCustomComponentButtons()
+                    }
+                })],
+                ["start", MenuData.item("testcase", s.MakeNewTestCase, () => {
+                    const result = editor.factory.tryMakeNewTestCase(editor)
+                    if (isString(result)) {
+                        if (result.length > 0) {
+                            window.alert(s.MakeNewTestCaseFailed + " " + result)
+                        }
+                    } else {
+                        const editor = this.parent.editor // same as this.parent here but with the correct type
+                        editor.addTestCase(result)
                     }
                 })],
                 ["start", MenuData.sep()],
@@ -1222,7 +1233,7 @@ export abstract class ComponentBase<
         }, "⌫", true)
 
         return [
-            ...makeNewComponentItems,
+            ...makeNewComponentOrTestCaseItems,
             ...this.makeOrientationAndPosMenuItems(),
             ...setRefItems,
             ...resetItem,

@@ -61,6 +61,9 @@ export abstract class GateBase<
     protected doSetType(newType: TGateType) {
         this._type = newType
         this.updateLeadsFor(newType)
+        for (const input of this.inputs.In) {
+            input.incomingWire?.invalidateWirePath()
+        }
         this.setNeedsRecalc()
         this.setNeedsRedraw("gate type changed")
     }

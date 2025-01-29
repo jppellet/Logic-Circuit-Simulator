@@ -1,9 +1,10 @@
 import { type Input } from "./components/Input"
 import { type Output } from "./components/Output"
-import { a, attr, button, cls, data, div, href, i, Modifier, mods, setupSvgIcon, span, style, table, tbody, td, th, thead, title, tr } from "./htmlgen"
+import { a, button, cls, data, div, href, Modifier, mods, span, style, table, tbody, td, th, thead, title, tr } from "./htmlgen"
+import { makeIcon } from "./images"
 import { LogicEditor } from "./LogicEditor"
 import { S } from "./strings"
-import { TestCaseCombinational, TestCaseResult, TestCaseResultFail, TestSuite, TestSuites } from "./TestSuite"
+import { TestCaseCombinational, TestCaseResult, TestCaseResultFail, TestSuite } from "./TestSuite"
 import { isString, reprForLogicValues, setVisible } from "./utils"
 
 
@@ -11,6 +12,7 @@ export class TestsPalette {
 
     public readonly rootElem: HTMLDivElement
     private readonly suiteContainer: HTMLDivElement
+    private readonly testSuites = new Map<TestSuite, TestSuiteUI>()
 
     public constructor(
         public readonly editor: LogicEditor,
@@ -38,69 +40,111 @@ export class TestsPalette {
 
     public clearAllSuites() {
         this.suiteContainer.innerHTML = ""
+        this.testSuites.clear()
     }
 
-    public updateWith(testSuites: TestSuites) {
+    public update() {
         this.clearAllSuites()
-        for (const suite of testSuites.suites) {
-            // TODO
-            this.suiteContainer.appendChild(div("Test suite: ", suite.name ?? "n/a").render())
+        const parentSuites = this.editor.testSuites
+        for (const suite of parentSuites.suites) {
+            this.addTestSuite(suite)
         }
-        this.editor.didLoadTests(testSuites)
+        this.editor.didLoadTests(parentSuites)
     }
 
     public addTestSuite(testSuite: TestSuite): TestSuiteUI {
-        const ui = new TestSuiteUI(this.editor, this, testSuite)
+        const numExisting = this.testSuites.size
+        const ui = new TestSuiteUI(this.editor, testSuite)
+        ui.expanded = numExisting === 0
+        this.testSuites.set(testSuite, ui)
         this.suiteContainer.appendChild(ui.rootElem)
         return ui
+    }
+
+    public getOrMakeUIFor(testSuite: TestSuite): TestSuiteUI {
+        return this.testSuites.get(testSuite) ?? this.addTestSuite(testSuite)
     }
 
 }
 
 
-type TestCaseHTML = { line: HTMLElement, details: HTMLElement, container: HTMLElement, toggle: () => void }
+type TestCaseHTML = { line: HTMLElement, details: HTMLElement, container: HTMLElement, toggle: (force?: boolean) => void }
 
 export class TestSuiteUI {
 
     public readonly rootElem: HTMLDivElement
+    private readonly header: HTMLDivElement
+    private readonly content: HTMLDivElement
+    private _expanded = false
+
     private readonly htmlResults: TestCaseHTML[]
 
     public constructor(
         private readonly editor: LogicEditor,
-        private readonly palette: TestsPalette,
-        private readonly testSuite: TestSuite
+        private readonly testSuite: TestSuite,
     ) {
         const s = S.Tests
 
         this.htmlResults = testSuite.testCases.map(tc => {
             const line = button(cls("test-disclosable testcase-button"), tc.name ?? s.DefaultTestCaseName).render()
-            const details = div(cls("testcase-details"), style("display: none")).render()
-            const toggle = () => {
-                const expanded = line.classList.toggle("expanded")
+            const details = div(cls("testcase-details"), style("display: none"), this.makeTestCaseTable(tc)).render()
+            const toggle = (force?: boolean) => {
+                const expanded = line.classList.toggle("expanded", force)
                 setVisible(details, expanded)
             }
-            line.addEventListener("click", toggle)
+            line.addEventListener("click", () => toggle())
             const container = div(cls("testcase wait"), line, details).render()
             return { line, details, container, toggle } as const
         })
-        const header =
-            button(cls("test-suite test-disclosable expanded"), testSuite.name ?? s.DefaultTestSuiteName).render()
-        const content =
-            div(cls("test-cases"), style("display: block"), ...this.htmlResults.map(p => p.container)).render()
 
-        header.addEventListener("click", () => {
-            const expanded = header.classList.toggle("expanded")
-            setVisible(content, expanded)
+
+        const runAllIcon = makeIcon("play")
+        style("position: relative; top: -2px;").applyTo(runAllIcon)
+        const runAllButton = span(style("font-size: 80%; opacity: 0.85"), cls("sim-mode-link"),
+            title(s.RunTestSuite), runAllIcon, s.Run
+        ).render()
+
+        runAllButton.addEventListener("click", async () => {
+            const oldExpanded = this.expanded
+            const testResult = await this.editor.runTestSuite(this.testSuite, { fast: true })
+            if (testResult !== undefined && testResult.isAllPass()) {
+                this.expanded = oldExpanded
+            }
         })
 
-        this.rootElem = div(header, content).render()
+        this.header =
+            div(cls("test-suite test-disclosable expanded"), testSuite.name ?? s.DefaultTestSuiteName, runAllButton).render()
+        this.content =
+            div(cls("test-cases"), style("display: block"), ...this.htmlResults.map(p => p.container)).render()
+
+        this.header.addEventListener("click", (e) => {
+            if (e.target === this.header) {
+                this.expanded = !this.expanded
+            }
+        })
+
+        this.rootElem = div(this.header, this.content).render()
+    }
+
+    public get expanded() {
+        return this._expanded
+    }
+
+    public set expanded(expanded: boolean) {
+        this._expanded = this.header.classList.toggle("expanded", expanded)
+        setVisible(this.content, this._expanded)
+        for (const { toggle } of this.htmlResults) {
+            toggle(expanded)
+        }
     }
 
     public setRunning(i: number) {
+        if (!this._expanded) {
+            this.expanded = true
+        }
         const htmlResult = this.htmlResults[i]
         htmlResult.container.className = "testcase running"
-        htmlResult.details.appendChild(this.makeTestCaseTable(this.testSuite.testCases[i]))
-        htmlResult.toggle()
+        htmlResult.toggle(true)
     }
 
     public setResult(i: number, result: TestCaseResult) {
@@ -110,7 +154,7 @@ export class TestSuiteUI {
             htmlResult.details.innerHTML = ""
             htmlResult.details.appendChild(this.makeTestCaseTable(this.testSuite.testCases[i], result))
         } else {
-            htmlResult.toggle() // close details if no failure
+            // htmlResult.toggle() // close details if no failure
         }
         htmlResult.container.className = "testcase " + result._tag
     }
@@ -146,13 +190,15 @@ export class TestSuiteUI {
             }
             tr(td(inStr), td(outStr)).applyTo(tableBody)
         }
-        const setTheseInputsButton = i(
-            cls("svgicon"), style("margin: 0 5px; width: 14px; color: gray; cursor: pointer;"),
-            attr("data-icon", "setinput"),
+
+
+        const setTheseInputsButton = makeIcon("setinput")
+        mods(
+            style("margin: 0 5px; width: 14px; color: gray; cursor: pointer;"),
             title(s.SetTheseInputs),
-        ).render()
-        setupSvgIcon(setTheseInputsButton)
+        ).applyTo(setTheseInputsButton)
         setTheseInputsButton.addEventListener("click", () => {
+            testCase.tryFixReferences(this.editor.components)
             this.editor.trySetInputsAndRecalc(testCase.in)
         })
 
