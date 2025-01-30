@@ -226,4 +226,27 @@ export class TestSuites {
         this._testSuites.push(testSuite)
     }
 
+    public hasReferenceTo(ref: string | undefined): ref is string {
+        if (ref === undefined) {
+            return false
+        }
+        const isRef = (s: string | Input | Output, ref: string) =>
+            isString(s) ? s === ref : s.ref === ref
+        for (const suite of this._testSuites) {
+            for (const testCase of suite.testCases) {
+                for (const input of testCase.in.keys()) {
+                    if (isRef(input, ref)) {
+                        return true
+                    }
+                }
+                for (const output of testCase.out.keys()) {
+                    if (isRef(output, ref)) {
+                        return true
+                    }
+                }
+            }
+        }
+        return false
+    }
+
 }

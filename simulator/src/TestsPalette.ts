@@ -11,6 +11,7 @@ import { isString, reprForLogicValues, setVisible } from "./utils"
 export class TestsPalette {
 
     public readonly rootElem: HTMLDivElement
+    private readonly scroller: HTMLDivElement
     private readonly suiteContainer: HTMLDivElement
     private readonly testSuites = new Map<TestSuite, TestSuiteUI>()
 
@@ -24,18 +25,27 @@ export class TestsPalette {
             editor.setTestsPaletteVisible(false)
         })
 
-        this.suiteContainer = div(style("width: 100%; font-size: 80%;")).render()
+        this.suiteContainer = div(style("width: 100%;")).render()
+        this.scroller = div(style("width: 100%; font-size: 80%; overflow-y: auto; min-height: 28px; resize: vertical"), this.suiteContainer).render()
 
         this.rootElem = div(cls("sim-toolbar-right"),
             style("display: none"),
             data("prev-display")("block"),
             testsTitleElem,
-            this.suiteContainer
+            this.scroller
         ).render()
+    }
+
+    public updateMaxHeight() {
+        const maxHeight = Math.min(this.suiteContainer.clientHeight, this.editor.html.mainCanvas.clientHeight - 38)
+        this.scroller.style.maxHeight = maxHeight + "px"
     }
 
     public setVisible(visible: boolean) {
         setVisible(this.rootElem, visible)
+        if (visible) {
+            this.updateMaxHeight()
+        }
     }
 
     public clearAllSuites() {
@@ -54,7 +64,7 @@ export class TestsPalette {
 
     public addTestSuite(testSuite: TestSuite): TestSuiteUI {
         const numExisting = this.testSuites.size
-        const ui = new TestSuiteUI(this.editor, testSuite)
+        const ui = new TestSuiteUI(this.editor, this, testSuite)
         ui.expanded = numExisting === 0
         this.testSuites.set(testSuite, ui)
         this.suiteContainer.appendChild(ui.rootElem)
@@ -81,6 +91,7 @@ export class TestSuiteUI {
 
     public constructor(
         private readonly editor: LogicEditor,
+        private readonly palette: TestsPalette,
         private readonly testSuite: TestSuite,
     ) {
         const s = S.Tests
@@ -91,6 +102,7 @@ export class TestSuiteUI {
             const toggle = (force?: boolean) => {
                 const expanded = line.classList.toggle("expanded", force)
                 setVisible(details, expanded)
+                this.palette.updateMaxHeight()
             }
             line.addEventListener("click", () => toggle())
             const container = div(cls("testcase wait"), line, details).render()
@@ -133,9 +145,7 @@ export class TestSuiteUI {
     public set expanded(expanded: boolean) {
         this._expanded = this.header.classList.toggle("expanded", expanded)
         setVisible(this.content, this._expanded)
-        for (const { toggle } of this.htmlResults) {
-            toggle(expanded)
-        }
+        this.palette.updateMaxHeight()
     }
 
     public setRunning(i: number) {
@@ -154,7 +164,7 @@ export class TestSuiteUI {
             htmlResult.details.innerHTML = ""
             htmlResult.details.appendChild(this.makeTestCaseTable(this.testSuite.testCases[i], result))
         } else {
-            // htmlResult.toggle() // close details if no failure
+            htmlResult.toggle() // close details if no failure
         }
         htmlResult.container.className = "testcase " + result._tag
     }

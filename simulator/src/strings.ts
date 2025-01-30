@@ -187,6 +187,7 @@ const Strings_fr = {
         SetTheseInputs: "Régler ces entrées",
         Run: "Tester",
         RunTestSuite: "Exécuter les tests",
+        ComponentUsedInTestSuite: template("Ce composant est utilisé dans des tests. Voulez-vous vraiment le supprimer? Les tests seront conservés, mais ne fonctionneront pas tant qu’un autre composant avec cette référence (“${ref}”) ne sera pas ajouté au circuit."),
     },
     TopBar: {
         DirtyTooltip: "Le circuit a été modifié depuis la dernière sauvegarde.",
@@ -965,6 +966,7 @@ const Strings_en: Strings = {
         SetTheseInputs: "Set these inputs",
         Run: "Run",
         RunTestSuite: "Run test suite",
+        ComponentUsedInTestSuite: template("This component is used in test suites. Do you really want to delete it? The tests will be kept, but won’t work until another component with this reference (“${ref}”) is added to the circuit."),
     },
     TopBar: {
         DirtyTooltip: "The circuit has been modified since the last download/save",

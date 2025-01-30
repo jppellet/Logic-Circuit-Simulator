@@ -628,6 +628,7 @@ svg text {
 
 .testcase {
   padding: 2px 5px;
+  border-top: 1px solid #ccc;
 }
 
 .testcase.wait {

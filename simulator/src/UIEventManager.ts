@@ -9,6 +9,7 @@ import { distSquared, DrawZIndex, GRID_STEP, setColorMouseOverIsDanger } from ".
 import { applyModifiersTo, button, cls, emptyMod, li, Modifier, ModifierObject, mods, span, type, ul } from './htmlgen'
 import { IconName, makeIcon } from './images'
 import { LogicEditor, MouseAction, MouseActionParams } from './LogicEditor'
+import { S } from './strings'
 import { getScrollParent, InteractionResult, Mode, targetIsFieldOrOtherInput, TimeoutHandle } from "./utils"
 
 type MouseDownData = {
@@ -883,6 +884,12 @@ export class UIEventManager {
 
     public tryDeleteDrawable(comp: Drawable): InteractionResult {
         if (comp instanceof ComponentBase) {
+            const ref = comp.ref
+            if (this.editor.editorRoot.testSuites.hasReferenceTo(ref)) {
+                if (!window.confirm(S.Tests.ComponentUsedInTestSuite.expand({ ref }))) {
+                    return InteractionResult.NoChange
+                }
+            }
             const numDeleted = this.tryDeleteComponentsWhere(c => c === comp, true)
             return InteractionResult.fromBoolean(numDeleted !== 0)
         } else if (comp instanceof Wire) {

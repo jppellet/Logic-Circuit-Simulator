@@ -443,15 +443,23 @@ export class ComponentFactory {
 
         const { inputs, outputs } = checkResult
 
-        const mkDesc = (inOut: Input | Output) => `${inOut.ref ?? "?"}${isString(inOut.name) ? ` (“${inOut.name}”)` : ""}: ${binaryStringRepr(inOut.value)}`
-
         const joiner = "\n • "
-        const inputsStr = s.TestCaseInputToSet.expand({ n: inputs.length }) + joiner + inputs.map(mkDesc).join(joiner)
-        const outputsStr = s.TestCaseOuputToCheck.expand({ n: outputs.length }) + joiner + outputs.map(mkDesc).join(joiner)
+        const inReprBuf: string[] = []
+        const outReprBuf: string[] = []
+
+        const mkDesc = (reprBuf: string[]) => (inOut: Input | Output) => {
+            const repr = binaryStringRepr(inOut.value)
+            reprBuf.push(repr)
+            return `${inOut.ref ?? "?"}${isString(inOut.name) ? ` (“${inOut.name}”)` : ""}: ${repr}`
+        }
+
+        const inputsStr = s.TestCaseInputToSet.expand({ n: inputs.length }) + joiner + inputs.map(mkDesc(inReprBuf)).join(joiner)
+        const outputsStr = s.TestCaseOuputToCheck.expand({ n: outputs.length }) + joiner + outputs.map(mkDesc(outReprBuf)).join(joiner)
 
         const prompt = s.NewTestCaseTitle + `\n\n${inputsStr}\n\n${outputsStr}\n\n` + s.NewTestCaseSetName
+        const defaultName = inReprBuf.join(" ") + " → " + outReprBuf.join(" ")
 
-        const testCaseName = window.prompt(prompt)
+        const testCaseName = window.prompt(prompt, defaultName)
         if (testCaseName === null) {
             return ""
         }
