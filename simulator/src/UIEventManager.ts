@@ -1094,7 +1094,9 @@ class EditHandlers extends ToolHandlers {
 
             // console.log("building menu for %o", MenuData)
 
-            const defToElem = (item: MenuItem): HTMLElement => {
+            let hasContentJustifyingSeparator = false
+
+            const defToElem = (item: MenuItem): Modifier => {
                 function mkButton(spec: { icon?: IconName | undefined, caption: Modifier }, shortcut: string | undefined, danger: boolean) {
                     return button(type("button"), cls(`menu-btn${(danger ? " danger" : "")}`),
                         spec.icon === undefined
@@ -1107,15 +1109,21 @@ class EditHandlers extends ToolHandlers {
                     )
                 }
 
+                hasContentJustifyingSeparator ||= item._tag !== "sep"
                 switch (item._tag) {
                     case "sep":
-                        return li(cls("menu-separator")).render()
+                        if (hasContentJustifyingSeparator) {
+                            hasContentJustifyingSeparator = false
+                            return li(cls("menu-separator")).render()
+                        } else {
+                            return emptyMod
+                        }
                     case "text":
                         return li(cls("menu-item-static"), item.caption).render()
                     case "item": {
                         const but = mkButton(item, item.shortcut, item.danger ?? false).render()
-                        but.addEventListener("click", this.editor.wrapHandler((itemEvent: MouseEvent | TouchEvent) => {
-                            const result = item.action(itemEvent, e)
+                        but.addEventListener("click", this.editor.wrapHandler(async (itemEvent: MouseEvent | TouchEvent) => {
+                            const result = await Promise.resolve(item.action(itemEvent, e))
                             this.editor.editTools.undoMgr.takeSnapshot(result as Exclude<typeof result, void>)
                             this.editor.focus()
                         }))

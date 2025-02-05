@@ -600,6 +600,7 @@ svg text {
   background: none;
   width: 100%;
   text-align: left;
+  display: flex;
 }
 
 .testcase-button.test-disclosable::before {
@@ -673,6 +674,10 @@ svg text {
 
 .testcase-details {
   padding: 5px 5px 10px 20px;
+}
+
+#logicEditorRoot[nomodes~=full] .testcase-delete-button {
+  display: none;
 }
 
 .testcase-table {

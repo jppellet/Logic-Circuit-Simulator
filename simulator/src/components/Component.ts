@@ -3,6 +3,7 @@ import JSON5 from "json5"
 import type { ComponentKey, DefAndParams, LibraryButtonOptions, LibraryButtonProps, LibraryItem } from "../ComponentMenu"
 import { DrawParams, LogicEditor } from "../LogicEditor"
 import { MouseDragEvent, TouchDragEvent } from "../UIEventManager"
+import { UIPermissions } from "../UIPermissions"
 import { COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, DrawingRect, GRID_STEP, drawClockInput, drawComponentName, drawLabel, drawWireLineToComponent, isTrivialNodeName, shouldDrawLeadsTo, useCompact } from "../drawutils"
 import { IconName, ImageName } from "../images"
 import { S, Template } from "../strings"
@@ -1183,8 +1184,10 @@ export abstract class ComponentBase<
         const s = S.Components.Generic.contextMenu
 
         // only allow to make new custom components or test cases in main editor
-        const makeNewComponentOrTestCaseItems: MenuItems =
-            editor.eventMgr.currentSelectionEmpty() || !this.parent.isMainEditor() ? [] : [
+        const nonEmptySelectionInMainEditor = !editor.eventMgr.currentSelectionEmpty() && this.parent.isMainEditor()
+
+        const makeNewComponentItems: MenuItems =
+            (!nonEmptySelectionInMainEditor || !UIPermissions.canModifyCustomComponents(this.parent)) ? [] : [
                 ["start", MenuData.item("newcomponent", s.MakeNewComponent, () => {
                     const error = editor.factory.tryMakeNewCustomComponent(editor)
                     if (error !== undefined) {
@@ -1195,19 +1198,35 @@ export abstract class ComponentBase<
                         editor.updateCustomComponentButtons()
                     }
                 })],
+            ]
+
+        const makeNewTestCaseItems: MenuItems =
+            (!nonEmptySelectionInMainEditor || !UIPermissions.canModifyTestCases(this.parent)) ? [] : [
                 ["start", MenuData.item("testcase", s.MakeNewTestCase, () => {
                     const result = editor.factory.tryMakeNewTestCase(editor)
                     if (isString(result)) {
                         if (result.length > 0) {
                             window.alert(s.MakeNewTestCaseFailed + " " + result)
                         }
-                    } else {
-                        const editor = this.parent.editor // same as this.parent here but with the correct type
-                        editor.addTestCase(result)
+                        return
                     }
+                    this.parent.editor.addTestCases(result)
                 })],
-                ["start", MenuData.sep()],
+                ["start", MenuData.item("testcase", s.MakeAllTestCases, async () => {
+                    const result = await editor.factory.tryMakeAllTestCases(editor)
+                    if (isString(result)) {
+                        if (result.length > 0) {
+                            window.alert(s.MakeNewTestCaseFailed + " " + result)
+                        }
+                        return
+                    }
+                    this.parent.editor.addTestCases(result)
+                })],
             ]
+
+        if (makeNewComponentItems.length > 0 || makeNewTestCaseItems.length > 0) {
+            makeNewTestCaseItems.push(["start", MenuData.sep()])
+        }
 
         const setRefItems: MenuItems =
             editor.mode < Mode.FULL ? [] : [
@@ -1233,7 +1252,9 @@ export abstract class ComponentBase<
         }, "⌫", true)
 
         return [
-            ...makeNewComponentOrTestCaseItems,
+            ["start", MenuData.sep()],
+            ...makeNewComponentItems,
+            ...makeNewTestCaseItems,
             ...this.makeOrientationAndPosMenuItems(),
             ...setRefItems,
             ...resetItem,

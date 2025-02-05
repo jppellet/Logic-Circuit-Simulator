@@ -288,6 +288,7 @@ export class Input extends InputBase<InputRepr> {
     public readonly numBits: number
     private _isPushButton: boolean
     private _isConstant: boolean
+    public isCustomComponentInput: boolean = false
 
     public constructor(parent: DrawableParent, params: InputParams, saved?: InputRepr) {
         super(parent, InputDef.with(params), saved)
@@ -329,6 +330,10 @@ export class Input extends InputBase<InputRepr> {
             return "copy"
         }
 
+        if (this.isCustomComponentInput) {
+            return "grab"
+        }
+
         if (this._isConstant) {
             if (mode >= Mode.DESIGN && !this.lockPos) {
                 // we can still move it
@@ -337,7 +342,8 @@ export class Input extends InputBase<InputRepr> {
                 // no special pointer change, it's constant and static
                 return undefined
             }
-        }        // we can switch it
+        }
+        // we can switch it
         return "pointer"
     }
 
@@ -367,6 +373,11 @@ export class Input extends InputBase<InputRepr> {
         if (this.parent.mode === Mode.STATIC
             || this._isPushButton
             || this._isConstant) {
+            return InteractionResult.NoChange
+        }
+
+        if (this.isCustomComponentInput) {
+            this.parent.editor.showMessage(S.Components.Input.contextMenu.InputSetFromOutside)
             return InteractionResult.NoChange
         }
 
@@ -408,13 +419,23 @@ export class Input extends InputBase<InputRepr> {
 
     private trySetPushButtonBit(v: LogicValue, e: MouseEvent | TouchEvent) {
         let i
-        if (this.parent.mode !== Mode.STATIC
-            && this._isPushButton
-            && !this._isConstant
-            && this.parent.editor.eventMgr.currentSelectionEmpty()
-            && (i = this.clickedBitIndex(e)) !== -1) {
-            this.doSetValueChangingBit(i, v)
+        if (this.parent.mode === Mode.STATIC
+            || !this._isPushButton
+            || this._isConstant
+            || !this.parent.editor.eventMgr.currentSelectionEmpty()
+            || (i = this.clickedBitIndex(e)) === -1) {
+            return
         }
+
+        if (this.isCustomComponentInput) {
+            if (v !== false) {
+                // only show message on push down
+                this.parent.editor.showMessage(S.Components.Input.contextMenu.InputSetFromOutside)
+            }
+            return
+        }
+
+        this.doSetValueChangingBit(i, v)
     }
 
     private doSetValueChangingBit(i: number, v: LogicValue) {

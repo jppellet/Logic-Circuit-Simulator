@@ -55,6 +55,8 @@ enum Mode {
     FULL,    // can additionally force output nodes to 'unset' state and draw undetermined dates
 }
 
+const MIN_MODE_INDEX: number = Mode.STATIC
+const MAX_MODE_INDEX: number = Mode.FULL
 const MAX_MODE_WHEN_SINGLETON = Mode.FULL
 const MAX_MODE_WHEN_EMBEDDED = Mode.DESIGN
 const DEFAULT_MODE = Mode.DESIGN
@@ -75,6 +77,10 @@ const ATTRIBUTE_NAMES = {
 
     src: "src",
     data: "data",
+
+    // set on the root div and not the custom element
+    modes: "modes", // the space-separated list of cumulative modes whose UI elements should be shown
+    nomodes: "nomodes",
 } as const
 
 export type InitParams = {
@@ -160,7 +166,12 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     public readonly eventMgr = new UIEventManager(this)
     public readonly timeline = new Timeline(this)
 
-    // passed to an editor root when active
+    /** EditTools are singleton-meant elements that help the general edition process, independently of
+     * whether the editor is showing the main circuit or a CustomComponent. They are thus instantiated
+     * only once by the main LogicEditor and can be accessed statically with `editor.editTools.xyz`
+     * when needed. If, however, certain actions are done inside a circuit currently not being edited
+     * (e.g., a CustomComponent that is closed, or the main circuit when a CustomComponent is open),
+     * then use the `ifEditing?.xyz` to avoid having unwanted effects. */
     public readonly editTools: EditTools = {
         moveMgr: new MoveManager(this),
         undoMgr: new UndoManager(this),
@@ -183,6 +194,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     public readonly recalcMgr = new RecalcManager()
 
     private _ifEditing: EditTools | undefined = this.editTools
+    /** See #editTools */
     public get ifEditing() { return this._ifEditing }
     public stopEditingThis() { this._ifEditing = undefined }
     public startEditingThis(tools: EditTools) { this._ifEditing = tools }
@@ -212,6 +224,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     private _propagationResolve: (() => void) | undefined = undefined
 
     private _editorRoot: DrawableParent = this
+    /** Either the LogicEditor itself, or a CustomComponent, whichever is being edited right now. */
     public get editorRoot() { return this._editorRoot }
 
     public root: ShadowRoot
@@ -582,6 +595,12 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 }
             }
 
+            // if we lose the focus, we grab it back (if we're in singleton mode),
+            // otherwise key events won't be caught
+            this.addEventListener("focusout", () => {
+                this.focus()
+            })
+
             this.focus()
         }
 
@@ -742,7 +761,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                         const switchToModeDiv =
                             div(cls("btn btn-sm btn-outline-light sim-toolbar-button-right sim-mode-tool"),
                                 style("display: flex; justify-content: space-between; align-items: center"),
-                                attrBuilder("mode")(Mode[buttonMode]),
+                                attrBuilder("mode")(Mode[buttonMode].toLowerCase()),
                                 title(expl),
                                 modeTitle,
                                 addElem,
@@ -997,13 +1016,25 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     public setMode(mode: Mode, doSetFocus: boolean) {
         this.wrapHandler(() => {
-            let wantedModeStr = Mode[mode]
+            let modeStr = Mode[mode].toLowerCase()
             if (mode > this._maxInstanceMode) {
                 mode = this._maxInstanceMode
-                console.log(`Cannot switch to mode ${wantedModeStr} because we are capped by ${Mode[this._maxInstanceMode]}`)
-                wantedModeStr = Mode[mode]
+                console.log(`Cannot switch to mode ${modeStr} because we are capped by ${Mode[this._maxInstanceMode]}`)
+                modeStr = Mode[mode].toLowerCase()
             }
             this._mode = mode
+
+            const modes: string[] = []
+            for (let i = MIN_MODE_INDEX; i <= mode; i++) {
+                modes.push(Mode[i].toLowerCase())
+            }
+            this.html.rootDiv.setAttribute(ATTRIBUTE_NAMES.modes, modes.join(" "))
+            const nomodes: string[] = []
+            for (let i = mode + 1; i <= MAX_MODE_INDEX; i++) {
+                nomodes.push(Mode[i].toLowerCase())
+            }
+            this.html.rootDiv.setAttribute(ATTRIBUTE_NAMES.nomodes, nomodes.join(" "))
+
 
             // console.log(`Display/interaction is ${wantedModeStr} - ${mode}`)
 
@@ -1011,7 +1042,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
             // update mode active button
             this.root.querySelectorAll(".sim-mode-tool").forEach((elem) => {
-                if (elem.getAttribute("mode") === wantedModeStr) {
+                if (elem.getAttribute("mode") === modeStr) {
                     elem.classList.add("active")
                 } else {
                     elem.classList.remove("active")
@@ -1299,7 +1330,11 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this._editorRoot = newRoot
         newRoot.startEditingThis(this.editTools)
 
-        const [customComp, typesToHide] = !(newRoot instanceof CustomComponent) ? [undefined, []] : [newRoot, this.factory.getCustomComponentTypesWhichUse(newRoot.customDef.type)]
+        const [customComp, typesToHide] = !(newRoot instanceof CustomComponent)
+            // case LogicEditor
+            ? [undefined, []]
+            // case CustomComponent
+            : [newRoot, this.factory.getCustomComponentTypesWhichUse(newRoot.customDef.type)]
 
         this._menu?.setCustomComponentsHidden(typesToHide)
         this._topBar?.setEditingCustomComponent(customComp?.customDef)
@@ -1308,8 +1343,9 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.eventMgr.currentSelection = undefined
         this.eventMgr.clearPopperIfNecessary()
         this.eventMgr.updateMouseOver([this.mouseX, this.mouseY], false, false)
+        this.editTools.testsPalette.update()
         this.editTools.moveMgr.clear()
-        this.editTools.redrawMgr.addReason("editor context changed", null, true)
+        this.editTools.redrawMgr.addReason("editor root changed", null, true)
 
         this.focus()
     }
@@ -1434,7 +1470,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     private guessAdequateCanvasSize(applyZoom: boolean): [number, number] {
         let rightmostX = Number.NEGATIVE_INFINITY, leftmostX = Number.POSITIVE_INFINITY
         let lowestY = Number.NEGATIVE_INFINITY, highestY = Number.POSITIVE_INFINITY
-        const drawables: DrawableWithPosition[] = [...this.components.all()]
+        const drawables: DrawableWithPosition[] = [...this.editorRoot.components.all()]
         for (const wire of this.linkMgr.wires) {
             drawables.push(...wire.waypoints)
         }
@@ -1669,10 +1705,12 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     }
 
     public didLoadTests(testSuites: TestSuites) {
-        this._topBar?.setTestPaletteButtonVisible(testSuites.totalCases())
+        const numTests = testSuites.totalCases()
+        this._topBar?.setTestPaletteButtonVisible(numTests)
+        this.setTestsPaletteVisible(numTests > 0)
     }
 
-    public addTestCase(result: TestCaseCombinational) {
+    public addTestCases(result: TestCaseCombinational | TestCaseCombinational[]) {
         let testSuite: TestSuite
         if (this.testSuites.suites.length > 0) {
             testSuite = this.testSuites.suites[0]
@@ -1680,8 +1718,27 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             testSuite = new TestSuite()
             this.testSuites.push(testSuite)
         }
-        testSuite.testCases.push(result)
+        if (!Array.isArray(result)) {
+            testSuite.testCases.push(result)
+        } else {
+            testSuite.testCases.push(...result)
+        }
+        this.ifEditing?.setDirty("added test case")
+        this.ifEditing?.undoMgr.takeSnapshot()
         this.ifEditing?.testsPalette.update()
+    }
+
+    public removeTestCase(testCase: TestCaseCombinational) {
+        for (const testSuite of this.testSuites.suites) {
+            const idx = testSuite.testCases.indexOf(testCase)
+            if (idx >= 0) {
+                testSuite.testCases.splice(idx, 1)
+                this.ifEditing?.setDirty("removed test case")
+                this.ifEditing?.undoMgr.takeSnapshot()
+                this.ifEditing?.testsPalette.update()
+                return
+            }
+        }
     }
 
     public async runTestSuite(testSuite: TestSuite, options?: { doLog?: boolean, fast?: boolean }): Promise<TestSuiteResults | undefined> {
@@ -1830,8 +1887,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     }
 
     /**
-     * @param forceNow This must be `true` only if have just changed values manually and
-     * we need to bypass the cancel the possible next animation frame to make sure we
+     * @param forceNow This must be `true` only if we have just changed values manually
+     * and we need to bypass and cancel the possible next animation frame to make sure we
      * renew the propagation promise right now. Otherwise, the next animation frame
      * will take care of the redraw.
      */
@@ -1988,7 +2045,6 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         // * Refs
         // * Selection rect
 
-        // TODO handle redrawMask
         // if (redrawMask) {
         //     console.log("would redraw mask")
         // } else {

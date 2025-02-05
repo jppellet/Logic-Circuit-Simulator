@@ -13,7 +13,7 @@ import { COLOR_COMPONENT_BORDER, COLOR_MOUSE_OVER, COLOR_MOUSE_OVER_DANGER, Colo
 import { fixedWidthInContextMenu, Modifier, ModifierObject, span } from "../htmlgen"
 import { IconName } from "../images"
 import { S } from "../strings"
-import { Expand, FixedArray, InteractionResult, Mode, RichStringEnum, typeOrUndefined } from "../utils"
+import { Expand, FixedArray, InteractionResult, Mode, PromiseOrValue, RichStringEnum, typeOrUndefined } from "../utils"
 import { Component, ComponentBase } from "./Component"
 import { type LinkManager } from "./Wire"
 
@@ -56,7 +56,7 @@ export type MenuItem =
         caption: Modifier,
         shortcut: string | undefined,
         danger: boolean | undefined,
-        action: (itemEvent: MouseEvent | TouchEvent, menuEvent: MouseEvent | TouchEvent) => InteractionResult | undefined | void
+        action: (itemEvent: MouseEvent | TouchEvent, menuEvent: MouseEvent | TouchEvent) => PromiseOrValue<InteractionResult | undefined | void>
     }
 
 export type MenuData = MenuItem[]
@@ -67,7 +67,7 @@ export const MenuData = {
     text(caption: Modifier): MenuItem {
         return { _tag: "text", caption }
     },
-    item(icon: IconName | undefined, caption: Modifier, action: (itemEvent: MouseEvent | TouchEvent, menuEvent: MouseEvent | TouchEvent) => InteractionResult | undefined | void, shortcut?: string, danger?: boolean): MenuItem {
+    item(icon: IconName | undefined, caption: Modifier, action: (itemEvent: MouseEvent | TouchEvent, menuEvent: MouseEvent | TouchEvent) => PromiseOrValue<InteractionResult | undefined | void>, shortcut?: string, danger?: boolean): MenuItem {
         return { _tag: "item", icon, caption, action, shortcut, danger }
     },
     submenu(icon: IconName | undefined, caption: Modifier, items: MenuData): MenuItem {

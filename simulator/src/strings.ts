@@ -22,6 +22,8 @@ export class Template<TPlaceholders extends string[]> {
 type _ExtractPlaceholders<TName extends string, TPlaceholders extends string[]>
     = TName extends `${infer __TStart}\${${infer TPlaceholder}}${infer TEnd}`
     ? _ExtractPlaceholders<`${TEnd}`, [...TPlaceholders, TPlaceholder]>
+    : TName extends `${infer __TStart}$s{${infer TPlaceholder}}${infer TEnd}`
+    ? _ExtractPlaceholders<`${TEnd}`, [...TPlaceholders, TPlaceholder]>
     : TPlaceholders
 
 type ExtractPlaceholders<TName extends string> =
@@ -187,6 +189,7 @@ const Strings_fr = {
         SetTheseInputs: "Régler ces entrées",
         Run: "Tester",
         RunTestSuite: "Exécuter les tests",
+        DeleteTest: "Supprimer ce test",
         ComponentUsedInTestSuite: template("Ce composant est utilisé dans des tests. Voulez-vous vraiment le supprimer? Les tests seront conservés, mais ne fonctionneront pas tant qu’un autre composant avec cette référence (“${ref}”) ne sera pas ajouté au circuit."),
     },
     TopBar: {
@@ -223,6 +226,7 @@ const Strings_fr = {
         AnchorAdded: "Ancrage ajouté",
         CircularAnchorsForbidden: "Les ancrages circulaires ne sont pas pris en charge.",
         NotImplemented: "Cette fonctionnalité n’est pas encore implémentée.",
+        NoPermission: "Cette action n’est pas autorisée dans ce mode.",
         ReallyCloseWindow: "Voulez-vous vraiment fermer la fenêtre sans prendre en compte les derniers changements?",
         DevelopedBy: "Développé par ",
 
@@ -237,6 +241,8 @@ const Strings_fr = {
         NewTestCaseSetName: "Entrez le nom du test:",
         TestCaseInputToSet: template("Entrée$s{n} à régler:"),
         TestCaseOuputToCheck: template("Sorties$s{n} attendue$s{n}:"),
+        TooManyInputsForAutoTestCases: template("Impossible de créer automatiquement des tests pour plus de ${max} entrées."),
+        AutoTestCasesWarning: template("Ceci va créer ${numCases} tests, un pour chacune des combinaisons des ${numInputs} entrées. Voulez-vous continuer?"),
 
     },
     Components: {
@@ -249,6 +255,7 @@ const Strings_fr = {
                 MakeNewComponentFailed: "Impossible de créer un nouveau composant.",
 
                 MakeNewTestCase: "Créer un nouveau test…",
+                MakeAllTestCases: "Créer tous les tests…",
                 MakeNewTestCaseFailed: "Impossible de créer un nouveau test.",
 
                 SetIdentifier: "Attribuer un identifiant…",
@@ -336,6 +343,7 @@ const Strings_fr = {
                 NoWires: "Aucun fil n’est présent entre les composants sélectionnés.",
                 UselessComponents: template("Les composants suivants ne sont pas connectés à des sorties et sont inutiles: ${list}."),
                 CannotIncludeClock: "Les horloges ne peuvent pas être incluses dans les composants personnalisés. Ajoutez une entrée normale, qui pourra être connectée à une horloge de l'extérieur du composant.",
+                CannotBeModified: "Ce composant ne peut pas être modifié dans ce mode.",
                 EnterCaptionPrompt: "Entrez le nom (unique) du composant personnalisé:",
                 ComponentAlreadyExists: template("Un composant personnalisé avec l’identifiant '${id}' existe déjà."),
                 InputsOutputsChanged: "Les entrées et sorties ont changé et certaines connexions pourront être supprimées en adaptant le circuit. Voulez-vous continuer?",
@@ -523,6 +531,7 @@ const Strings_fr = {
                 PushButton: "Poussoir",
                 ToggleButton: "Commutateur",
                 ReplaceWithClock: "Remplacer par horloge",
+                InputSetFromOutside: "Entrée contrôlée depuis l’extérieur",
             },
         },
         Random: {
@@ -966,6 +975,7 @@ const Strings_en: Strings = {
         SetTheseInputs: "Set these inputs",
         Run: "Run",
         RunTestSuite: "Run test suite",
+        DeleteTest: "Delete this test",
         ComponentUsedInTestSuite: template("This component is used in test suites. Do you really want to delete it? The tests will be kept, but won’t work until another component with this reference (“${ref}”) is added to the circuit."),
     },
     TopBar: {
@@ -1002,6 +1012,7 @@ const Strings_en: Strings = {
         AnchorAdded: "Anchor added",
         CircularAnchorsForbidden: "Circular anchors are not supported.",
         NotImplemented: "This feature is not implemented yet.",
+        NoPermission: "This action is not allowed in this mode.",
         ReallyCloseWindow: "Do you really want to close the window without saving the changes?",
         DevelopedBy: "Developed by",
 
@@ -1016,6 +1027,8 @@ const Strings_en: Strings = {
         NewTestCaseSetName: "Enter the name of the new test case:",
         TestCaseInputToSet: template("Input$s{n} to set:"),
         TestCaseOuputToCheck: template("Output$s{n} to check:"),
+        TooManyInputsForAutoTestCases: template("Cannot create test cases automatically for more than ${max} inputs."),
+        AutoTestCasesWarning: template("This will create ${numCases} test cases, one for each combination of the ${numInputs} inputs. Do you want to continue?"),
 
     },
     Components: {
@@ -1028,6 +1041,7 @@ const Strings_en: Strings = {
                 MakeNewComponentFailed: "Cannot create new custom component.",
 
                 MakeNewTestCase: "Make New Test Case…",
+                MakeAllTestCases: "Make All Test Cases…",
                 MakeNewTestCaseFailed: "Cannot create new test case.",
 
                 SetIdentifier: "Set Identifier…",
@@ -1115,6 +1129,7 @@ const Strings_en: Strings = {
                 NoWires: "There are no wires between the selected components.",
                 UselessComponents: template("The following components are not connected to outputs and are useless: ${list}."),
                 CannotIncludeClock: "Clocks cannot be included in custom components. Add a normal input, which can later be connected to an external clock.",
+                CannotBeModified: "This custom component cannot be modified in this mode.",
                 EnterCaptionPrompt: "Entrez le nom (unique) du composant personnalisé:",
                 ComponentAlreadyExists: template("A custom component definition with id '${id}' already exists."),
                 InputsOutputsChanged: "The inputs and outputs have changed and some connections may be removed by adapting the circuit. Do you want to continue?",
@@ -1301,6 +1316,7 @@ const Strings_en: Strings = {
                 PushButton: "Push Button",
                 ToggleButton: "Toggle Button",
                 ReplaceWithClock: "Replace With Clock",
+                InputSetFromOutside: "Input set from outside",
             },
         },
         Random: {

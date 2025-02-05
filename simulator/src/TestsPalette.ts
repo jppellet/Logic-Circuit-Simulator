@@ -1,10 +1,11 @@
 import { type Input } from "./components/Input"
 import { type Output } from "./components/Output"
-import { a, button, cls, data, div, href, Modifier, mods, span, style, table, tbody, td, th, thead, title, tr } from "./htmlgen"
+import { a, cls, data, div, href, Modifier, mods, span, style, table, tbody, td, th, thead, title, tr } from "./htmlgen"
 import { makeIcon } from "./images"
 import { LogicEditor } from "./LogicEditor"
 import { S } from "./strings"
 import { TestCaseCombinational, TestCaseResult, TestCaseResultFail, TestSuite } from "./TestSuite"
+import { UIPermissions } from "./UIPermissions"
 import { isString, reprForLogicValues, setVisible } from "./utils"
 
 
@@ -55,7 +56,7 @@ export class TestsPalette {
 
     public update() {
         this.clearAllSuites()
-        const parentSuites = this.editor.testSuites
+        const parentSuites = this.editor.editorRoot.testSuites
         for (const suite of parentSuites.suites) {
             this.addTestSuite(suite)
         }
@@ -97,14 +98,33 @@ export class TestSuiteUI {
         const s = S.Tests
 
         this.htmlResults = testSuite.testCases.map(tc => {
-            const line = button(cls("test-disclosable testcase-button"), tc.name ?? s.DefaultTestCaseName).render()
-            const details = div(cls("testcase-details"), style("display: none"), this.makeTestCaseTable(tc)).render()
+            const deleteButton = span(cls("sim-mode-link testcase-delete-button"), style("flex: none; font-size: 80%; opacity: 0.85; margin: -1px; padding: 1px"),
+                title(s.DeleteTest), makeIcon("trash")
+            ).render()
+            deleteButton.addEventListener("click", () => {
+                if (!UIPermissions.canModifyTestCases(this.editor)) {
+                    // button should be hidden anyway
+                    window.alert(S.Messages.NoPermission)
+                    return
+                }
+                this.editor.removeTestCase(tc)
+            })
+
+            const line = div(cls("test-disclosable testcase-button"),
+                span(style("flex: auto"), tc.name ?? s.DefaultTestCaseName),
+                deleteButton,
+            ).render()
+            const details = div(cls("testcase-details"), style("display: none"), this.makeTestCaseDetailsTable(tc)).render()
             const toggle = (force?: boolean) => {
                 const expanded = line.classList.toggle("expanded", force)
                 setVisible(details, expanded)
                 this.palette.updateMaxHeight()
             }
-            line.addEventListener("click", () => toggle())
+            line.addEventListener("click", (e) => {
+                if (e.target !== deleteButton) {
+                    toggle()
+                }
+            })
             const container = div(cls("testcase wait"), line, details).render()
             return { line, details, container, toggle } as const
         })
@@ -112,7 +132,7 @@ export class TestSuiteUI {
 
         const runAllIcon = makeIcon("play")
         style("position: relative; top: -2px;").applyTo(runAllIcon)
-        const runAllButton = span(style("font-size: 80%; opacity: 0.85"), cls("sim-mode-link"),
+        const runAllButton = span(cls("sim-mode-link"), style("font-size: 80%; opacity: 0.85;"),
             title(s.RunTestSuite), runAllIcon, s.Run
         ).render()
 
@@ -162,7 +182,7 @@ export class TestSuiteUI {
         if (result._tag === "fail") {
             // replace table with more detailed version
             htmlResult.details.innerHTML = ""
-            htmlResult.details.appendChild(this.makeTestCaseTable(this.testSuite.testCases[i], result))
+            htmlResult.details.appendChild(this.makeTestCaseDetailsTable(this.testSuite.testCases[i], result))
         } else {
             htmlResult.toggle() // close details if no failure
         }
@@ -178,7 +198,7 @@ export class TestSuiteUI {
         return link
     }
 
-    private makeTestCaseTable(testCase: TestCaseCombinational, failed?: TestCaseResultFail): HTMLTableElement {
+    private makeTestCaseDetailsTable(testCase: TestCaseCombinational, failed?: TestCaseResultFail): HTMLTableElement {
         const s = S.Tests
         const tableBody = tbody().render()
         const ins = [...testCase.in]

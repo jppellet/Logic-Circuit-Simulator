@@ -7,6 +7,7 @@ import { RecalcManager } from "../RedrawRecalcManager"
 import { SVGRenderingContext } from "../SVGRenderingContext"
 import { Serialization } from "../Serialization"
 import { TestSuites } from "../TestSuite"
+import { UIPermissions } from "../UIPermissions"
 import { COLOR_COMPONENT_BORDER } from "../drawutils"
 import { b, div, mods, span, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
@@ -14,7 +15,6 @@ import { ArrayFillUsing, ArrayFillWith, InteractionResult, LogicValue, isArray, 
 import { Component, ComponentBase, ComponentRepr, NodeDesc, NodeGroupDesc, NodeInDesc, NodeOutDesc, NodeRec, defineComponent, groupHorizontal, groupVertical } from "./Component"
 import { DrawContext, DrawableParent, EditTools, GraphicsRendering, MenuData, MenuItems, Orientation, Orientations } from "./Drawable"
 import { Input, InputRepr } from "./Input"
-import { NodeIn, NodeOut } from "./Node"
 import { Output, OutputRepr } from "./Output"
 import { LinkManager, Wire } from "./Wire"
 
@@ -314,8 +314,8 @@ export class CustomComponent extends ComponentBase<CustomComponentRepr, LogicVal
 
     /// Other internals ///
 
-    private _subcircuitInputs: NodeOut[] = []
-    private _subcircuitOutputs: NodeIn[] = []
+    private _subcircuitInputs: Input[] = []
+    private _subcircuitOutputs: Output[] = []
 
     public constructor(parent: DrawableParent, customDef: CustomComponentDef, saved?: CustomComponentRepr) {
         super(parent, customDef.toStandardDef(), saved)
@@ -323,28 +323,46 @@ export class CustomComponent extends ComponentBase<CustomComponentRepr, LogicVal
         this.numInputs = this.inputs._all.length
         this.numOutputs = this.outputs._all.length
 
-        const error = Serialization.loadCircuit(this, customDef.circuit, { immediateWirePropagation: true, skipMigration: true })
+        const error = Serialization.loadCircuitForCustomComponent(this, customDef.circuit)
         if (error !== undefined) {
             console.error("Failed to load custom component:", error)
             this.setInvalid()
         }
+    }
 
+    /**
+     * Called by Serialization.loadCircuitOfCustomComponent after successfully loading a circuit;
+     * can be seen as the rest of the constructor. It sets up the input and output nodes of this
+     * CustomComponent according to the properties of the loaded Input/Output components.
+     */
+    public circuitDidLoad() {
+        this._subcircuitInputs.length = 0
+        this._subcircuitOutputs.length = 0
         let iIn = 0
         for (const comp of this.components.all()) {
             // assume they have been kept in the right order
             if (comp instanceof Input && !comp.isConstant) {
+                this._subcircuitInputs.push(comp)
+                comp.isCustomComponentInput = true
                 const nodes = comp.outputs._all
-                this._subcircuitInputs.push(...nodes)
                 const num = nodes.length
                 if (num === 1 && comp.isLinkedToSomeClock) {
                     this.inputs._all[iIn].isClock = true
                 }
                 for (let i = 0; i < num; i++) {
-                    this.inputs._all[iIn + i].prefersSpike = comp.isPushButton
+                    const j = iIn + i
+                    if (j >= this.numInputs) {
+                        // we have more input components than actual inputs for this
+                        // custom components; this means we are restoring a saved editor
+                        // state where some input was added, so we needn't update our
+                        // input node now
+                        break
+                    }
+                    this.inputs._all[j].prefersSpike = comp.isPushButton
                 }
                 iIn += num
             } else if (comp instanceof Output) {
-                this._subcircuitOutputs.push(...comp.inputs._all)
+                this._subcircuitOutputs.push(comp)
             }
         }
     }
@@ -383,11 +401,24 @@ export class CustomComponent extends ComponentBase<CustomComponentRepr, LogicVal
     }
 
     protected doRecalcValue(): LogicValue[] {
-        for (let i = 0; i < this.numInputs; i++) {
-            this._subcircuitInputs[i].value = this.inputs._all[i].value
+        let bitOffset = 0
+        for (const inputComp of this._subcircuitInputs) {
+            const numBits = inputComp.numBits
+            if (bitOffset + numBits > this.numInputs) {
+                // we have more input components than actual inputs for this in the current
+                // editing state, so we just skip the rest
+                break
+            }
+            inputComp.setValue(ArrayFillUsing(i => this.inputs._all[bitOffset + i].value, numBits))
+            inputComp.propagateCurrentValue()
+            bitOffset += numBits
         }
         this.recalcMgr.recalcAndPropagateIfNeeded()
-        const outputs = ArrayFillUsing(i => this._subcircuitOutputs[i].value, this.numOutputs)
+
+        const outputs: LogicValue[] = []
+        for (const outputComp of this._subcircuitOutputs) {
+            outputs.push(...outputComp.value)
+        }
         return outputs
     }
 
@@ -439,8 +470,13 @@ export class CustomComponent extends ComponentBase<CustomComponentRepr, LogicVal
         if (result.isChange) {
             return result
         }
-        this.tryOpenEditor()
-        return InteractionResult.SimpleChange
+        if (UIPermissions.canModifyCustomComponents(this.editor)) {
+            this.tryOpenEditor()
+            return InteractionResult.SimpleChange
+        } else {
+            alert(S.Components.Custom.messages.CannotBeModified)
+            return InteractionResult.NoChange
+        }
     }
 
     private tryOpenEditor() {

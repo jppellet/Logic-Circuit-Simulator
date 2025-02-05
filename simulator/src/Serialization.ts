@@ -230,10 +230,14 @@ class _Serialization {
             if (scratch !== undefined && isRecord(scratch) && isString(scratch.id) && (customComp_ = parent.components.get(scratch.id)) !== undefined) {
                 delete scratch.id
                 const customComp = customComp_ as CustomComponent
-                this.loadCircuit(customComp, scratch, { immediateWirePropagation: true, skipMigration: true })
+                const error = this.loadCircuitForCustomComponent(customComp, scratch)
+                if (error !== undefined) {
+                    console.error("Error loading scratch space: " + error)
+                } else {
+                    // switch editor to the scratch
+                    parent.setEditorRoot(customComp)
+                }
 
-                // switch editor to the scratch
-                parent.setEditorRoot(customComp)
             }
             delete parsed.scratch
         }
@@ -243,7 +247,16 @@ class _Serialization {
             console.warn("Unloaded data fields: " + unhandledData.join(", "))
         }
 
-        return undefined // meaning no error
+        return undefined // no error
+    }
+
+    public loadCircuitForCustomComponent(customComp: CustomComponent, parsed: Record<string, unknown>): string | undefined {
+        const error = this.loadCircuit(customComp, parsed, { immediateWirePropagation: true, skipMigration: true })
+        if (error !== undefined) {
+            return error
+        }
+        customComp.circuitDidLoad()
+        return undefined // no error
     }
 
     private makeComponents(parent: DrawableParent, compReprs: unknown, offsetPos: [number, number] | undefined): { nodeMapping: NodeMapping, components: Component[], componentsByRef: Record<string, Component> } {

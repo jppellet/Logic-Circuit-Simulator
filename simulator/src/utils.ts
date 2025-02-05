@@ -122,6 +122,8 @@ export type PickDefined<T> = {
 
 export type ValuesOf<T> = T[keyof T]
 
+export type PromiseOrValue<T> = T | Promise<T>
+
 export type HasField<T, K extends string> = K extends keyof T ? true : false
 
 export type IsSameType<A, B> = A extends B ? (B extends A ? true : false) : false
@@ -666,16 +668,16 @@ export function isAllZeros(s: string) {
     return true
 }
 
-export function binaryStringRepr(values: LogicValue[]): string {
+export function binaryStringRepr(values: readonly LogicValue[]): string {
     const binStr = values.map(toLogicValueRepr).reverse().join("")
     return binStr
 }
 
-export function valuesReprForTest(values: LogicValue[]): string | 0 | 1 {
+export function valuesReprForTest(values: readonly LogicValue[]): string | 0 | 1 {
     return values.length === 1 ? toLogicValueRepr(values[0]) : binaryStringRepr(values)
 }
 
-export function hexStringRepr(values: boolean[], hexWidth: number): string {
+export function hexStringRepr(values: readonly boolean[], hexWidth: number): string {
     const binStr = binaryStringRepr(values)
     return parseInt(binStr, 2).toString(16).toUpperCase().padStart(hexWidth, "0")
 }

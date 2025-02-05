@@ -424,24 +424,18 @@ export class ComponentFactory {
     }
 
     public tryMakeNewTestCase(editor: LogicEditor): TestCaseCombinational | string {
-        const s = S.Messages
-        const sc = S.Components.Custom.messages
 
-        const selectionAll = editor.eventMgr.currentSelection?.previouslySelectedElements
-        if (selectionAll === undefined) {
-            return sc.EmptySelection
-        }
-        const selectedComps = [...selectionAll].filter((e): e is Component => e instanceof ComponentBase)
-        if (selectedComps.length === 0) {
-            return sc.EmptySelection
-        }
-
-        const checkResult = this.checkComponentsForTestCase(selectedComps)
+        const checkResult = this.checkSelectionForTestCase(editor)
         if (isString(checkResult)) {
             return checkResult
         }
 
         const { inputs, outputs } = checkResult
+
+        return this.makeTestCaseWithCurrentValues(editor, inputs, outputs, true) ?? ""
+    }
+
+    private makeTestCaseWithCurrentValues<B extends boolean>(editor: LogicEditor, inputs: Input[], outputs: Output[], askName: B): TestCaseCombinational | (B extends true ? undefined : never) {
 
         const joiner = "\n • "
         const inReprBuf: string[] = []
@@ -453,15 +447,19 @@ export class ComponentFactory {
             return `${inOut.ref ?? "?"}${isString(inOut.name) ? ` (“${inOut.name}”)` : ""}: ${repr}`
         }
 
+        const s = S.Messages
         const inputsStr = s.TestCaseInputToSet.expand({ n: inputs.length }) + joiner + inputs.map(mkDesc(inReprBuf)).join(joiner)
         const outputsStr = s.TestCaseOuputToCheck.expand({ n: outputs.length }) + joiner + outputs.map(mkDesc(outReprBuf)).join(joiner)
 
-        const prompt = s.NewTestCaseTitle + `\n\n${inputsStr}\n\n${outputsStr}\n\n` + s.NewTestCaseSetName
-        const defaultName = inReprBuf.join(" ") + " → " + outReprBuf.join(" ")
 
-        const testCaseName = window.prompt(prompt, defaultName)
-        if (testCaseName === null) {
-            return ""
+        const prompt = s.NewTestCaseTitle + `\n\n${inputsStr}\n\n${outputsStr}\n\n` + s.NewTestCaseSetName
+        let testCaseName: string | null = inReprBuf.join(" ") + " → " + outReprBuf.join(" ")
+
+        if (askName) {
+            testCaseName = window.prompt(prompt, testCaseName)
+            if (testCaseName === null) {
+                return undefined as any
+            }
         }
 
         const inMap: TestCaseCombinationalRepr["in"] = Object.create(null)
@@ -478,6 +476,57 @@ export class ComponentFactory {
             in: inMap, out: outMap,
             name: testCaseName.length === 0 ? undefined : testCaseName,
         }, editor.components)
+    }
+
+    public async tryMakeAllTestCases(editor: LogicEditor): Promise<TestCaseCombinational[] | string> {
+        const checkResult = this.checkSelectionForTestCase(editor)
+        if (isString(checkResult)) {
+            return checkResult
+        }
+
+        const { inputs, outputs } = checkResult
+
+        const s = S.Messages
+        const max = 6
+
+        const inputsByBit: Array<[Input, number]> = []
+        let numInputs = 0
+        for (const input of inputs) {
+            for (let i = 0; i < input.numBits; i++) {
+                inputsByBit.push([input, i])
+            }
+            numInputs += input.numBits
+        }
+
+        const setBit = (i: number, value: boolean) => {
+            const [input, bit] = inputsByBit[i]
+            const newValues = input.value.slice()
+            newValues[bit] = value
+            input.setValue(newValues)
+        }
+
+        if (numInputs > max) {
+            return s.TooManyInputsForAutoTestCases.expand({ max })
+        }
+
+        const numCases = Math.pow(2, numInputs)
+        if (!confirm(s.AutoTestCasesWarning.expand({ numInputs, numCases }))) {
+            return ""
+        }
+
+        // TODO switch mode just like for running test cases
+        const testCases: TestCaseCombinational[] = []
+        for (let i = 0; i < numCases; i++) {
+            for (let j = 0; j < numInputs; j++) {
+                const value = (i & (1 << j)) !== 0
+                setBit(j, value)
+            }
+            editor.recalcPropagateAndDrawIfNeeded(true)
+            await editor.waitForPropagation()
+            testCases.push(this.makeTestCaseWithCurrentValues(editor, inputs, outputs, false))
+        }
+
+        return testCases
     }
 
     public tryModifyCustomComponent(def: CustomComponentDef, defRoot: CustomComponent): undefined | string {
@@ -627,8 +676,17 @@ export class ComponentFactory {
         return { components: componentsToInclude, inputs, outputs }
     }
 
-    private checkComponentsForTestCase(components: Component[]): { inputs: Input[], outputs: Output[] } | string {
+    private checkSelectionForTestCase(editor: LogicEditor): { inputs: Input[], outputs: Output[] } | string {
         const s = S.Components.Custom.messages
+
+        const selectionAll = editor.eventMgr.currentSelection?.previouslySelectedElements
+        if (selectionAll === undefined) {
+            return s.EmptySelection
+        }
+        const components = [...selectionAll].filter((e): e is Component => e instanceof ComponentBase)
+        if (components.length === 0) {
+            return s.EmptySelection
+        }
 
         const inputs = components.filter((e): e is Input => e instanceof Input)
         if (inputs.length === 0) {
