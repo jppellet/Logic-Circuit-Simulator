@@ -190,8 +190,10 @@ export class TestSuiteUI {
     }
 
     private makeComponentRefSpan(elem: Input | Output | string): HTMLElement {
-        const ref = isString(elem) ? elem : elem.ref ?? "?"
-        const link = a(ref, href("#")).render()
+        const compStr = isString(elem) ? elem
+            : isString(elem.name) ? elem.name
+                : elem.ref ?? "?"
+        const link = a(compStr, href("#")).render()
         link.addEventListener("click", () => {
             this.editor.highlight(elem)
         })

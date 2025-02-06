@@ -206,7 +206,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     private _isSingleton = false
     private _maxInstanceMode: Mode = MAX_MODE_WHEN_EMBEDDED // can be set later
     private _isDirty = false
-    private _isRunningTests = false
+    private _isUIDisabled = false // when inputs are being set programmatically over a longer period
     private _mode: Mode = DEFAULT_MODE
     private _initialData: InitialData | undefined = undefined
     private _options: EditorOptions = { ...DEFAULT_EDITOR_OPTIONS }
@@ -1035,8 +1035,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             }
             this.html.rootDiv.setAttribute(ATTRIBUTE_NAMES.nomodes, nomodes.join(" "))
 
-
-            // console.log(`Display/interaction is ${wantedModeStr} - ${mode}`)
+            // console.log(`Current mode is ${modeStr} - ${mode}`)
 
             this.editTools.redrawMgr.addReason("mode changed", null, true)
 
@@ -1741,26 +1740,45 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
     }
 
-    public async runTestSuite(testSuite: TestSuite, options?: { doLog?: boolean, fast?: boolean }): Promise<TestSuiteResults | undefined> {
-
-        if (this._isRunningTests) {
+    public async disableUIWhile<T>(message: string, action: (restoreAfter: Map<Input, LogicValue[]>) => Promise<T>): Promise<T | undefined> {
+        if (this._isUIDisabled) {
             // cannot run tests while already running
             return undefined
         }
+
+        this._isUIDisabled = true
+        const oldMode = this.mode
+        const restoreAfter = new Map<Input, LogicValue[]>()
+        const hideMsg = this.showMessage(message, 0)
+
+        try {
+            this.setMode(Mode.STATIC, false)
+            const result = await action(restoreAfter)
+            return result
+        } finally {
+            hideMsg()
+            this.setMode(oldMode, true)
+            for (const [input, value] of restoreAfter) {
+                input.setValue(value)
+            }
+            this._isUIDisabled = false
+            this.recalcPropagateAndDrawIfNeeded()
+        }
+
+    }
+
+    public async runTestSuite(testSuite: TestSuite, options?: { doLog?: boolean, fast?: boolean }): Promise<TestSuiteResults | undefined> {
 
         const palette = this.editTools.testsPalette
         if (palette === undefined) {
             return undefined
         }
 
-        this._isRunningTests = true
-        const oldMode = this.mode
         const fast = options?.fast ?? false
         const doLog = options?.doLog ?? false
-        const allOldInValues = new Map<Input, LogicValue[]>()
 
-        try {
-            this.setMode(Mode.STATIC, false)
+        return this.disableUIWhile(S.Messages.RunningTests, async restoreAfter => {
+
             this.setTestsPaletteVisible(true) // after setMode, which may hide it
 
             const results = new TestSuiteResults(testSuite)
@@ -1785,8 +1803,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                     const [oldInValues, result] = await this.runTestCase(testCase, testSuite, doLog)
                     testCaseResult = result
                     for (const [input, value] of oldInValues) {
-                        if (!allOldInValues.has(input)) {
-                            allOldInValues.set(input, value)
+                        if (!restoreAfter.has(input)) {
+                            restoreAfter.set(input, value)
                         }
                     }
                 }
@@ -1797,15 +1815,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 }
             }
             return results
-
-        } finally {
-            this.setMode(oldMode, true)
-            for (const [input, value] of allOldInValues) {
-                input.setValue(value)
-            }
-            this._isRunningTests = false
-            this.recalcPropagateAndDrawIfNeeded()
-        }
+        })
     }
 
     public trySetInputsAndRecalc(inputs: TestCaseValueMap<Input>) {
@@ -1825,12 +1835,10 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         doLog: boolean
     ): Promise<[Map<Input, LogicValue[]>, TestCaseResult]> {
 
-        const fullTestNameParts = [sourceSuite.name, testCase.name].filter(Boolean)
-        const fullTestName = fullTestNameParts.length === 0 ? S.Tests.DefaultTestCaseName : fullTestNameParts.join("/")
-        const msg = S.Messages.RunningTestCase.expand({ name: fullTestName })
-        const hideMsg = this.showMessage(msg, 0)
         if (doLog) {
-            console.group(msg)
+            const fullTestNameParts = [sourceSuite.name, testCase.name].filter(Boolean)
+            const fullTestName = fullTestNameParts.length === 0 ? S.Tests.DefaultTestCaseName : fullTestNameParts.join("/")
+            console.group("Running test case " + fullTestName)
         }
 
         testCase.tryFixReferences(this.editorRoot.components)
@@ -1874,7 +1882,6 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             if (doLog) {
                 console.groupEnd()
             }
-            hideMsg()
         }
     }
 

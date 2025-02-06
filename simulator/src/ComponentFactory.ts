@@ -514,19 +514,26 @@ export class ComponentFactory {
             return ""
         }
 
-        // TODO switch mode just like for running test cases
-        const testCases: TestCaseCombinational[] = []
-        for (let i = 0; i < numCases; i++) {
-            for (let j = 0; j < numInputs; j++) {
-                const value = (i & (1 << j)) !== 0
-                setBit(j, value)
+        const result = await editor.disableUIWhile(s.ComputingTestCases, async restoreAfter => {
+            for (const input of inputs) {
+                restoreAfter.set(input, input.value)
             }
-            editor.recalcPropagateAndDrawIfNeeded(true)
-            await editor.waitForPropagation()
-            testCases.push(this.makeTestCaseWithCurrentValues(editor, inputs, outputs, false))
-        }
 
-        return testCases
+            const testCases: TestCaseCombinational[] = []
+            for (let i = 0; i < numCases; i++) {
+                for (let j = 0; j < numInputs; j++) {
+                    const value = (i & (1 << j)) !== 0
+                    setBit(j, value)
+                }
+                editor.recalcPropagateAndDrawIfNeeded(true)
+                await editor.waitForPropagation()
+                testCases.push(this.makeTestCaseWithCurrentValues(editor, inputs, outputs, false))
+            }
+
+            return testCases
+        })
+
+        return result ?? ""
     }
 
     public tryModifyCustomComponent(def: CustomComponentDef, defRoot: CustomComponent): undefined | string {

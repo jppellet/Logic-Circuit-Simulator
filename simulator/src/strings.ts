@@ -236,13 +236,14 @@ const Strings_fr = {
         NothingToUndo: "Rien à annuler",
         NothingToRedo: "Rien à rétablir ou répéter",
 
-        RunningTestCase: template("Exécution du test ${name}..."),
         NewTestCaseTitle: "Création d’un nouveau test de circuit",
         NewTestCaseSetName: "Entrez le nom du test:",
         TestCaseInputToSet: template("Entrée$s{n} à régler:"),
         TestCaseOuputToCheck: template("Sorties$s{n} attendue$s{n}:"),
         TooManyInputsForAutoTestCases: template("Impossible de créer automatiquement des tests pour plus de ${max} entrées."),
         AutoTestCasesWarning: template("Ceci va créer ${numCases} tests, un pour chacune des combinaisons des ${numInputs} entrées. Voulez-vous continuer?"),
+        ComputingTestCases: "Génération des tests…",
+        RunningTests: "Excécution des tests…",
 
     },
     Components: {
@@ -1022,13 +1023,14 @@ const Strings_en: Strings = {
         NothingToUndo: "Nothing to undo",
         NothingToRedo: "Nothing to redo or repeat",
 
-        RunningTestCase: template("Running test case ${name}..."),
         NewTestCaseTitle: "Create a new test case",
         NewTestCaseSetName: "Enter the name of the new test case:",
         TestCaseInputToSet: template("Input$s{n} to set:"),
         TestCaseOuputToCheck: template("Output$s{n} to check:"),
         TooManyInputsForAutoTestCases: template("Cannot create test cases automatically for more than ${max} inputs."),
         AutoTestCasesWarning: template("This will create ${numCases} test cases, one for each combination of the ${numInputs} inputs. Do you want to continue?"),
+        ComputingTestCases: "Generating test cases…",
+        RunningTests: "Running test cases…",
 
     },
     Components: {
