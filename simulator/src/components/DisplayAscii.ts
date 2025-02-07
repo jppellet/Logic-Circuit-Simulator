@@ -177,17 +177,17 @@ export class DisplayAscii extends ComponentBase<DisplayAsciiRepr> {
 
     private doSetName(name: ComponentName) {
         this._name = name
-        this.setNeedsRedraw("name changed")
+        this.requestRedraw({ why: "name changed" })
     }
 
     private doSetShowAsUnknown(showAsUnknown: boolean) {
         this._showAsUnknown = showAsUnknown
-        this.setNeedsRedraw("display as unknown changed")
+        this.requestRedraw({ why: "display as unknown changed" })
     }
 
     private doSetAdditionalDisplayRadix(additionalReprRadix: number | undefined) {
         this._additionalReprRadix = additionalReprRadix
-        this.setNeedsRedraw("additional display radix changed")
+        this.requestRedraw({ why: "additional display radix changed" })
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

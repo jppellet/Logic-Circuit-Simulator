@@ -2,31 +2,43 @@ import { Component } from "./components/Component"
 import { Drawable } from "./components/Drawable"
 import { Dict } from "./utils"
 
+export type RedrawRequest = {
+    why: string
+    component?: Drawable
+    invalidateMask?: boolean
+    invalidateTests?: boolean
+    isPropagation?: boolean
+}
+
 export class RedrawManager {
 
     private _canvasRedrawReasons: Dict<unknown[]> = {}
     private _maskWasInvalidated = false
+    private _testsInvalidationReasons: Array<[string, Drawable | null]> = []
     private _isPropagating = false
     private _isEmpty = true
 
-    public addReason(reason: string, comp: Drawable | null, invalidateMask: boolean = false, isPropagation: boolean = false) {
-        const compObj = comp
-        const compList = this._canvasRedrawReasons[reason]
+    public requestRedraw(req: RedrawRequest) {
+        const compObj = req.component ?? null
+        const compList = this._canvasRedrawReasons[req.why]
         if (compList === undefined) {
-            this._canvasRedrawReasons[reason] = [compObj]
+            this._canvasRedrawReasons[req.why] = [compObj]
         } else {
             compList.push(compObj)
         }
-        if (invalidateMask) {
+        if (req.invalidateMask ?? false) {
             this._maskWasInvalidated = true
         }
-        if (isPropagation) {
+        if (req.invalidateTests ?? false) {
+            this._testsInvalidationReasons.push([req.why, compObj])
+        }
+        if (req.isPropagation ?? false) {
             this._isPropagating = true
         }
         this._isEmpty = false
     }
 
-    public getReasonsAndClear(): [getReasons: () => string, redrawMask: boolean] | undefined {
+    public getReasonsAndClear(): { getReasons: () => string, redrawMask: boolean, invalidateTests: boolean } | undefined {
         if (this._isEmpty) {
             return undefined
         }
@@ -59,12 +71,20 @@ export class RedrawManager {
         }
 
         const redrawMask = this._maskWasInvalidated
+        const invalidateTests = this._testsInvalidationReasons.length > 0
+        // if (invalidateTests) {
+        //     console.log("Invalidated tests because:")
+        //     for (const [reason, comp] of this._testsInvalidationReasons) {
+        //         console.log("  ", reason, " – ", comp)
+        //     }
+        // }
 
         this._canvasRedrawReasons = {}
         this._isPropagating = false
         this._maskWasInvalidated = false
+        this._testsInvalidationReasons.length = 0
         this._isEmpty = true
-        return [getReasons, redrawMask]
+        return { getReasons, redrawMask, invalidateTests }
     }
 
     public hasReasons(): boolean {

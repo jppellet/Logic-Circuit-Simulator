@@ -153,7 +153,7 @@ export class Counter extends ParametrizedComponentBase<CounterRepr> {
 
     protected doSetTrigger(trigger: EdgeTrigger) {
         this._trigger = trigger
-        this.setNeedsRedraw("trigger changed")
+        this.requestRedraw({ why: "trigger changed", invalidateTests: true })
     }
 
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
@@ -179,7 +179,7 @@ export class Counter extends ParametrizedComponentBase<CounterRepr> {
 
     private doSetDisplayRadix(displayRadix: number | undefined) {
         this._displayRadix = displayRadix
-        this.setNeedsRedraw("display radix changed")
+        this.requestRedraw({ why: "display radix changed" })
     }
 
 

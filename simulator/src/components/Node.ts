@@ -148,7 +148,7 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
     public doSetColor(color: WireColor) {
         this._color = color
         this.propagateColor(color)
-        this.setNeedsRedraw("color changed")
+        this.requestRedraw({ why: "color changed" })
     }
 
     protected propagateColor(__color: WireColor) {
@@ -440,7 +440,7 @@ export class NodeOut extends NodeBase<NodeOut> {
         const oldVisibleValue = this.value
         this._forceValue = newForceValue
         this.propagateNewValueIfNecessary(oldVisibleValue)
-        this.setNeedsRedraw("changed forced output value")
+        this.requestRedraw({ why: "changed forced output value", invalidateTests: true })
     }
 
     public get initialValue() {

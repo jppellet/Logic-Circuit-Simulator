@@ -6,7 +6,7 @@ import { LogicEditor } from "./LogicEditor"
 import { S } from "./strings"
 import { TestCaseCombinational, TestCaseResult, TestCaseResultFail, TestSuite } from "./TestSuite"
 import { UIPermissions } from "./UIPermissions"
-import { isString, reprForLogicValues, setVisible } from "./utils"
+import { isString, reprForLogicValues, setHidden, setVisible } from "./utils"
 
 
 export class TestsPalette {
@@ -15,6 +15,8 @@ export class TestsPalette {
     private readonly scroller: HTMLDivElement
     private readonly suiteContainer: HTMLDivElement
     private readonly testSuites = new Map<TestSuite, TestSuiteUI>()
+    private _isDisplayingResults = false
+    private _skipUpdates = false
 
     public constructor(
         public readonly editor: LogicEditor,
@@ -26,7 +28,7 @@ export class TestsPalette {
             editor.setTestsPaletteVisible(false)
         })
 
-        this.suiteContainer = div(style("width: 100%;")).render()
+        this.suiteContainer = div(cls("noselect"), style("width: 100%")).render()
         this.scroller = div(style("width: 100%; font-size: 80%; overflow-y: auto; min-height: 28px; resize: vertical"), this.suiteContainer).render()
 
         this.rootElem = div(cls("sim-toolbar-right"),
@@ -76,6 +78,27 @@ export class TestsPalette {
         return this.testSuites.get(testSuite) ?? this.addTestSuite(testSuite)
     }
 
+    public setDisplayingResults() {
+        this._isDisplayingResults = true
+    }
+
+    public clearDisplayedResults() {
+        if (this._isDisplayingResults && !this._skipUpdates) {
+            console.log("Clearing displayed results")
+            this.update()
+            this._isDisplayingResults = false
+        }
+    }
+
+    public async skipUpdatesWhile<T>(f: () => Promise<T>): Promise<T> {
+        this._skipUpdates = true
+        try {
+            return await f()
+        } finally {
+            this._skipUpdates = false
+        }
+    }
+
 }
 
 
@@ -97,55 +120,32 @@ export class TestSuiteUI {
     ) {
         const s = S.Tests
 
-        this.htmlResults = testSuite.testCases.map(tc => {
-            const deleteButton = span(cls("sim-mode-link testcase-delete-button"), style("flex: none; font-size: 80%; opacity: 0.85; margin: -1px; padding: 1px"),
-                title(s.DeleteTest), makeIcon("trash")
-            ).render()
-            deleteButton.addEventListener("click", () => {
-                if (!UIPermissions.canModifyTestCases(this.editor)) {
-                    // button should be hidden anyway
-                    window.alert(S.Messages.NoPermission)
-                    return
-                }
-                this.editor.removeTestCase(tc)
-            })
-
-            const line = div(cls("test-disclosable testcase-button"),
-                span(style("flex: auto"), tc.name ?? s.DefaultTestCaseName),
-                deleteButton,
-            ).render()
-            const details = div(cls("testcase-details"), style("display: none"), this.makeTestCaseDetailsTable(tc)).render()
-            const toggle = (force?: boolean) => {
-                const expanded = line.classList.toggle("expanded", force)
-                setVisible(details, expanded)
-                this.palette.updateMaxHeight()
-            }
-            line.addEventListener("click", (e) => {
-                if (e.target !== deleteButton) {
-                    toggle()
-                }
-            })
-            const container = div(cls("testcase wait"), line, details).render()
-            return { line, details, container, toggle } as const
-        })
-
+        this.htmlResults = testSuite.testCases.map(tc => this.makeTestCaseUI(tc))
 
         const runAllIcon = makeIcon("play")
         style("position: relative; top: -2px;").applyTo(runAllIcon)
-        const runAllButton = span(cls("sim-mode-link"), style("font-size: 80%; opacity: 0.85;"),
+        const runAllButton = span(cls("sim-mode-link"), style("flex: none; font-size: 85%; opacity: 0.9; margin: -2px 0 -2px 4px; padding: 2px 4px 0 0;"),
             title(s.RunTestSuite), runAllIcon, s.Run
         ).render()
 
         runAllButton.addEventListener("click", async () => {
             const oldExpanded = this.expanded
-            const testResult = await this.editor.runTestSuite(this.testSuite, { fast: true })
-            if (testResult !== undefined && testResult.isAllPass()) {
-                this.expanded = oldExpanded
+            setHidden(runAllButton, true)
+            try {
+                const testResult = await this.editor.runTestSuite(this.testSuite, { fast: true })
+                if (testResult !== undefined && testResult.isAllPass()) {
+                    this.expanded = oldExpanded
+                }
+            } finally {
+                setHidden(runAllButton, false)
             }
         })
 
         this.header =
-            div(cls("test-suite test-disclosable expanded"), testSuite.name ?? s.DefaultTestSuiteName, runAllButton).render()
+            div(cls("test-suite test-disclosable expanded"), style("display: flex"),
+                span(style("flex: auto"), testSuite.name ?? s.DefaultTestSuiteName),
+                runAllButton
+            ).render()
         this.content =
             div(cls("test-cases"), style("display: block"), ...this.htmlResults.map(p => p.container)).render()
 
@@ -156,6 +156,61 @@ export class TestSuiteUI {
         })
 
         this.rootElem = div(this.header, this.content).render()
+    }
+
+    private makeTestCaseUI(testCase: TestCaseCombinational): TestCaseHTML {
+        const s = S.Tests
+
+        const editButton = span(cls("sim-mode-link testcase-change-button"), style("flex: none; font-size: 80%; opacity: 0.85; margin: -1px; padding: 1px"),
+            title(s.EditTestCaseName), makeIcon("pen")
+        ).render()
+
+        const deleteButton = span(cls("sim-mode-link testcase-change-button"), style("flex: none; font-size: 80%; opacity: 0.85; margin: -1px; padding: 1px"),
+            title(s.DeleteTestCase), makeIcon("trash")
+        ).render()
+
+        const nameSpan = span(style("flex: auto"), testCase.name ?? s.DefaultTestCaseName).render()
+        const line = div(cls("test-disclosable testcase-button"),
+            nameSpan,
+            editButton,
+            deleteButton,
+        ).render()
+        const details = div(cls("testcase-details"), style("display: none"), this.makeTestCaseDetailsTable(testCase)).render()
+        const toggle = (force?: boolean) => {
+            const expanded = line.classList.toggle("expanded", force)
+            setVisible(details, expanded)
+            this.palette.updateMaxHeight()
+        }
+        line.addEventListener("click", e => {
+            if (e.target !== deleteButton && e.target !== editButton) {
+                toggle()
+            }
+        })
+        const container = div(cls("testcase wait"), line, details).render()
+
+        editButton.addEventListener("click", () => {
+            if (!UIPermissions.canModifyTestCases(this.editor)) {
+                // button should be hidden anyway
+                window.alert(S.Messages.NoPermission)
+                return
+            }
+            const newName = window.prompt(s.EnterNewTestCaseName, testCase.name ?? "")
+            if (newName === null || newName.length === 0) {
+                return
+            }
+            testCase.name = newName
+            nameSpan.textContent = newName
+        })
+        deleteButton.addEventListener("click", () => {
+            if (!UIPermissions.canModifyTestCases(this.editor)) {
+                // button should be hidden anyway
+                window.alert(S.Messages.NoPermission)
+                return
+            }
+            this.editor.removeTestCase(testCase)
+        })
+
+        return { line, details, container, toggle } as const
     }
 
     public get expanded() {
@@ -187,6 +242,7 @@ export class TestSuiteUI {
             htmlResult.toggle() // close details if no failure
         }
         htmlResult.container.className = "testcase " + result._tag
+        this.palette.setDisplayingResults()
     }
 
     private makeComponentRefSpan(elem: Input | Output | string): HTMLElement {
@@ -224,14 +280,15 @@ export class TestSuiteUI {
         }
 
 
-        const setTheseInputsButton = makeIcon("setinput")
-        mods(
-            style("margin: 0 5px; width: 14px; color: gray; cursor: pointer;"),
-            title(s.SetTheseInputs),
-        ).applyTo(setTheseInputsButton)
-        setTheseInputsButton.addEventListener("click", () => {
+        const setTheseInputsButton = span(cls("sim-mode-link"), style("margin: 2px; padding: 3px"),
+            title(s.SetTheseInputs), makeIcon("setinput")
+        ).render()
+        setTheseInputsButton.addEventListener("click", async () => {
             testCase.tryFixReferences(this.editor.components)
-            this.editor.trySetInputsAndRecalc(testCase.in)
+            this.palette.skipUpdatesWhile(async () => {
+                this.editor.trySetInputsAndRecalc(testCase.in)
+                await this.editor.waitForPropagation()
+            })
         })
 
         return table(cls("testcase-table"),

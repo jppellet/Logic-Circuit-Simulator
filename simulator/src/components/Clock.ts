@@ -160,7 +160,7 @@ export class Clock extends InputBase<ClockRepr> {
 
     private doSetPeriod(period: number) {
         this._period = period
-        this.setNeedsRedraw("period changed")
+        this.requestRedraw({ why: "period changed", invalidateTests: true })
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

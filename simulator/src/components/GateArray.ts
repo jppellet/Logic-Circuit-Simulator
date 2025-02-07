@@ -233,12 +233,12 @@ export class GateArray extends ParametrizedComponentBase<GateArrayRepr> {
     private doSetType(newSubtype: GateNType) {
         this._type = newSubtype
         this.setNeedsRecalc()
-        this.setNeedsRedraw("quad gate type changed")
+        this.requestRedraw({ why: "quad gate type changed", invalidateTests: true })
     }
 
     private doSetShowAsUnknown(showAsUnknown: boolean) {
         this._showAsUnknown = showAsUnknown
-        this.setNeedsRedraw("display as unknown changed")
+        this.requestRedraw({ why: "display as unknown changed" })
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

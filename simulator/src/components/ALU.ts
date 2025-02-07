@@ -265,7 +265,7 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
 
     private doSetShowOp(showOp: boolean) {
         this._showOp = showOp
-        this.setNeedsRedraw("show op changed")
+        this.requestRedraw({ why: "show op changed" })
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

@@ -160,12 +160,12 @@ export class Random extends ParametrizedComponentBase<RandomRepr> {
 
     private doSetName(name: ComponentName) {
         this._name = name
-        this.setNeedsRedraw("name changed")
+        this.requestRedraw({ why: "name changed" })
     }
 
     private doSetShowProb(showProb: boolean) {
         this._showProb = showProb
-        this.setNeedsRedraw("show probability changed")
+        this.requestRedraw({ why: "show probability changed" })
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

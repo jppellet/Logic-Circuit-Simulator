@@ -98,6 +98,14 @@ logic-editor:not(:defined) {
   cursor: grab;
 }
 
+.dark .sim-toolbar-right .toolbar-title {
+  color: rgb(181, 181, 181);
+}
+
+.dark .sim-toolbar-right {
+  color: rgb(204, 204, 204);
+}
+
 .sim-toolbar-right .toolbar-title.with-border {
   border-bottom: 1px solid rgba(255, 255, 255, 0.4);
   margin-bottom: 5px;
@@ -112,8 +120,16 @@ logic-editor:not(:defined) {
   color: rgb(112, 112, 112)
 }
 
-#settingsPalette label span {
+.dark .sim-toolbar-right .close-palette {
+  color: rgb(204, 204, 204);
+}
+
+#settingsPalette label span,
+.noselect {
+  -webkit-touch-callout: none;
   -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none;
 }
 
@@ -143,6 +159,7 @@ logic-editor:not(:defined) {
   border: 1px solid rgba(0, 0, 0, 0);
   border-radius: 3px;
   padding: 5px;
+  cursor: pointer;
 }
 
 .sim-toolbar-button-right:not(.active) .sim-mode-link {
@@ -620,11 +637,20 @@ svg text {
   width: 100%;
 }
 
+.dark .test-suite {
+  background-color: #333;
+  color: #ccc;
+}
+
 .test-cases {
   padding: 0;
   display: none;
   overflow: hidden;
   background-color: #f1f1f1;
+}
+
+.dark .test-cases {
+  background-color: #444;
 }
 
 .testcase {
@@ -633,23 +659,43 @@ svg text {
 }
 
 .testcase.wait {
-  background: #f1f1f1
+  background: #f1f1f1;
+}
+
+.dark .testcase.wait {
+  background: #444;
 }
 
 .testcase.pass {
-  background: #d3f3d3
+  background: #d3f3d3;
+}
+
+.dark .testcase.pass {
+  background: rgb(4, 53, 4);
 }
 
 .testcase.fail {
-  background: #f3d3d3
+  background: #f3d3d3;
+}
+
+.dark .testcase.fail {
+  background: #430808;
 }
 
 .testcase.error {
-  background: #f3f3d3
+  background: #f3f3d3;
+}
+
+.dark .testcase.error {
+  background: #363616;
 }
 
 .testcase.skip {
-  background: #d3d3f3
+  background: #d3d3f3;
+}
+
+.dark .testcase.skip {
+  background: #666;
 }
 
 .testcase.running {
@@ -660,6 +706,14 @@ svg text {
       #f7f6f6 20px);
   background-size: 200% 100%;
   animation: barberpole 5s linear infinite;
+}
+
+.dark .testcase.running {
+  background: repeating-linear-gradient(135deg,
+      #555,
+      #555 10px,
+      #444 10px,
+      #444 20px);
 }
 
 @keyframes barberpole {
@@ -676,7 +730,7 @@ svg text {
   padding: 5px 5px 10px 20px;
 }
 
-#logicEditorRoot[nomodes~=full] .testcase-delete-button {
+#logicEditorRoot[nomodes~=full] .testcase-change-button {
   display: none;
 }
 

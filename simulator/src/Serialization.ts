@@ -584,13 +584,15 @@ function stringifyComponentWiresTestsReprsTo(parts: string[], container: Compone
         for (const testSuiteRepr of tests) {
             const Cases = "cases"
             const testCases = testSuiteRepr[Cases]
-            const testCasesReprStrs = testCases.map(testCase => stringifySmart(testCase, { maxLength: Infinity }));
+            const testCasesReprStrs = testCases.map(testCase => stringifySmart(testCase, { maxLength: Infinity })).filter(s => s.length !== 0);
 
             (testSuiteRepr as any).cases = undefined
-            const baseSuiteRepr = stringifySmart(testSuiteRepr, { maxLength: Infinity })
+            const baseSuiteRepr = stringifySmart(testSuiteRepr, { maxLength: Infinity }).slice(1, -1)
+            const sep = baseSuiteRepr.length === 0 ? "" : ", "
             testSuiteRepr.cases = testCases
-            const completeSuiteRepr = baseSuiteRepr.substring(0, baseSuiteRepr.length - 1) + `, ${Cases}: [\n${innerIndent2}` + testCasesReprStrs.join(`,\n${innerIndent2}`) + `,\n${innerIndent}]},`
-            subparts.push(completeSuiteRepr)
+            const casesRepr = testCasesReprStrs.length === 0 ? `${Cases}: []`
+                : `${Cases}: [\n${innerIndent2}` + testCasesReprStrs.join(`,\n${innerIndent2}`) + `,\n${innerIndent}]`
+            subparts.push(`{${baseSuiteRepr}${sep}${casesRepr}}`)
         }
 
         parts.push(`tests: [\n${innerIndent}` + subparts.join(`\n${innerIndent}`) + `\n${outerIndent}]`)

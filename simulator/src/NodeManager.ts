@@ -47,7 +47,7 @@ export class NodeManager {
     }
 
     public clearAll() {
-        this._allLiveNodes.splice(0, this._allLiveNodes.length)
+        this._allLiveNodes.length = 0
         this._usedIDs.clear()
         this._lastGivenNodeID = -1
         this._currentMapping = undefined

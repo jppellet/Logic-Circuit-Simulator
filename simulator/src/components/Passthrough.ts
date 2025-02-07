@@ -225,7 +225,7 @@ export class Passthrough extends ParametrizedComponentBase<PassthroughRepr> {
     private doSetSlant(slant: Slant) {
         this._slant = slant
         this.updateNodeOffsets()
-        this.setNeedsRedraw("slant changed", true)
+        this.requestRedraw({ why: "slant changed", invalidateMask: true })
     }
 
     private updateNodeOffsets() {

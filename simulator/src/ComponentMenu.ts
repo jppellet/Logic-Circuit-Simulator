@@ -280,7 +280,7 @@ export class ComponentMenu {
         const buttonsShowWithMore: HTMLButtonElement[] = []
         for (const def of defs) {
             const type = def.type
-            const icon = makeSvgHolder("svgimg", def.makeButtonSVG(),
+            const icon = makeSvgHolder("svgimg", "custom", def.makeButtonSVG(),
                 CustomComponentImageWidth, CustomComponentImageHeight)
             const caption = def.caption
             const { compButton, hiddenNow } = makeButton(

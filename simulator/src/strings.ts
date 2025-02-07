@@ -189,7 +189,9 @@ const Strings_fr = {
         SetTheseInputs: "Régler ces entrées",
         Run: "Tester",
         RunTestSuite: "Exécuter les tests",
-        DeleteTest: "Supprimer ce test",
+        DeleteTestCase: "Supprimer ce test",
+        EditTestCaseName: "Renommer ce test",
+        EnterNewTestCaseName: "Entrez le nouveau nom du test:",
         ComponentUsedInTestSuite: template("Ce composant est utilisé dans des tests. Voulez-vous vraiment le supprimer? Les tests seront conservés, mais ne fonctionneront pas tant qu’un autre composant avec cette référence (“${ref}”) ne sera pas ajouté au circuit."),
     },
     TopBar: {
@@ -976,7 +978,9 @@ const Strings_en: Strings = {
         SetTheseInputs: "Set these inputs",
         Run: "Run",
         RunTestSuite: "Run test suite",
-        DeleteTest: "Delete this test",
+        DeleteTestCase: "Delete this test case",
+        EditTestCaseName: "Rename this test case",
+        EnterNewTestCaseName: "Enter the new name for this test case:",
         ComponentUsedInTestSuite: template("This component is used in test suites. Do you really want to delete it? The tests will be kept, but won’t work until another component with this reference (“${ref}”) is added to the circuit."),
     },
     TopBar: {

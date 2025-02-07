@@ -181,7 +181,7 @@ export class ComponentList {
 
     public clearAll() {
         for (const compList of this._componentsByZIndex) {
-            compList.splice(0, compList.length)
+            compList.length = 0
         }
         this._componentsById.clear()
     }

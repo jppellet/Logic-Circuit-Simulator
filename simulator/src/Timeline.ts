@@ -267,7 +267,7 @@ export class Timeline {
         this._epochStart += (this.unadjustedTime() - this._pausedSince)
         this._pausedSince = undefined
         // console.log(`Resuming timeline at ${this.adjustedTime()} ms`)
-        this.editor.editTools.redrawMgr.addReason("timeline-play", null)
+        this.editor.editTools.redrawMgr.requestRedraw({ why: "timeline-play", invalidateTests: true })
         this.rescheduleNextIfNeeded()
         this.fireStateChangedIfNeeded()
     }

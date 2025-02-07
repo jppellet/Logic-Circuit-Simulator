@@ -70,6 +70,7 @@ const migrateTo: Record<number, (container: Record<string, unknown>) => void> = 
             "out.ascii": "ascii",
             "out.bar": "bar",
             "out.shift-buffer": "shift-display",
+            "out.shift-register": "shift-reg",
             "ic.switched-inverter": "cnot-array",
             "ic.gate-array": "{gatetype}-array",
             "ic.tristate-array": "tristate-array",

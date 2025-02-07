@@ -41,6 +41,7 @@ See <https://jp.pellet.name/hep/logiga/>
  * Circuits can be loaded from a JSON export by drag-n-drop
  * An animated propagation delay can be set
  * Custom components can be created, loaded, saved from library files
+ * Tests for a given circuit can be defined (or automatically generated) and run
  * UI can be in English or French (easy to add more translations)
  * Much more
 

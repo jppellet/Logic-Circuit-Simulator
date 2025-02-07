@@ -182,7 +182,8 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
             if (!isUnknown(sel)) {
                 const selectedOutputs = this.outputs.Z[sel]
                 const anchorDiffX = (right - left) / 3
-                const wireStyleBezier = this.parent.editor.options.wireStyle === WireStyles.bezier
+                const wireStyle = this.parent.editor.options.wireStyle
+                const wireStyleBezier = wireStyle === WireStyles.bezier || wireStyle === WireStyles.auto
                 const timeFraction = ctx.drawParams.drawTimeAnimationFraction
 
                 for (let i = 0; i < this.inputs.In.length; i++) {
@@ -216,7 +217,7 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
 
     private doSetShowWiring(showWiring: boolean) {
         this._showWiring = showWiring
-        this.setNeedsRedraw("show wiring changed")
+        this.requestRedraw({ why: "show wiring changed" })
     }
 
     private doSetDisconnectedAsHighZ(disconnectedAsHighZ: boolean) {

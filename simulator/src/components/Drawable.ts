@@ -3,7 +3,7 @@ import { ComponentList } from "../ComponentList"
 import { DrawParams, LogicEditor } from "../LogicEditor"
 import { type MoveManager } from "../MoveManager"
 import { type NodeManager } from "../NodeManager"
-import { RecalcManager, RedrawManager } from "../RedrawRecalcManager"
+import { RecalcManager, RedrawManager, RedrawRequest } from "../RedrawRecalcManager"
 import { type SVGRenderingContext } from "../SVGRenderingContext"
 import { TestSuites } from "../TestSuite"
 import { TestsPalette } from "../TestsPalette"
@@ -157,7 +157,7 @@ export abstract class Drawable {
 
     protected constructor(parent: DrawableParent) {
         this.parent = parent
-        this.setNeedsRedraw("newly created", true)
+        // this.requestRedraw({ why: "newly created", invalidateMask: true })
     }
 
     public get ref() {
@@ -171,8 +171,10 @@ export abstract class Drawable {
         this._ref = id
     }
 
-    protected setNeedsRedraw(reason: string, invalidateMask: boolean = false, isPropagation: boolean = false) {
-        this.parent.ifEditing?.redrawMgr.addReason(reason, this, invalidateMask, isPropagation)
+    protected requestRedraw(req: Omit<RedrawRequest, "component">) {
+        const fullReq: RedrawRequest = req
+        fullReq.component = this
+        this.parent.ifEditing?.redrawMgr.requestRedraw(req)
     }
 
     public get drawZIndex(): DrawZIndex {
@@ -277,7 +279,7 @@ export abstract class Drawable {
                     }
                 }
             }
-            this.setNeedsRedraw("ref changed")
+            this.requestRedraw({ why: "ref changed" })
             break
         }
     }
@@ -476,7 +478,7 @@ export abstract class DrawableWithPosition extends Drawable implements HasPositi
 
     public doSetOrient(newOrient: Orientation) {
         this._orient = newOrient
-        this.setNeedsRedraw("orientation changed", true)
+        this.requestRedraw({ why: "orientation changed", invalidateMask: true })
     }
 
     public get width(): number {
@@ -535,7 +537,7 @@ export abstract class DrawableWithPosition extends Drawable implements HasPositi
         const delta: [number, number] = [posX - this._posX, posY - this._posY]
         this._posX = posX
         this._posY = posY
-        this.setNeedsRedraw("position changed", true)
+        this.requestRedraw({ why: "position changed", invalidateMask: true })
         this.positionChanged(delta)
     }
 

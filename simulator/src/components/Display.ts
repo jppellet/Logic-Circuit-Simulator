@@ -157,17 +157,17 @@ export class Display extends ParametrizedComponentBase<DisplayRepr> {
 
     private doSetName(name: ComponentName) {
         this._name = name
-        this.setNeedsRedraw("name changed")
+        this.requestRedraw({ why: "name changed" })
     }
 
     private doSetShowAsUnknown(showAsUnknown: boolean) {
         this._showAsUnknown = showAsUnknown
-        this.setNeedsRedraw("display as unknown changed")
+        this.requestRedraw({ why: "display as unknown changed" })
     }
 
     private doSetRadix(radix: number) {
         this._radix = radix
-        this.setNeedsRedraw("radix changed")
+        this.requestRedraw({ why: "radix changed" })
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

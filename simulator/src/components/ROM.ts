@@ -167,7 +167,7 @@ export abstract class ROMRAMBase<TRepr extends ROMRAMRepr> extends ParametrizedC
 
     protected doSetShowContent(showContent: boolean) {
         this._showContent = showContent
-        this.setNeedsRedraw("show content changed")
+        this.requestRedraw({ why: "show content changed" })
     }
 
     protected abstract get moduleName(): string
@@ -231,7 +231,7 @@ export abstract class ROMRAMBase<TRepr extends ROMRAMRepr> extends ParametrizedC
 
     private doSetDisplayRadix(additionalReprRadix: number | undefined) {
         this._displayRadix = additionalReprRadix
-        this.setNeedsRedraw("additional display radix changed")
+        this.requestRedraw({ why: "additional display radix changed" })
     }
 
     private doSetMem(mem: LogicValue[][]) {

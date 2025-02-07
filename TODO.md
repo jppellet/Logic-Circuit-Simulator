@@ -13,7 +13,6 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
  * More consistently set things dirty
  * Fix alt-drag with several components, currently in updateSelfPositionIfNeeded, make UIManager handle duplication
  * lorsque les pages s’affichent, il se peut que les icônes du haut soient affichées avec les textes, ce qui fait dépasser la fenêtre de Logic de la colonne. (https://mooc-forums.inria.fr/moocnsi/t/simulateur-de-systemes-logiques-en-ligne/6215/117)
- * Ce qui serait super, ce serait de pouvoir valider les résultats des élèves. Ce qui serait top top, ce serait d’avoir un bouton « valider », qui testerait toutes les combinaisons d’entrées et les comparerait avec les sorties attendues. Je pense que c’est quelque chose qui pourrait se faire surtout avec des options supplémentaires dans le JSON. Ce qui serait ultra top, ce serait que les tests se fassent « à l’écran », avec les entrées qui changent et les sorties qui sont en vert quand tout va bien et en rouge quand ça se passe mal. À la rigueur, ça peut s’arrêter à la première erreur -> https://mooc-forums.inria.fr/moocnsi/t/simulateur-de-systemes-logiques-en-ligne/6215/110
 
 
 ## Medium priority
@@ -43,6 +42,8 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
 
 ### DONE
  
+ * Way to test a circuit according to inputs/outputs
+ * Automatically generate tests for a given set of inputs/outputs
  * Control bits for most "controlled" components can be put at the bottom
  * Proper mouseover for bezier curves
  * Fix drawing of gates with many inputs

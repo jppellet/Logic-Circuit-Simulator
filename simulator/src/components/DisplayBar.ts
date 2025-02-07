@@ -69,17 +69,17 @@ export abstract class DisplayBarBase<TRepr extends DisplayBarBaseRepr, TValue> e
 
     private doSetName(name: ComponentName) {
         this._name = name
-        this.setNeedsRedraw("name changed")
+        this.requestRedraw({ why: "name changed" })
     }
 
     private doSetColor(color: LedColor) {
         this._color = color
-        this.setNeedsRedraw("color changed")
+        this.requestRedraw({ why: "color changed" })
     }
 
     private doSetTransparent(transparent: boolean) {
         this._transparent = transparent
-        this.setNeedsRedraw("transparent changed")
+        this.requestRedraw({ why: "transparent changed" })
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {
@@ -246,7 +246,7 @@ export class DisplayBar extends DisplayBarBase<DisplayBarRepr, LogicValue> {
     private doSetDisplay(newDisplay: DisplayBarType) {
         this._display = newDisplay
         this.updateInputOffsetX()
-        this.setNeedsRedraw("display mode changed", true)
+        this.requestRedraw({ why: "display mode changed", invalidateMask: true })
     }
 
     private updateInputOffsetX() {

@@ -98,13 +98,13 @@ export class Label extends ComponentBase<LabelRepr> {
     private doSetText(text: string) {
         this._text = text
         this._cachedTextMetrics = undefined
-        this.setNeedsRedraw("text changed", true)
+        this.requestRedraw({ why: "text changed", invalidateMask: true })
     }
 
     private doSetFont(font: string) {
         this._font = font
         this._cachedTextMetrics = undefined
-        this.setNeedsRedraw("font changed", true)
+        this.requestRedraw({ why: "font changed", invalidateMask: true })
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

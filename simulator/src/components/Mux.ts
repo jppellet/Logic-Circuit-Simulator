@@ -159,7 +159,8 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
                 const neutral = this.parent.editor.options.hideWireColors
                 const selectedInputs = this.inputs.I[sel]
                 const anchorDiffX = (right - left) / 3
-                const wireStyleBezier = this.parent.editor.options.wireStyle === WireStyles.bezier
+                const wireStyle = this.parent.editor.options.wireStyle
+                const wireStyleBezier = wireStyle === WireStyles.bezier || wireStyle === WireStyles.auto
                 const timeFraction = ctx.drawParams.drawTimeAnimationFraction
 
                 for (let i = 0; i < selectedInputs.length; i++) {
@@ -194,7 +195,7 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
 
     private doSetShowWiring(showWiring: boolean) {
         this._showWiring = showWiring
-        this.setNeedsRedraw("show wiring changed")
+        this.requestRedraw({ why: "show wiring changed" })
     }
 
 

@@ -163,7 +163,7 @@ export class ShiftDisplay extends ComponentBase<ShiftDisplayRepr, ShiftDisplaySt
 
     protected doSetTrigger(trigger: EdgeTrigger) {
         this._trigger = trigger
-        this.setNeedsRedraw("trigger changed")
+        this.requestRedraw({ why: "trigger changed", invalidateTests: true })
     }
 
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
@@ -258,12 +258,12 @@ export class ShiftDisplay extends ComponentBase<ShiftDisplayRepr, ShiftDisplaySt
 
     private doSetDecodeAs(decodeAs: ShiftBufferDecoder) {
         this._decodeAs = decodeAs
-        this.redecodeAll() // will call setNeedsRedraw
+        this.redecodeAll() // will call requestRedraw
     }
 
     private doSetGroupEvery(groupEvery: number | undefined) {
         this._groupEvery = groupEvery
-        this.setNeedsRedraw("grouping changed")
+        this.requestRedraw({ why: "grouping changed" })
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

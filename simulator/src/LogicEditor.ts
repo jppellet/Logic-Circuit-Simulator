@@ -206,7 +206,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     private _isSingleton = false
     private _maxInstanceMode: Mode = MAX_MODE_WHEN_EMBEDDED // can be set later
     private _isDirty = false
-    private _isUIDisabled = false // when inputs are being set programmatically over a longer period
+    private _isRunningOrCreatingTests = false // when inputs are being set programmatically over a longer period
     private _mode: Mode = DEFAULT_MODE
     private _initialData: InitialData | undefined = undefined
     private _options: EditorOptions = { ...DEFAULT_EDITOR_OPTIONS }
@@ -377,7 +377,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         this._actualZoomFactor = clampZoom(newOptions.zoom)
 
-        this.editTools.redrawMgr.addReason("options changed", null, true)
+        this.editTools.redrawMgr.requestRedraw({ why: "options changed", invalidateMask: true, invalidateTests: true })
     }
 
     private setWindowTitleFrom(docName: string | undefined) {
@@ -572,7 +572,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             }
 
             const madeBy =
-                div(style("user-select: none; position: absolute; bottom: 0; right: 0; padding: 5px 3px 2px 5px; color: rgba(128,128,128,0.2); border-radius: 10px 0 0 0; font-size: 69%; font-style: italic;"),
+                div(cls("noselect"), style("position: absolute; bottom: 0; right: 0; padding: 5px 3px 2px 5px; color: rgba(128,128,128,0.2); border-radius: 10px 0 0 0; font-size: 69%; font-style: italic;"),
                     S.Messages.DevelopedBy + " ",
                     a(style("color: inherit"),
                         href("https://github.com/jppellet/Logic-Circuit-Simulator"), target("_blank"),
@@ -813,7 +813,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             }
             checkbox.addEventListener("change", this.wrapHandler(() => {
                 this._options[optionName] = checkbox.checked
-                this.editTools.redrawMgr.addReason("option changed: " + optionName, null, true)
+                this.editTools.redrawMgr.requestRedraw({ why: "option changed: " + optionName, invalidateMask: true, invalidateTests: true })
                 this.focus()
             }))
             const section = div(
@@ -851,7 +851,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         wireStylePopup.addEventListener("change", this.wrapHandler(() => {
             this._options.wireStyle = wireStylePopup.value as WireStyle
             this.linkMgr.invalidateAllWirePaths()
-            this.editTools.redrawMgr.addReason("wire style changed", null, true)
+            this.editTools.redrawMgr.requestRedraw({ why: "wire style changed", invalidateMask: true })
         }))
         settingsPalette.appendChild(
             div(
@@ -967,7 +967,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 if (canvasContainer !== undefined) {
                     editor.wrapHandler(() => {
                         editor.setCanvasSize()
-                        editor.editTools.redrawMgr.addReason("window resized", null, true)
+                        editor.editTools.redrawMgr.requestRedraw({ why: "window resized", invalidateMask: true })
                     })()
                 }
             }
@@ -986,7 +986,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 for (const editor of LogicEditor._allConnectedEditors) {
                     editor.wrapHandler(() => {
                         editor.setCanvasSize()
-                        editor.editTools.redrawMgr.addReason("devicePixelRatio changed", null, true)
+                        editor.editTools.redrawMgr.requestRedraw({ why: "devicePixelRatio changed", invalidateMask: true })
                     })()
                 }
                 registerPixelRatioListener()
@@ -1037,7 +1037,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
             // console.log(`Current mode is ${modeStr} - ${mode}`)
 
-            this.editTools.redrawMgr.addReason("mode changed", null, true)
+            this.editTools.redrawMgr.requestRedraw({ why: "mode changed", invalidateMask: true })
 
             // update mode active button
             this.root.querySelectorAll(".sim-mode-tool").forEach((elem) => {
@@ -1054,7 +1054,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
             const showComponentsAndEditControls: UIDisplay =
                 mode >= Mode.DESIGN ? "show" :
-                    (this._maxInstanceMode === Mode.FULL ? "inactive" : "hide")
+                    (this._maxInstanceMode >= Mode.DESIGN ? "inactive" : "hide")
 
             const showEditControls = showComponentsAndEditControls === "show"
             const showReset = mode >= Mode.TRYOUT && !this._hideResetButton
@@ -1104,7 +1104,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     public setZoomLevel(zoom: number) {
         this._options.zoom = zoom
         this._actualZoomFactor = clampZoom(zoom)
-        this.editTools.redrawMgr.addReason("zoom level changed", null, true)
+        this.editTools.redrawMgr.requestRedraw({ why: "zoom level changed", invalidateMask: true })
     }
 
     public updateCustomComponentButtons() {
@@ -1344,7 +1344,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.eventMgr.updateMouseOver([this.mouseX, this.mouseY], false, false)
         this.editTools.testsPalette.update()
         this.editTools.moveMgr.clear()
-        this.editTools.redrawMgr.addReason("editor root changed", null, true)
+        this.editTools.redrawMgr.requestRedraw({ why: "editor root changed", invalidateMask: true, invalidateTests: true })
 
         this.focus()
     }
@@ -1354,7 +1354,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         if (forceUpdate || changed) {
             this.setToolCursor(MouseActions[action].cursor)
             this._topBar?.updateActiveTool(action)
-            this.editTools.redrawMgr.addReason("mouse action changed", null, false)
+            this.editTools.redrawMgr.requestRedraw({ why: "mouse action changed" })
             this.editor.focus()
         }
         return changed
@@ -1741,12 +1741,12 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     }
 
     public async disableUIWhile<T>(message: string, action: (restoreAfter: Map<Input, LogicValue[]>) => Promise<T>): Promise<T | undefined> {
-        if (this._isUIDisabled) {
+        if (this._isRunningOrCreatingTests) {
             // cannot run tests while already running
             return undefined
         }
 
-        this._isUIDisabled = true
+        this._isRunningOrCreatingTests = true
         const oldMode = this.mode
         const restoreAfter = new Map<Input, LogicValue[]>()
         const hideMsg = this.showMessage(message, 0)
@@ -1761,8 +1761,9 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             for (const [input, value] of restoreAfter) {
                 input.setValue(value)
             }
-            this._isUIDisabled = false
             this.recalcPropagateAndDrawIfNeeded()
+            await this.waitForPropagation()
+            this._isRunningOrCreatingTests = false
         }
 
     }
@@ -1915,7 +1916,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const redrawMgr = this.editTools.redrawMgr
         const linkMgr = this._editorRoot.linkMgr
         if (linkMgr.isAddingWire || linkMgr.isSettingAnchor) {
-            redrawMgr.addReason("adding a wire/setting anchor", null)
+            redrawMgr.requestRedraw({ why: "adding a wire/setting anchor" })
         }
 
         const animateWires = this._options.animateWires
@@ -1937,9 +1938,14 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             })
         }
 
-        const redrawMask = redrawInfo?.[1] ?? false
-        // console.log("Drawing " + (__recalculated ? "with" : "without") + " recalc, " + (redrawMask ? "with" : "without") + " redrawing mask, reasons:\n    " + (redrawInfo?.[0]() ?? "??"))
+        const redrawMask = redrawInfo?.redrawMask ?? false
+        // console.log("Drawing " + (__recalculated ? "with" : "without") + " recalc, " + (redrawMask ? "with" : "without") + " redrawing mask, reasons:\n    " + (redrawInfo?.getReasons() ?? "??"))
         this.doRedraw(redrawMask)
+
+        const invalidateTests = redrawInfo?.invalidateTests ?? false
+        if (invalidateTests && !this._isRunningOrCreatingTests) {
+            this.editTools.testsPalette.clearDisplayedResults()
+        }
 
         if (!redrawMgr.isAnyValuePropagating()) {
             // console.log("No value is propagating")
@@ -2010,13 +2016,13 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         const start = this.timeline.unadjustedTime()
         this._highlightedItems = { comps: highlightComps, wires: highlightWires, start }
-        this.editTools.redrawMgr.addReason("highlighting component", null)
+        this.editTools.redrawMgr.requestRedraw({ why: "highlighting component" })
         this.recalcPropagateAndDrawIfNeeded()
     }
 
     public redraw() {
         this.setCanvasSize()
-        this.editTools.redrawMgr.addReason("explicit redraw call", null, true)
+        this.editTools.redrawMgr.requestRedraw({ why: "explicit redraw call", invalidateMask: true })
         this.recalcPropagateAndDrawIfNeeded()
     }
 
@@ -2117,7 +2123,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 g.shadowBlur = 0 // reset
 
                 // will make it run until alpha is 0
-                this.editTools.redrawMgr.addReason("highlight animation", null)
+                this.editTools.redrawMgr.requestRedraw({ why: "highlight animation" })
             }
         }
 

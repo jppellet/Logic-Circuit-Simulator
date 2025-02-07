@@ -71,7 +71,7 @@ export abstract class FlipflopOrLatch<TRepr extends FlipflopOrLatchRepr> extends
 
     protected doSetShowContent(showContent: boolean) {
         this._showContent = showContent
-        this.setNeedsRedraw("show content changed")
+        this.requestRedraw({ why: "show content changed" })
     }
 
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
@@ -225,7 +225,7 @@ export abstract class Flipflop<
 
     protected doSetTrigger(trigger: EdgeTrigger) {
         this._trigger = trigger
-        this.setNeedsRedraw("trigger changed")
+        this.requestRedraw({ why: "trigger changed", invalidateTests: true })
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

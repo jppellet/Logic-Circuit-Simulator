@@ -194,7 +194,7 @@ export class UIEventManager {
                     this._startHoverTimeoutHandle = null
                 }, 1200)
             }
-            this.editor.editTools.redrawMgr.addReason("mouseover changed", null)
+            this.editor.editTools.redrawMgr.requestRedraw({ why: "mouseover changed" })
             // console.log("Over component: ", comp)
         }
     }
@@ -297,7 +297,7 @@ export class UIEventManager {
                 sel.previouslySelectedElements.add(waypoint)
             }
         }
-        this.editor.editTools.redrawMgr.addReason("selected all", null)
+        this.editor.editTools.redrawMgr.requestRedraw({ why: "selected all" })
     }
 
     public toggleSelect(comp: Drawable) {
@@ -307,7 +307,7 @@ export class UIEventManager {
             this.currentSelection = sel
         }
         sel.toggle(comp)
-        this.editor.editTools.redrawMgr.addReason("toggled selection", null)
+        this.editor.editTools.redrawMgr.requestRedraw({ why: "toggled selection" })
     }
 
 
@@ -685,7 +685,7 @@ export class UIEventManager {
                     this._currentMouseDownData = mouseDownData
                     this.setStartDragTimeout(mouseDownData, e)
                 }
-                this.editor.editTools.redrawMgr.addReason("mousedown", null)
+                this.editor.editTools.redrawMgr.requestRedraw({ why: "mousedown" })
             } else {
                 // mouse down on background
                 this._currentMouseDownData = {
@@ -795,7 +795,7 @@ export class UIEventManager {
             this._currentHandlers.mouseUpOnBackground(e)
         }
         this._currentMouseDownData = null
-        this.editor.editTools.redrawMgr.addReason("mouseup", null)
+        this.editor.editTools.redrawMgr.requestRedraw({ why: "mouseup" })
     }
 
     private isDoubleClick(clickedComp: Drawable, e: MouseEvent | TouchEvent) {
@@ -905,7 +905,7 @@ export class UIEventManager {
         const numDeleted = this.editor.editorRoot.components.tryDeleteWhere(cond, onlyOne).length
         if (numDeleted > 0) {
             this.clearPopperIfNecessary()
-            this.editor.editTools.redrawMgr.addReason("component(s) deleted", null, true)
+            this.editor.editTools.redrawMgr.requestRedraw({ why: "component(s) deleted", invalidateMask: true, invalidateTests: true })
         }
         return numDeleted
     }
@@ -1034,7 +1034,7 @@ class EditHandlers extends ToolHandlers {
                 // clear selection
                 eventMgr.currentSelection = undefined
             }
-            editor.editTools.redrawMgr.addReason("selection rect changed", null)
+            editor.editTools.redrawMgr.requestRedraw({ why: "selection rect changed" })
         }
     }
     public override mouseDraggedOnBackground(e: MouseDragEvent | TouchDragEvent) {
@@ -1054,7 +1054,7 @@ class EditHandlers extends ToolHandlers {
                 } else {
                     rect.width = x - rect.x
                     rect.height = y - rect.y
-                    editor.editTools.redrawMgr.addReason("selection rect changed", null)
+                    editor.editTools.redrawMgr.requestRedraw({ why: "selection rect changed" })
                 }
             }
         }
@@ -1068,7 +1068,7 @@ class EditHandlers extends ToolHandlers {
         const currentSelection = eventMgr.currentSelection
         if (currentSelection !== undefined) {
             currentSelection.finishCurrentRect(this.editor)
-            editor.editTools.redrawMgr.addReason("selection rect changed", null)
+            editor.editTools.redrawMgr.requestRedraw({ why: "selection rect changed" })
         }
     }
 

@@ -433,7 +433,7 @@ export class SVGRenderingContext {
         this._currentElement = this._document.createElementNS("http://www.w3.org/2000/svg", "g")
         this._svg.appendChild(this._currentElement)
         // reset groupStack as all the child group nodes are all removed.
-        this._groupStack.splice(0, this._groupStack.length)
+        this._groupStack.length = 0
     }
 
     /**
@@ -589,6 +589,7 @@ export class SVGRenderingContext {
 
         const style = el.style
         const parent = this._closestGroupOrSvg()
+        const valign = getDominantBaseline(this.textBaseline)
         const textElement = this._createElement("text", {
             "font-family": style.fontFamily,
             "font-size": style.fontSize,
@@ -600,7 +601,7 @@ export class SVGRenderingContext {
             "x": x,
             "y": y,
             "text-anchor": getTextAnchor(this.textAlign),
-            "dominant-baseline": getDominantBaseline(this.textBaseline),
+            "dominant-baseline": valign,
         }, true)
 
         textElement.appendChild(this._document.createTextNode(text))
@@ -1197,7 +1198,7 @@ const _dominantBaselineMapping: Record<string, string> = {
     hanging: "hanging",
     top: "text-before-edge",
     bottom: "text-after-edge",
-    middle: "central",
+    middle: "central", // neither central nor middle are correct work in Illustrator
 }
 function getDominantBaseline(textBaseline: string) {
     return _dominantBaselineMapping[textBaseline] ?? _dominantBaselineMapping.alphabetic

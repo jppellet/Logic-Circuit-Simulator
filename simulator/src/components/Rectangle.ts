@@ -221,27 +221,27 @@ export class Rectangle extends ComponentBase<RectangleRepr> {
 
     private doSetColor(color: RectangleColor) {
         this._color = color
-        this.setNeedsRedraw("color changed")
+        this.requestRedraw({ why: "color changed" })
     }
 
     private doSetStrokeWidth(strokeWidth: number) {
         this._strokeWidth = strokeWidth
-        this.setNeedsRedraw("stroke width changed", true)
+        this.requestRedraw({ why: "stroke width changed", invalidateMask: true })
     }
 
     private doSetCaption(caption: string | undefined) {
         this._caption = caption
-        this.setNeedsRedraw("caption changed")
+        this.requestRedraw({ why: "caption changed" })
     }
 
     private doSetCaptionPos(captionPos: CaptionPosition) {
         this._captionPos = captionPos
-        this.setNeedsRedraw("caption position changed")
+        this.requestRedraw({ why: "caption position changed" })
     }
 
     private doSetFont(font: string) {
         this._font = font
-        this.setNeedsRedraw("font changed")
+        this.requestRedraw({ why: "font changed" })
     }
 
     private makeCurrentSizeString() {
@@ -275,12 +275,12 @@ export class Rectangle extends ComponentBase<RectangleRepr> {
 
         const toggleRoundedItem = MenuData.item(this._rounded ? "check" : "none", s.Rounded, () => {
             this._rounded = !this._rounded
-            this.setNeedsRedraw("rounded changed")
+            this.requestRedraw({ why: "rounded changed" })
         })
 
         const toggleNoFillItem = MenuData.item(!this._noFill ? "check" : "none", s.WithBackgroundColor, () => {
             this._noFill = !this._noFill
-            this.setNeedsRedraw("nofill changed")
+            this.requestRedraw({ why: "nofill changed" })
         })
 
         const setCaptionItemName = this._caption !== undefined ? s.ChangeTitle : s.SetTitle
@@ -296,7 +296,7 @@ export class Rectangle extends ComponentBase<RectangleRepr> {
         const toggleCaptionInsideItems = this._captionPos === "c" ? [] : [
             MenuData.item(this._captionInside ? "check" : "none", s.InsideFrame, () => {
                 this._captionInside = !this._captionInside
-                this.setNeedsRedraw("caption inside changed")
+                this.requestRedraw({ why: "caption inside changed" })
             }),
             MenuData.sep(),
         ]
@@ -370,7 +370,7 @@ export class Rectangle extends ComponentBase<RectangleRepr> {
     private doSetDimensions(w: number, h: number) {
         this._w = w
         this._h = h
-        this.setNeedsRedraw("size changed", true)
+        this.requestRedraw({ why: "size changed", invalidateMask: true })
     }
 
     public wrapContents(selectedComps: Set<Drawable>) {

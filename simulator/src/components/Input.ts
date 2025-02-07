@@ -218,7 +218,7 @@ export abstract class InputBase<
 
     public doSetName(name: ComponentName) {
         this._name = name
-        this.setNeedsRedraw("name changed")
+        this.requestRedraw({ why: "name changed" })
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {
@@ -461,7 +461,7 @@ export class Input extends InputBase<InputRepr> {
 
     private doSetIsConstant(isConstant: boolean) {
         this._isConstant = isConstant
-        this.setNeedsRedraw("constant changed")
+        this.requestRedraw({ why: "constant changed" })
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

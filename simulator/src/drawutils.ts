@@ -148,7 +148,7 @@ export function setDarkMode(darkMode: boolean, force: boolean) {
         for (const editor of LogicEditor.allConnectedEditors) {
             editor.wrapHandler(() => {
                 editor.setDark(darkMode)
-                editor.editTools.redrawMgr.addReason("dark/light mode switch", null)
+                editor.editTools.redrawMgr.requestRedraw({ why: "dark/light mode switch" })
             })()
         }
     }

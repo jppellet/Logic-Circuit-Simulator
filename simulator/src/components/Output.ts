@@ -218,7 +218,7 @@ export class Output extends ParametrizedComponentBase<OutputRepr> {
 
     public doSetName(name: ComponentName) {
         this._name = name
-        this.setNeedsRedraw("name changed")
+        this.requestRedraw({ why: "name changed" })
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

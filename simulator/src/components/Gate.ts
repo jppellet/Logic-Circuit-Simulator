@@ -65,7 +65,7 @@ export abstract class GateBase<
             input.incomingWire?.invalidateWirePath()
         }
         this.setNeedsRecalc()
-        this.setNeedsRedraw("gate type changed")
+        this.requestRedraw({ why: "gate type changed", invalidateTests: true })
     }
 
     protected updateLeadsFor(type: TGateType) {
@@ -111,7 +111,7 @@ export abstract class GateBase<
     public set poseAs(newPoseAs: TGateType | undefined) {
         if (newPoseAs !== this._poseAs) {
             this._poseAs = newPoseAs
-            this.setNeedsRedraw("gate display changed")
+            this.requestRedraw({ why: "gate display changed" })
         }
     }
 
@@ -121,7 +121,7 @@ export abstract class GateBase<
 
     private doSetShowAsUnknown(newUnknown: boolean) {
         this._showAsUnknown = newUnknown
-        this.setNeedsRedraw("display as unknown changed")
+        this.requestRedraw({ why: "display as unknown changed" })
     }
 
     protected override toStringDetails(): string {

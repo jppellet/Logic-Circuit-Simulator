@@ -379,15 +379,19 @@ export function toggleVisible(elem: HTMLElement) {
     setVisible(elem, elem.style.display === "none")
 }
 
-export type UIDisplay = "show" | "hide" | "inactive"
-
-export function setDisplay(elem: HTMLElement, display: UIDisplay) {
-    setVisible(elem, display !== "hide")
-    if (display === "inactive") {
+export function setHidden(elem: HTMLElement, hidden: boolean) {
+    if (hidden) {
         elem.style.visibility = "hidden"
     } else {
         elem.style.removeProperty("visibility")
     }
+}
+
+export type UIDisplay = "show" | "hide" | "inactive"
+
+export function setDisplay(elem: HTMLElement, display: UIDisplay) {
+    setVisible(elem, display !== "hide")
+    setHidden(elem, display === "inactive")
 }
 
 export function setActive(elem: HTMLElement, active: boolean) {

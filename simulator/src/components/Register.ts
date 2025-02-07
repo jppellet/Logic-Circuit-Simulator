@@ -140,12 +140,12 @@ export abstract class RegisterBase<
 
     protected doSetShowContent(showContent: boolean) {
         this._showContent = showContent
-        this.setNeedsRedraw("show content changed")
+        this.requestRedraw({ why: "show content changed" })
     }
 
     protected doSetTrigger(trigger: EdgeTrigger) {
         this._trigger = trigger
-        this.setNeedsRedraw("trigger changed")
+        this.requestRedraw({ why: "trigger changed", invalidateTests: true })
     }
 
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
@@ -319,7 +319,7 @@ export class Register extends RegisterBase<RegisterRepr> {
 
     private doSetSaturating(saturating: boolean) {
         this._saturating = saturating
-        this.setNeedsRedraw("saturating changed")
+        this.requestRedraw({ why: "saturating changed", invalidateTests: true })
     }
 
     protected override makeRegisterSpecificContextMenuItems(): MenuItems {

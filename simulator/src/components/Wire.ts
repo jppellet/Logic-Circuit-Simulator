@@ -337,7 +337,7 @@ export class Wire extends Drawable {
     public doSetStyle(style: WireStyle | undefined) {
         this._style = style
         this.invalidateWirePath()
-        this.setNeedsRedraw("style changed", true)
+        this.requestRedraw({ why: "style changed", invalidateMask: true })
     }
 
     public get isHidden() {
@@ -350,7 +350,7 @@ export class Wire extends Drawable {
 
     public doSetHidden(hidden: boolean) {
         this._isHidden = hidden
-        this.setNeedsRedraw("hidden changed", true)
+        this.requestRedraw({ why: "hidden changed", invalidateMask: true })
     }
 
     public setStartNode(startNode: NodeOut, now?: Timestamp) {
@@ -489,7 +489,7 @@ export class Wire extends Drawable {
         if (i !== -1) {
             this._waypoints.splice(i, 1)
             this.invalidateWirePath()
-            this.setNeedsRedraw("waypoint deleted", true)
+            this.requestRedraw({ why: "waypoint deleted", invalidateMask: true })
         }
     }
 
@@ -574,7 +574,7 @@ export class Wire extends Drawable {
         g.globalAlpha = 1.0
 
         if (isAnimating && !this.parent.editor.timeline.isPaused) {
-            this.setNeedsRedraw("propagating value", false, true)
+            this.requestRedraw({ why: "propagating value", isPropagation: true })
         }
     }
 
@@ -1033,6 +1033,7 @@ export class LinkManager {
         this.tryMergeWire(wire)
         this.parent.ifEditing?.setToolCursor(null)
         this.parent.ifEditing?.setDirty("added wire")
+        this.parent.ifEditing?.redrawMgr.requestRedraw({ why: "wire added", invalidateMask: true, invalidateTests: true })
         return wire
     }
 
@@ -1265,7 +1266,7 @@ export class LinkManager {
         }
         // remove wire from array
         this._wires.splice(this._wires.indexOf(wire), 1)
-        this.parent.ifEditing?.redrawMgr.addReason("deleted wire", null, true)
+        this.parent.ifEditing?.redrawMgr.requestRedraw({ why: "wire deleted", invalidateMask: true, invalidateTests: true })
         return true
     }
 
@@ -1280,8 +1281,8 @@ export class LinkManager {
         for (const wire of this._wires) {
             wire.destroy()
         }
-        this._wires.splice(0, this._wires.length)
-        this.parent.ifEditing?.redrawMgr.addReason("deleted wires", null, true)
+        this._wires.length = 0
+        this.parent.ifEditing?.redrawMgr.requestRedraw({ why: "all wires deleted", invalidateMask: true, invalidateTests: true })
     }
 
 }

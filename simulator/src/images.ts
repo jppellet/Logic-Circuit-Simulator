@@ -254,16 +254,17 @@ export function isImageName(name: string): name is ImageName {
 }
 
 export function makeImage(name: ImageName, width?: number, height?: number): HTMLElement {
-    return makeSvgHolder("svgimg", raw(inlineSvgFor(images, name)), width, height)
+    return makeSvgHolder("svgimg", name, raw(inlineSvgFor(images, name)), width, height)
 }
 
 export function makeIcon(name: IconName, width?: number, height?: number): HTMLElement {
-    return makeSvgHolder("svgicon", raw(inlineSvgFor(icons, name)), width, height)
+    return makeSvgHolder("svgicon", name, raw(inlineSvgFor(icons, name)), width, height)
 }
 
-export function makeSvgHolder(className: string, content: Modifier, width?: number, height?: number): HTMLElement {
+export function makeSvgHolder(className: string, iconName: string, content: Modifier, width?: number, height?: number): HTMLElement {
     const elem = document.createElement('i')
     elem.classList.add(className)
+    elem.setAttribute('data-icon', iconName)
     if (width !== undefined) {
         elem.style.width = `${width}px`
     }

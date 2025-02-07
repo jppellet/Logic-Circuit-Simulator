@@ -355,7 +355,7 @@ export abstract class ComponentBase<
         if (!hasAnyPrecomputedInitialValues) {
             this.setNeedsRecalc(true)
         } else {
-            this.setNeedsPropagate()
+            this.requestPropagate()
         }
     }
 
@@ -748,8 +748,8 @@ export abstract class ComponentBase<
         const oldValue = this._value
         if (forcePropagate || !deepArrayEquals(newValue, oldValue)) {
             this._value = newValue
-            this.setNeedsRedraw("value changed")
-            this.setNeedsPropagate()
+            this.requestRedraw({ why: "value changed", invalidateTests: true })
+            this.requestPropagate()
         }
     }
 
@@ -786,7 +786,7 @@ export abstract class ComponentBase<
         this.parent.recalcMgr.enqueueForRecalc(this, forcePropagate)
     }
 
-    private setNeedsPropagate() {
+    private requestPropagate() {
         this.parent.recalcMgr.enqueueForPropagate(this)
     }
 
@@ -1029,7 +1029,7 @@ export abstract class ComponentBase<
 
 
         this.parent.ifEditing?.undoMgr.takeSnapshot()
-        this.parent.ifEditing?.redrawMgr.addReason("component replaced", newComp, true)
+        this.parent.ifEditing?.redrawMgr.requestRedraw({ why: "component replaced", component: newComp, invalidateMask: true, invalidateTests: true })
 
         return newComp
     }
@@ -1245,7 +1245,7 @@ export abstract class ComponentBase<
         const deleteItem = MenuData.item("trash", s.Delete, () => {
             const deleted = this.parent.components.tryDelete(this)
             if (deleted) {
-                this.setNeedsRedraw("deleted component", true)
+                this.requestRedraw({ why: "deleted component", invalidateMask: true, invalidateTests: true })
                 return InteractionResult.SimpleChange
             }
             return InteractionResult.NoChange

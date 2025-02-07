@@ -74,7 +74,7 @@ export class RAM extends ROMRAMBase<RAMRepr> {
 
     protected doSetTrigger(trigger: EdgeTrigger) {
         this._trigger = trigger
-        this.setNeedsRedraw("trigger changed")
+        this.requestRedraw({ why: "trigger changed", invalidateTests: true })
     }
 
     protected doRecalcValue(): ROMRAMValue {
