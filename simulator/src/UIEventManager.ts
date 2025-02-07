@@ -497,6 +497,14 @@ export class UIEventManager {
                     editor.setCurrentMouseAction("move")
                     e.preventDefault()
                     return
+
+                case "t":
+                    if (editor.editorRoot.testSuites.totalCases() > 0) {
+                        editor.setTestsPaletteVisible(true)
+                        editor.editTools.testsPalette.runAllTestSuites()
+                        e.preventDefault()
+                        return
+                    }
             }
         }))
 

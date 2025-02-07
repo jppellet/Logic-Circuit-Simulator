@@ -99,6 +99,12 @@ export class TestsPalette {
         }
     }
 
+    public async runAllTestSuites() {
+        for (const testSuiteUI of this.testSuites.values()) {
+            await testSuiteUI.runTestCases()
+        }
+    }
+
 }
 
 
@@ -108,6 +114,7 @@ export class TestSuiteUI {
 
     public readonly rootElem: HTMLDivElement
     private readonly header: HTMLDivElement
+    private readonly runTestCasesButton: HTMLSpanElement
     private readonly content: HTMLDivElement
     private _expanded = false
 
@@ -124,27 +131,16 @@ export class TestSuiteUI {
 
         const runAllIcon = makeIcon("play")
         style("position: relative; top: -2px;").applyTo(runAllIcon)
-        const runAllButton = span(cls("sim-mode-link"), style("flex: none; font-size: 85%; opacity: 0.9; margin: -2px 0 -2px 4px; padding: 2px 4px 0 0;"),
+        this.runTestCasesButton = span(cls("sim-mode-link"), style("flex: none; font-size: 85%; opacity: 0.9; margin: -2px 0 -2px 4px; padding: 2px 4px 0 0;"),
             title(s.RunTestSuite), runAllIcon, s.Run
         ).render()
 
-        runAllButton.addEventListener("click", async () => {
-            const oldExpanded = this.expanded
-            setHidden(runAllButton, true)
-            try {
-                const testResult = await this.editor.runTestSuite(this.testSuite, { fast: true })
-                if (testResult !== undefined && testResult.isAllPass()) {
-                    this.expanded = oldExpanded
-                }
-            } finally {
-                setHidden(runAllButton, false)
-            }
-        })
+        this.runTestCasesButton.addEventListener("click", () => this.runTestCases())
 
         this.header =
             div(cls("test-suite test-disclosable expanded"), style("display: flex"),
                 span(style("flex: auto"), testSuite.name ?? s.DefaultTestSuiteName),
-                runAllButton
+                this.runTestCasesButton
             ).render()
         this.content =
             div(cls("test-cases"), style("display: block"), ...this.htmlResults.map(p => p.container)).render()
@@ -221,6 +217,19 @@ export class TestSuiteUI {
         this._expanded = this.header.classList.toggle("expanded", expanded)
         setVisible(this.content, this._expanded)
         this.palette.updateMaxHeight()
+    }
+
+    public async runTestCases() {
+        const oldExpanded = this.expanded
+        setHidden(this.runTestCasesButton, true)
+        try {
+            const testResult = await this.editor.runTestSuite(this.testSuite, { fast: true })
+            if (testResult !== undefined && testResult.isAllPass()) {
+                this.expanded = oldExpanded
+            }
+        } finally {
+            setHidden(this.runTestCasesButton, false)
+        }
     }
 
     public setRunning(i: number) {

@@ -17,6 +17,7 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
 
 ## Medium priority
 
+ * Handle multiple test suites
  * High-Z bus logic
  * Allow to swap RAM width/height (for Christophe Declercq)
  * Add tootips to components, e.g., describe what happens on the next state transition, etc.
