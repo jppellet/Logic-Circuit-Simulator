@@ -207,6 +207,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     private _maxInstanceMode: Mode = MAX_MODE_WHEN_EMBEDDED // can be set later
     private _isDirty = false
     private _isRunningOrCreatingTests = false // when inputs are being set programmatically over a longer period
+    private _dontHogFocus = false
     private _mode: Mode = DEFAULT_MODE
     private _initialData: InitialData | undefined = undefined
     private _options: EditorOptions = { ...DEFAULT_EDITOR_OPTIONS }
@@ -598,7 +599,9 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             // if we lose the focus, we grab it back (if we're in singleton mode),
             // otherwise key events won't be caught
             this.addEventListener("focusout", () => {
-                this.focus()
+                if (!this._dontHogFocus) {
+                    this.focus()
+                }
             })
 
             this.focus()
@@ -2338,8 +2341,15 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     }
 
     public paste() {
-        const jsonStr = pasteFromClipboard()
-        if (jsonStr === undefined) {
+        const oldDontHogFocus = this._dontHogFocus
+        this._dontHogFocus = true
+        let jsonStr: string | undefined = undefined
+        try {
+            jsonStr = pasteFromClipboard()
+        } finally {
+            this._dontHogFocus = oldDontHogFocus
+        }
+        if (jsonStr === undefined || jsonStr === "") {
             return
         }
         const errorOrComps = Serialization.pasteComponents(this, jsonStr)

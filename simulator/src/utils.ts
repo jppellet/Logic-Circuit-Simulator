@@ -784,9 +784,12 @@ export function pasteFromClipboard(): string | undefined {
     textArea.contentEditable = "true"
     document.body.appendChild(textArea)
 
+    let result: string | undefined = undefined
     textArea.focus()
     const ok = document.execCommand('paste')
-    const result = ok ? textArea.value : undefined
+    if (ok && textArea.value.length > 0) {
+        result = textArea.value
+    }
     document.body.removeChild(textArea)
     return result
 }
