@@ -1,6 +1,7 @@
 import { Branded } from "io-ts"
 import JSON5 from "json5"
 import { ButtonDataset } from "./ComponentFactory"
+import { LogicEditor } from "./LogicEditor"
 import { ALUDef } from "./components/ALU"
 import { AdderDef } from "./components/Adder"
 import { AdderArrayDef } from "./components/AdderArray"
@@ -198,9 +199,10 @@ export class ComponentMenu {
     private _restrictedToGateTypes: Set<string> | undefined
 
     public constructor(
+        public readonly editor: LogicEditor,
         public readonly parent: HTMLElement,
-        public readonly showOnly: readonly string[] | undefined,
     ) {
+        const showOnly = editor.options.showOnly
         this._htmlSections = []
         this._restrictedToGateTypes = showOnly === undefined ? undefined : new Set()
         const showOnlyBuf = showOnly === undefined ? undefined : [...showOnly]
@@ -274,7 +276,8 @@ export class ComponentMenu {
     }
 
     private makeCustomComponentSection(defs: readonly CustomComponentDef[]): HtmlSection | undefined {
-        const showOnlyBuf = this.showOnly === undefined ? undefined : [...this.showOnly]
+        const showOnly = this.editor.options.showOnly
+        const showOnlyBuf = showOnly === undefined ? undefined : [...showOnly]
 
         const allButtons: HTMLButtonElement[] = []
         const buttonsShowWithMore: HTMLButtonElement[] = []

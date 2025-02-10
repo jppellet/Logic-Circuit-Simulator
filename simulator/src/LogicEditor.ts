@@ -690,7 +690,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         setCaption("shareDialogClose", S.Dialogs.Generic.Close)
 
         this._topBar = new TopBar(this)
-        this._menu = new ComponentMenu(this.html.leftToolbar, this._options.showOnly)
+        this._menu = new ComponentMenu(this, this.html.leftToolbar)
         this._messageBar = new MessageBar(this)
         const testResultsPalette = this.elemWithId("testResultsPalette")
         testResultsPalette.parentElement!.replaceChild(this.editTools.testsPalette.rootElem, testResultsPalette)

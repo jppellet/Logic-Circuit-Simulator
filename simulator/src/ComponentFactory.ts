@@ -363,7 +363,7 @@ export class ComponentFactory {
         this.editor.focus()
     }
 
-    public tryMakeNewCustomComponent(editor: LogicEditor): undefined | string {
+    public tryMakeNewCustomComponent(editor: LogicEditor): CustomComponentDef | string {
         const s = S.Components.Custom.messages
 
         const selectionAll = editor.eventMgr.currentSelection?.previouslySelectedElements
@@ -403,9 +403,10 @@ export class ComponentFactory {
             return s.NoWires
         }
 
-        const maker = this.tryAddCustomDef(new CustomComponentDef({
+        const customDef = new CustomComponentDef({
             id, caption, circuit: { components, wires },
-        }), false)
+        })
+        const maker = this.tryAddCustomDef(customDef, false)
         if (maker === undefined) {
             return ""
         }
@@ -420,7 +421,7 @@ export class ComponentFactory {
             editor.components.tryDelete(comp)
         }
 
-        return undefined // success
+        return customDef
     }
 
     public tryMakeNewTestCase(editor: LogicEditor): TestCaseCombinational | string {

@@ -1189,12 +1189,13 @@ export abstract class ComponentBase<
         const makeNewComponentItems: MenuItems =
             (!nonEmptySelectionInMainEditor || !UIPermissions.canModifyCustomComponents(this.parent)) ? [] : [
                 ["start", MenuData.item("newcomponent", s.MakeNewComponent, () => {
-                    const error = editor.factory.tryMakeNewCustomComponent(editor)
-                    if (error !== undefined) {
-                        if (error.length > 0) {
-                            window.alert(s.MakeNewComponentFailed + " " + error)
+                    const result = editor.factory.tryMakeNewCustomComponent(editor)
+                    if (isString(result)) {
+                        if (result.length > 0) {
+                            window.alert(s.MakeNewComponentFailed + " " + result)
                         }
                     } else {
+                        editor.options.showOnly?.push(result.id)
                         editor.updateCustomComponentButtons()
                     }
                 })],

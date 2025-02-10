@@ -177,14 +177,13 @@ export class TestSuiteUI {
             setVisible(details, expanded)
             this.palette.updateMaxHeight()
         }
-        line.addEventListener("click", e => {
-            if (e.target !== deleteButton && e.target !== editButton) {
-                toggle()
-            }
+        line.addEventListener("click", () => {
+            toggle()
         })
         const container = div(cls("testcase wait"), line, details).render()
 
-        editButton.addEventListener("click", () => {
+        editButton.addEventListener("click", e => {
+            e.stopPropagation()
             if (!UIPermissions.canModifyTestCases(this.editor)) {
                 // button should be hidden anyway
                 window.alert(S.Messages.NoPermission)
@@ -197,13 +196,14 @@ export class TestSuiteUI {
             testCase.name = newName
             nameSpan.textContent = newName
         })
-        deleteButton.addEventListener("click", () => {
+        deleteButton.addEventListener("click", e => {
             if (!UIPermissions.canModifyTestCases(this.editor)) {
                 // button should be hidden anyway
                 window.alert(S.Messages.NoPermission)
                 return
             }
             this.editor.removeTestCase(testCase)
+            e.stopPropagation()
         })
 
         return { line, details, container, toggle } as const

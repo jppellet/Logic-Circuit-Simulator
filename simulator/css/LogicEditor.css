@@ -62,6 +62,10 @@ logic-editor:not(:defined) {
   color: rgb(33, 33, 33);
 }
 
+.dark a {
+  color: #8e81ff;
+}
+
 .dark .leftToolbarHeader {
   background-color: rgb(56, 56, 56);
 }
@@ -671,7 +675,7 @@ svg text {
 }
 
 .dark .testcase.pass {
-  background: rgb(4, 53, 4);
+  background: rgb(25, 48, 25);
 }
 
 .testcase.fail {
@@ -679,7 +683,7 @@ svg text {
 }
 
 .dark .testcase.fail {
-  background: #430808;
+  background: #412626;
 }
 
 .testcase.error {
@@ -766,4 +770,8 @@ svg text {
 .testcase-wrongvalue {
   color: #8f2626;
   font-weight: bold;
+}
+
+.dark .testcase-wrongvalue {
+  color: #ff9898;
 }

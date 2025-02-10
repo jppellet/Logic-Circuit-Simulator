@@ -7,7 +7,6 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
 
 ## High priority
 
- * New custom components should show up in library even with showonly
  * Take undo snapshot after key events too
  * Adder orientation
  * More consistently set things dirty
@@ -43,6 +42,7 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
 
 ### DONE
  
+ * New custom components should show up in library even with showonly
  * Way to test a circuit according to inputs/outputs
  * Automatically generate tests for a given set of inputs/outputs
  * Control bits for most "controlled" components can be put at the bottom

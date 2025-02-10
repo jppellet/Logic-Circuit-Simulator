@@ -389,7 +389,7 @@ export function fontAscentHalf(g: GraphicsRendering): number {
     let halfAscent = _cachedAscents.get(font)
     if (halfAscent === undefined) {
         halfAscent = Math.ceil((g.measureText("0").actualBoundingBoxAscent - 1)) / 2
-        console.log(`Computing half ascent for font ${font}: ${halfAscent}`)
+        // console.log(`Computing half ascent for font ${font}: ${halfAscent}`)
         _cachedAscents.set(font, halfAscent)
     }
     return halfAscent

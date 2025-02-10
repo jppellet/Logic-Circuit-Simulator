@@ -67,6 +67,10 @@ export class CustomComponentDef {
         }
     }
 
+    public get id() {
+        return CustomComponentPrefix + this.customId
+    }
+
     public get caption() {
         return this._caption
     }
@@ -468,22 +472,27 @@ export class CustomComponent extends ComponentBase<CustomComponentRepr, LogicVal
         if (result.isChange) {
             return result
         }
-        if (UIPermissions.canModifyCustomComponents(this.editor)) {
-            this.tryOpenEditor()
-            return InteractionResult.SimpleChange
-        } else {
-            alert(S.Components.Custom.messages.CannotBeModified)
-            return InteractionResult.NoChange
-        }
+        return this.tryOpenEditor()
+
     }
 
-    private tryOpenEditor() {
-        if (!(this.editor.editorRoot instanceof LogicEditor)) {
-            alert(S.Components.Custom.messages.NotInMainEditor)
-            return
+    private tryOpenEditor(): InteractionResult {
+        const s = S.Components.Custom.messages
+
+        let showOnly
+        if (!UIPermissions.canModifyCustomComponents(this.editor) || (showOnly = this.editor.options.showOnly) !== undefined && !showOnly.includes(this._customDef.id)) {
+            alert(s.CannotBeModified)
+            return InteractionResult.NoChange
         }
+
+        if (!(this.editor.editorRoot instanceof LogicEditor)) {
+            alert(s.NotInMainEditor)
+            return InteractionResult.NoChange
+        }
+
         this.editor.setEditorRoot(this)
         this.editor.editTools.undoMgr.takeSnapshot()
+        return InteractionResult.SimpleChange
     }
 
 }
