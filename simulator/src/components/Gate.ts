@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, COLOR_DARK_RED, COLOR_GATE_NAMES, COLOR_MOUSE_OVER, COLOR_UNKNOWN, ColorString, GRID_STEP, PATTERN_STRIPED_GRAY, circle, drawWireLineToComponent, useCompact } from "../drawutils"
+import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, COLOR_DARK_RED, COLOR_GATE_NAMES, COLOR_MOUSE_OVER, COLOR_UNKNOWN, ColorString, GRID_STEP, PATTERN_STRIPED_GRAY, TextVAlign, circle, drawWireLineToComponent, fillTextVAlign, useCompact } from "../drawutils"
 import { Modifier, ModifierObject, asValue, b, cls, div, emptyMod, mods, table, tbody, td, th, thead, tooltipContent, tr } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillUsing, Expand, InteractionResult, LogicValue, Mode, RichStringEnum, Unknown, deepArrayEquals, isUnknown, typeOrUndefined } from "../utils"
@@ -408,7 +408,7 @@ export abstract class GateBase<
                     g.fillStyle = COLOR_UNKNOWN
                     g.textAlign = "center"
                     g.font = "bold 20px sans-serif"
-                    g.fillText('?', (left + gateRightSquare) / 2, this.posY)
+                    fillTextVAlign(g, TextVAlign.middle, '?', (left + gateRightSquare) / 2, this.posY)
                 })
                 break
             }
@@ -418,12 +418,12 @@ export abstract class GateBase<
             const gateShortName = this.gateTypes(this.numBits).props[type].fullShortDesc()[1]
             if (gateShortName !== undefined) {
                 g.fillStyle = COLOR_GATE_NAMES
-                g.textAlign = "center"
                 g.font = "bold 13px sans-serif"
                 const oldTransform = g.getTransform()
                 g.translate(this.posX + nameDeltaX, this.posY)
                 g.scale(0.65, 1)
-                g.fillText(gateShortName, 0, 0)
+                g.textAlign = "center"
+                fillTextVAlign(g, TextVAlign.middle, gateShortName, 0, 0)
                 g.setTransform(oldTransform)
             }
         }

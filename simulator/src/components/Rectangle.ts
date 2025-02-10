@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_COMPONENT_BORDER, COLOR_RECTANGLE_BACKGROUND, COLOR_RECTANGLE_BORDER, DrawZIndex, FONT_LABEL_DEFAULT, GRID_STEP } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, COLOR_RECTANGLE_BACKGROUND, COLOR_RECTANGLE_BORDER, DrawZIndex, FONT_LABEL_DEFAULT, GRID_STEP, TextVAlign, fillTextVAlign } from "../drawutils"
 import { span, style, title } from "../htmlgen"
 import { S } from "../strings"
 import { InteractionResult, typeOrUndefined } from "../utils"
@@ -159,8 +159,6 @@ export class Rectangle extends ComponentBase<RectangleRepr> {
         if (this._caption !== undefined) {
             g.fillStyle = COLOR_COMPONENT_BORDER
             g.font = this._font
-            g.textAlign = "center"
-            g.textBaseline = "middle"
 
             const metrics = g.measureText(this._caption)
             const offsetV = (metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent + this._strokeWidth) / 2 + 2
@@ -205,7 +203,8 @@ export class Rectangle extends ComponentBase<RectangleRepr> {
                 }
             })()
 
-            g.fillText(this._caption, captionX, captionY)
+            g.textAlign = "center"
+            fillTextVAlign(g, TextVAlign.middle, this._caption, captionX, captionY)
         }
 
         if (ctx.isMouseOver) {

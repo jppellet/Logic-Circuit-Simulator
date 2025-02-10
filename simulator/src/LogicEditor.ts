@@ -38,7 +38,7 @@ import { Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPo
 import { type Input } from "./components/Input"
 import { Rectangle, RectangleDef } from "./components/Rectangle"
 import { LinkManager, Wire, WireStyle, WireStyles } from "./components/Wire"
-import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_COMPONENT_ID, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, DrawZIndex, GRID_STEP, USER_COLORS, clampZoom, drawAnchorsAroundComponent as drawAnchorsForComponent, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine } from "./drawutils"
+import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_COMPONENT_ID, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, DrawZIndex, GRID_STEP, TextVAlign, USER_COLORS, clampZoom, drawAnchorsAroundComponent as drawAnchorsForComponent, fillTextVAlign, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine, strokeTextVAlign } from "./drawutils"
 import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
 import { makeIcon } from "./images"
@@ -2066,7 +2066,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         g.setTransform(baseTransform)
         g.lineCap = "square"
-        g.textBaseline = "middle"
+        // eslint-disable-next-line no-restricted-syntax
+        g.textBaseline = "alphabetic"
 
         // clear background
         g.fillStyle = COLOR_BACKGROUND
@@ -2275,15 +2276,14 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         if (this._options.showIDs) {
             g.beginGroup("refs")
             g.font = 'bold 14px sans-serif'
-            g.textAlign = 'center'
-            g.textBaseline = 'middle'
             g.strokeStyle = "white"
             g.lineWidth = 3
             g.fillStyle = COLOR_COMPONENT_ID
+            g.textAlign = 'center'
             for (const comp of root.components.all()) {
                 if (comp.ref !== undefined) {
-                    g.strokeText(comp.ref, comp.posX, comp.posY)
-                    g.fillText(comp.ref, comp.posX, comp.posY)
+                    strokeTextVAlign(g, TextVAlign.middle, comp.ref, comp.posX, comp.posY)
+                    fillTextVAlign(g, TextVAlign.middle, comp.ref, comp.posX, comp.posY)
                 }
             }
             g.endGroup()

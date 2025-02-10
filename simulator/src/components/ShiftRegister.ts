@@ -1,4 +1,4 @@
-import { COLOR_COMPONENT_BORDER } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, TextVAlign, fillTextVAlign } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { LogicValue, Unknown, isHighImpedance, isUnknown } from "../utils"
@@ -62,10 +62,9 @@ export class ShiftRegister extends RegisterBase<ShiftRegisterRepr> {
         g.font = `bold 13px sans-serif`
         g.fillStyle = COLOR_COMPONENT_BORDER
         g.textAlign = "center"
-        g.textBaseline = "middle"
-        g.fillText("Shift R.", this.posX, this.posY - 8)
+        fillTextVAlign(g, TextVAlign.middle, "Shift R.", this.posX, this.posY - 8)
         g.font = `11px sans-serif`
-        g.fillText(`${this.numBits} bits`, this.posX, this.posY + 10)
+        fillTextVAlign(g, TextVAlign.middle, `${this.numBits} bits`, this.posX, this.posY + 10)
     }
 
 }

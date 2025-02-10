@@ -1,6 +1,6 @@
 import * as t from "io-ts"
 import JSON5 from "json5"
-import { COLOR_COMPONENT_BORDER, COLOR_COMPONENT_INNER_LABELS, displayValuesFromArray } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, COLOR_COMPONENT_INNER_LABELS, TextVAlign, displayValuesFromArray, fillTextVAlign } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { EdgeTrigger, LogicValue, RichStringEnum, Unknown, isUnknown, repeatString, toLogicValueRepr, typeOrUndefined } from "../utils"
@@ -181,11 +181,10 @@ export class ShiftDisplay extends ComponentBase<ShiftDisplayRepr, ShiftDisplaySt
                         g.font = "bold 16px sans-serif"
                         toDraw = text
                     }
-                    g.fillText(toDraw, this.posX, this.posY)
+                    fillTextVAlign(g, TextVAlign.middle, toDraw, this.posX, this.posY)
                 }
 
                 g.textAlign = "center"
-                g.textBaseline = "middle"
                 if (this.orient === "w") {
                     // avoid text upside down
                     ctx.inNonTransformedFrame(drawContents)

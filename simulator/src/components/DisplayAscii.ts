@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_COMPONENT_BORDER, COLOR_UNKNOWN, displayValuesFromArray, formatWithRadix } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, COLOR_UNKNOWN, TextVAlign, displayValuesFromArray, fillTextVAlign, formatWithRadix } from "../drawutils"
 import { b, div, emptyMod, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { InteractionResult, Mode, isUnknown, typeOrUndefined } from "../utils"
@@ -113,12 +113,12 @@ export class DisplayAscii extends ComponentBase<DisplayAsciiRepr> {
                     if (isVertical && hasAdditionalRepresentation) {
                         // upper left corner
                         g.textAlign = "start"
-                        g.fillText(binaryStringRep, this.posX - height / 2 + 3, this.posY - width / 2 + 8)
+                        fillTextVAlign(g, TextVAlign.middle, binaryStringRep, this.posX - height / 2 + 3, this.posY - width / 2 + 8)
                         g.textAlign = "center"
                     } else {
                         // upper center
                         g.textAlign = "center"
-                        g.fillText(binaryStringRep, this.posX, this.posY + (isVertical ? -width / 2 + 8 : -height / 2 + 10))
+                        fillTextVAlign(g, TextVAlign.middle, binaryStringRep, this.posX, this.posY + (isVertical ? -width / 2 + 8 : -height / 2 + 10))
                     }
 
                     if (hasAdditionalRepresentation) {
@@ -127,11 +127,11 @@ export class DisplayAscii extends ComponentBase<DisplayAsciiRepr> {
                         if (isVertical) {
                             // upper right
                             g.textAlign = "end"
-                            g.fillText(additionalRepr, this.posX + height / 2 - 3, this.posY - width / 2 + 9)
+                            fillTextVAlign(g, TextVAlign.middle, additionalRepr, this.posX + height / 2 - 3, this.posY - width / 2 + 9)
                             g.textAlign = "center"
                         } else {
                             // center, below bin repr
-                            g.fillText(additionalRepr, this.posX, this.posY - height / 2 + 22)
+                            fillTextVAlign(g, TextVAlign.middle, additionalRepr, this.posX, this.posY - height / 2 + 22)
                             mainTextPosY += 8 // shift main repr a bit
                         }
                     }
@@ -139,7 +139,7 @@ export class DisplayAscii extends ComponentBase<DisplayAsciiRepr> {
 
                 g.font = mainTextFont
                 g.fillStyle = mainTextStyle
-                g.fillText(mainText, this.posX, mainTextPosY)
+                fillTextVAlign(g, TextVAlign.middle, mainText, this.posX, mainTextPosY)
             },
         })
     }

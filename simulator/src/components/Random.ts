@@ -134,8 +134,6 @@ export class Random extends ParametrizedComponentBase<RandomRepr> {
 
                     g.fillStyle = COLOR_COMPONENT_INNER_LABELS
                     g.font = "9px sans-serif"
-                    g.textAlign = "center"
-                    g.textBaseline = "middle"
                     const probTextLastPart = String(Math.round(this._prob1 * 100) / 100).substring(1)
                     const probTextParts = ["P(1)", "=", probTextLastPart]
                     if (isVertical) {

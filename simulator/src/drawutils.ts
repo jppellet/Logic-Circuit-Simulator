@@ -382,6 +382,37 @@ export function parseColorToRGBA(col: string): FixedArray<number, 4> | undefined
 
 export const FONT_LABEL_DEFAULT = "18px sans-serif"
 
+const _cachedAscents = new Map<string, number>()
+
+export function fontAscentHalf(g: GraphicsRendering): number {
+    const font = g.font
+    let halfAscent = _cachedAscents.get(font)
+    if (halfAscent === undefined) {
+        halfAscent = Math.ceil((g.measureText("0").actualBoundingBoxAscent - 1)) / 2
+        console.log(`Computing half ascent for font ${font}: ${halfAscent}`)
+        _cachedAscents.set(font, halfAscent)
+    }
+    return halfAscent
+}
+
+export const TextVAlign = {
+    bottom: 0,
+    middle: 1,
+    top: 2,
+} as const
+
+export type TextVAlign = (typeof TextVAlign)[keyof typeof TextVAlign]
+
+export function strokeTextVAlign(g: GraphicsRendering, valign: TextVAlign, text: string, x: number, y: number) {
+    // eslint-disable-next-line no-restricted-syntax
+    g.strokeText(text, x, y + valign * fontAscentHalf(g))
+}
+
+export function fillTextVAlign(g: GraphicsRendering, valign: TextVAlign, text: string, x: number, y: number) {
+    // eslint-disable-next-line no-restricted-syntax
+    g.fillText(text, x, y + valign * fontAscentHalf(g))
+}
+
 
 
 //
@@ -657,7 +688,7 @@ export function drawWaypoint(g: GraphicsRendering, ctx: DrawContext, x: number, 
         g.font = "bold 14px sans-serif"
 
         ctx.inNonTransformedFrame(ctx => {
-            g.fillText("!!", ...ctx.rotatePoint(
+            fillTextVAlign(g, TextVAlign.middle, "!!", ...ctx.rotatePoint(
                 x + (parentOrientIsVertical ? 13 : 0),
                 y + (parentOrientIsVertical ? 0 : -13),
             ))
@@ -683,7 +714,6 @@ export function drawClockInput(g: GraphicsRendering, left: number, clockNode: No
 
     drawWireLineToComponent(g, clockNode)
 }
-
 
 export function drawLabel(ctx: DrawContextExt, compOrient: Orientation, text: string | undefined, anchor: Orientation | undefined, x: number, y: Node | ReadonlyGroupedNodeArray<Node>): void
 export function drawLabel(ctx: DrawContextExt, compOrient: Orientation, text: string | undefined, anchor: Orientation | undefined, x: Node | ReadonlyGroupedNodeArray<Node>, y: number): void
@@ -712,14 +742,14 @@ export function drawLabel(ctx: DrawContextExt, compOrient: Orientation, text: st
 
     const [halign, valign, dx, dy] = (() => {
         if (anchor === undefined) {
-            return ["center", "middle", 0, 0] as const
+            return ["center", TextVAlign.middle, 0, 0] as const
         }
         const rotatedAnchor = Orientation.add(compOrient, anchor)
         switch (rotatedAnchor) {
-            case "e": return ["right", "middle", -3, 0] as const
-            case "w": return ["left", "middle", 3, 0] as const
-            case "n": return ["center", "top", 0, 2] as const
-            case "s": return ["center", "bottom", 0, -2] as const
+            case "e": return ["right", TextVAlign.middle, -3, 0] as const
+            case "w": return ["left", TextVAlign.middle, 3, 0] as const
+            case "n": return ["center", TextVAlign.top, 0, 4] as const
+            case "s": return ["center", TextVAlign.bottom, 0, -4] as const
         }
     })()
 
@@ -732,8 +762,7 @@ export function drawLabel(ctx: DrawContextExt, compOrient: Orientation, text: st
     // we assume a color and a font have been set before this function is called
     const g = ctx.g
     g.textAlign = halign
-    g.textBaseline = valign
-    g.fillText(text, finalX + dx, finalY + dy)
+    fillTextVAlign(g, valign, text, finalX + dx, finalY + dy)
 }
 
 export function drawValueTextCentered(g: GraphicsRendering, value: LogicValue, comp: HasPosition, opts?: { fillStyle?: string, small?: boolean }) {
@@ -741,8 +770,6 @@ export function drawValueTextCentered(g: GraphicsRendering, value: LogicValue, c
 }
 
 export function drawValueText(g: GraphicsRendering, value: LogicValue, x: number, y: number, opts?: { fillStyle?: string, small?: boolean }) {
-    g.textAlign = "center"
-    g.textBaseline = "middle"
 
     let spec = ""
     let label = ""
@@ -771,7 +798,8 @@ export function drawValueText(g: GraphicsRendering, value: LogicValue, x: number
         label = '0'
     }
     g.font = `${spec}px sans-serif`
-    g.fillText(label, x, y)
+    g.textAlign = "center"
+    fillTextVAlign(g, TextVAlign.middle, label, x, y)
 }
 
 
@@ -782,10 +810,10 @@ export function drawValueText(g: GraphicsRendering, value: LogicValue, x: number
 export const INPUT_OUTPUT_DIAMETER = 26
 
 const NAME_POSITION_SETTINGS = {
-    right: ["start", "middle", 7],
-    left: ["end", "middle", 9],
-    top: ["center", "bottom", 5],
-    bottom: ["center", "top", 5],
+    right: ["start", TextVAlign.middle, 7],
+    left: ["end", TextVAlign.middle, 9],
+    top: ["center", TextVAlign.bottom, 5],
+    bottom: ["center", TextVAlign.top, 5],
 } as const
 
 function textSettingsForName(onRight: boolean, orient: Orientation) {
@@ -832,13 +860,11 @@ export function drawComponentName(g: GraphicsRendering, ctx: DrawContextExt, nam
     }
 
     const [hAlign, vAlign, deltaX] = textSettingsForName(onRight, comp.orient)
-    g.textAlign = hAlign
-    g.textBaseline = vAlign
-    g.font = "italic 18px sans-serif"
     g.fillStyle = COLOR_COMPONENT_BORDER
+    g.font = "italic 18px sans-serif"
     const point = ctx.rotatePoint(comp.posX + (onRight ? 1 : -1) * (comp.unrotatedWidth / 2 + deltaX), comp.posY)
-    g.fillText(displayName, ...point)
-    g.textBaseline = "middle" // restore
+    g.textAlign = hAlign
+    fillTextVAlign(g, vAlign, displayName, ...point)
 }
 
 export function drawAnchorsAroundComponent(g: GraphicsRendering, comp: DrawableWithPosition, includeTo: boolean) {
@@ -1151,7 +1177,7 @@ export function isPointOnBezierWire(x: number, y: number, coords: BezierCoords):
     if (x < left || x > right || y < top || y > bottom) {
         return false
     }
-    
+
     // sample a series of points on the curve and check if the point is close to any of them
     const stepSize = bezierMeta.tStepSize
     for (let t = 0; t <= 1; t += stepSize) {

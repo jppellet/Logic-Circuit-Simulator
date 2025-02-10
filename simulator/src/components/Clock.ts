@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_COMPONENT_BORDER } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, TextVAlign, fillTextVAlign } from "../drawutils"
 import { br, emptyMod, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { LogicValue, typeOrUndefined } from "../utils"
@@ -149,12 +149,12 @@ export class Clock extends InputBase<ClockRepr> {
             g.stroke()
 
             g.fillStyle = COLOR_COMPONENT_BORDER
-            g.textAlign = "center"
             g.font = "10px sans-serif"
             const periodStr = this._period >= 1000
                 ? (this._period / 1000) + " s"
                 : this._period + " ms"
-            g.fillText(periodStr, this.posX, bottom + 8)
+            g.textAlign = "center"
+            fillTextVAlign(g, TextVAlign.middle, periodStr, this.posX, bottom + 8)
         })
     }
 

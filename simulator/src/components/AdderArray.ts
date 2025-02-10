@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_COMPONENT_BORDER } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, TextVAlign, fillTextVAlign } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, LogicValue, typeOrUndefined } from "../utils"
@@ -96,8 +96,7 @@ export class AdderArray extends ParametrizedComponentBase<AdderArrayRepr> {
             g.font = `bold 25px sans-serif`
             g.fillStyle = COLOR_COMPONENT_BORDER
             g.textAlign = "center"
-            g.textBaseline = "middle"
-            g.fillText("+", ...ctx.rotatePoint(this.posX - 4, this.posY))
+            fillTextVAlign(g, TextVAlign.middle, "+", ...ctx.rotatePoint(this.posX - 4, this.posY - 2))
         })
     }
 

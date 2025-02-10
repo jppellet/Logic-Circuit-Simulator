@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_COMPONENT_BORDER, GRID_STEP, displayValuesFromArray, useCompact } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, GRID_STEP, TextVAlign, displayValuesFromArray, fillTextVAlign, useCompact } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, EdgeTrigger, LogicValue, Unknown, allBooleans, binaryStringRepr, hexStringRepr, isAllZeros, isHighImpedance, isUnknown, typeOrUndefined, valuesFromBinaryOrHexRepr } from "../utils"
@@ -311,10 +311,9 @@ export class Register extends RegisterBase<RegisterRepr> {
         g.font = `bold 15px sans-serif`
         g.fillStyle = COLOR_COMPONENT_BORDER
         g.textAlign = "center"
-        g.textBaseline = "middle"
-        g.fillText("Reg.", this.posX, this.posY - 8)
+        fillTextVAlign(g, TextVAlign.middle, "Reg.", this.posX, this.posY - 8)
         g.font = `11px sans-serif`
-        g.fillText(`${this.numBits} bits`, this.posX, this.posY + 10)
+        fillTextVAlign(g, TextVAlign.middle, `${this.numBits} bits`, this.posX, this.posY + 10)
     }
 
     private doSetSaturating(saturating: boolean) {

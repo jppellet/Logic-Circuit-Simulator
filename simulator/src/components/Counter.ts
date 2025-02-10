@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_EMPTY, COLOR_LABEL_OFF, displayValuesFromArray, formatWithRadix, useCompact } from "../drawutils"
+import { COLOR_EMPTY, COLOR_LABEL_OFF, TextVAlign, displayValuesFromArray, fillTextVAlign, formatWithRadix, useCompact } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, EdgeTrigger, LogicValue, Unknown, isUnknown, typeOrNull, typeOrUndefined } from "../utils"
@@ -169,10 +169,9 @@ export class Counter extends ParametrizedComponentBase<CounterRepr> {
                 const frameWidth = width - labelMargin - 12
                 FlipflopOrLatch.drawStoredValueFrame(g, ...valueCenter, frameWidth, 28, false)
 
-                g.textAlign = "center"
-                g.textBaseline = "middle"
                 g.fillStyle = COLOR_LABEL_OFF
-                g.fillText(stringRep, ...valueCenter)
+                g.textAlign = "center"
+                fillTextVAlign(g, TextVAlign.middle, stringRep, ...valueCenter)
             }
         })
     }

@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_COMPONENT_BORDER, displayValuesFromArray } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, TextVAlign, displayValuesFromArray, fillTextVAlign } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, LogicValue, Unknown, isUnknown, typeOrUndefined } from "../utils"
@@ -87,10 +87,9 @@ export class Decoder extends ParametrizedComponentBase<DecoderRepr> {
             skipLabels: true,
             drawLabels: () => {
                 g.font = `bold 14px sans-serif`
-                g.textAlign = "center"
-                g.textBaseline = "middle"
                 g.fillStyle = COLOR_COMPONENT_BORDER
-                g.fillText("Dec.", this.posX, this.posY)
+                g.textAlign = "center"
+                fillTextVAlign(g, TextVAlign.middle, "Dec.", this.posX, this.posY)
             },
         })
     }

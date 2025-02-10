@@ -589,6 +589,7 @@ export class SVGRenderingContext {
 
         const style = el.style
         const parent = this._closestGroupOrSvg()
+        // eslint-disable-next-line no-restricted-syntax
         const valign = getDominantBaseline(this.textBaseline)
         const textElement = this._createElement("text", {
             "font-family": style.fontFamily,
@@ -1201,6 +1202,7 @@ const _dominantBaselineMapping: Record<string, string> = {
     middle: "central", // neither central nor middle are correct work in Illustrator
 }
 function getDominantBaseline(textBaseline: string) {
+    // eslint-disable-next-line no-restricted-syntax
     return _dominantBaselineMapping[textBaseline] ?? _dominantBaselineMapping.alphabetic
 }
 

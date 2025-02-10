@@ -1,4 +1,4 @@
-import { COLOR_COMPONENT_BORDER } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, TextVAlign, fillTextVAlign } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { LogicValue, Unknown, isHighImpedance, isUnknown } from "../utils"
@@ -78,8 +78,7 @@ export class Adder extends ComponentBase<AdderRepr> {
             g.fillStyle = COLOR_COMPONENT_BORDER
             g.font = "bold 30px sans-serif"
             g.textAlign = "center"
-            g.textBaseline = "middle"
-            g.fillText("+", this.posX, this.posY - 2)
+            fillTextVAlign(g, TextVAlign.middle, "+", this.posX, this.posY - 2)
         })
     }
 

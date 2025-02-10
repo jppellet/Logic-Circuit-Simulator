@@ -50,6 +50,21 @@
         "@typescript-eslint/strict-boolean-expressions": "error",
         "@typescript-eslint/explicit-member-accessibility": "error",
         "@typescript-eslint/ban-types": "off",
-        "@typescript-eslint/no-inferrable-types": "off"
+        "@typescript-eslint/no-inferrable-types": "off",
+        "no-restricted-syntax": [
+            "error",
+            {
+                "selector": "MemberExpression[property.name='strokeText']",
+                "message": "Use strokeTextVAlign/fillTextVAlign instead"
+            },
+            {
+                "selector": "MemberExpression[property.name='fillText']",
+                "message": "Use strokeTextVAlign/fillTextVAlign instead"
+            },
+            {
+                "selector": "MemberExpression[property.name='textBaseline']",
+                "message": "Use strokeTextVAlign/fillTextVAlign instead"
+            }
+        ]
     }
 }

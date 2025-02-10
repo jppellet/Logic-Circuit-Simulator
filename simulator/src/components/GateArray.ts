@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { circle, COLOR_COMPONENT_BORDER, COLOR_UNKNOWN, GRID_STEP } from "../drawutils"
+import { circle, COLOR_COMPONENT_BORDER, COLOR_UNKNOWN, fillTextVAlign, GRID_STEP, TextVAlign } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillUsing, ArrayFillWith, LogicValue, Mode, typeOrUndefined } from "../utils"
@@ -109,9 +109,9 @@ export class GateArray extends ParametrizedComponentBase<GateArrayRepr> {
                 if (this._showAsUnknown) {
                     ctx.inNonTransformedFrame(() => {
                         g.fillStyle = COLOR_UNKNOWN
-                        g.textAlign = "center"
                         g.font = "bold 20px sans-serif"
-                        g.fillText('?', this.posX, this.posY)
+                        g.textAlign = "center"
+                        fillTextVAlign(g, TextVAlign.middle, '?', this.posX, this.posY)
                     })
                 } else {
                     // draw gate type

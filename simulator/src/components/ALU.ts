@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, displayValuesFromArray, drawLabel, drawWireLineToComponent, GRID_STEP } from "../drawutils"
+import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, displayValuesFromArray, drawLabel, drawWireLineToComponent, fillTextVAlign, GRID_STEP, TextVAlign } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillUsing, ArrayFillWith, isBoolean, isHighImpedance, isUnknown, LogicValue, typeOrUndefined, Unknown } from "../utils"
@@ -257,8 +257,7 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
                 g.font = `bold ${size}px sans-serif`
                 g.fillStyle = COLOR_COMPONENT_BORDER
                 g.textAlign = "center"
-                g.textBaseline = "middle"
-                g.fillText(opName, ...ctx.rotatePoint(this.posX + 5, this.posY))
+                fillTextVAlign(g, TextVAlign.middle, opName, ...ctx.rotatePoint(this.posX + 5, this.posY))
             }
         })
     }

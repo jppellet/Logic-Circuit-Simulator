@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_UNKNOWN, ColorString, colorCompsRGB, colorForFraction, displayValuesFromArray, formatWithRadix, useCompact } from "../drawutils"
+import { COLOR_UNKNOWN, ColorString, TextVAlign, colorCompsRGB, colorForFraction, displayValuesFromArray, fillTextVAlign, formatWithRadix, useCompact } from "../drawutils"
 import { b, div, emptyMod, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { InteractionResult, Mode, Unknown, isUnknown, typeOrUndefined } from "../utils"
@@ -125,7 +125,7 @@ export class Display extends ParametrizedComponentBase<DisplayRepr> {
                 if (!this.showAsUnknown) {
                     const [hasSpaces, spacedStringRep] = insertSpaces(binaryStringRep, this._radix)
                     g.font = `${hasSpaces ? 9 : 10}px sans-serif`
-                    g.fillText(spacedStringRep, this.posX, this.posY + (isVertical ? -width / 2 + 7 : -height / 2 + 8))
+                    fillTextVAlign(g, TextVAlign.middle, spacedStringRep, this.posX, this.posY + (isVertical ? -width / 2 + 7 : -height / 2 + 8))
                 }
 
                 const mainSize = this.numBits === 4 && this._radix === 8 ? 16 : 18
@@ -133,7 +133,7 @@ export class Display extends ParametrizedComponentBase<DisplayRepr> {
 
                 const stringRep = this.showAsUnknown ? Unknown
                     : formatWithRadix(value, this._radix, this.numBits)
-                g.fillText(stringRep, this.posX, this.posY + (isVertical ? 6 : 0))
+                fillTextVAlign(g, TextVAlign.middle, stringRep, this.posX, this.posY + (isVertical ? 6 : 0))
             },
         })
     }

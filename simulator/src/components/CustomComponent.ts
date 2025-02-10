@@ -8,7 +8,7 @@ import { SVGRenderingContext } from "../SVGRenderingContext"
 import { Serialization } from "../Serialization"
 import { TestSuites } from "../TestSuite"
 import { UIPermissions } from "../UIPermissions"
-import { COLOR_COMPONENT_BORDER } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, TextVAlign, fillTextVAlign } from "../drawutils"
 import { b, div, mods, span, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillUsing, ArrayFillWith, InteractionResult, LogicValue, isArray, isString, typeOrUndefined, validateJson } from "../utils"
@@ -212,10 +212,9 @@ export class CustomComponentDef {
                 g.font = `${fontSize}px sans-serif`
             }
             if (fontSize >= 8) {
-                g.textAlign = "center"
-                g.textBaseline = "middle"
                 g.fillStyle = "currentColor"
-                g.fillText(drawCaption + (shortened ? "." : ""), width / 2, height / 2)
+                g.textAlign = "center"
+                fillTextVAlign(g, TextVAlign.middle, drawCaption + (shortened ? "." : ""), width / 2, height / 2)
                 break
             }
             // else, try again with a shorter caption
@@ -441,8 +440,7 @@ export class CustomComponent extends ComponentBase<CustomComponentRepr, LogicVal
             g.font = `bold 18px sans-serif`
             g.fillStyle = COLOR_COMPONENT_BORDER
             g.textAlign = "center"
-            g.textBaseline = "middle"
-            g.fillText(this.customDef.caption, this.posX, this.posY)
+            fillTextVAlign(g, TextVAlign.middle, this.customDef.caption, this.posX, this.posY)
         })
     }
 

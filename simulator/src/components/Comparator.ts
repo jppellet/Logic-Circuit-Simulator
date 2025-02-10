@@ -1,4 +1,4 @@
-import { COLOR_COMPONENT_BORDER } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, TextVAlign, fillTextVAlign } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { LogicValue, Unknown, isHighImpedance, isUnknown } from "../utils"
@@ -76,8 +76,7 @@ export class Comparator extends ComponentBase<ComparatorRepr> {
             g.fillStyle = COLOR_COMPONENT_BORDER
             g.font = "bold 11px sans-serif"
             g.textAlign = "center"
-            g.textBaseline = "middle"
-            g.fillText("CMP", this.posX, this.posY)
+            fillTextVAlign(g, TextVAlign.middle, "CMP", this.posX, this.posY)
         })
     }
 

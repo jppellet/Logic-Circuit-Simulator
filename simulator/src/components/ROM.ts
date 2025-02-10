@@ -1,6 +1,6 @@
 import { saveAs } from 'file-saver'
 import * as t from "io-ts"
-import { COLOR_COMPONENT_BORDER, COLOR_EMPTY, colorForLogicValue, displayValuesFromArray, formatWithRadix, strokeSingleLine } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, COLOR_EMPTY, TextVAlign, colorForLogicValue, displayValuesFromArray, fillTextVAlign, formatWithRadix, strokeSingleLine } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, InteractionResult, LogicValue, Unknown, allBooleans, binaryStringRepr, hexStringRepr, isAllZeros, isArray, isUnknown, typeOrUndefined, valuesFromBinaryOrHexRepr } from "../utils"
@@ -183,11 +183,10 @@ export abstract class ROMRAMBase<TRepr extends ROMRAMRepr> extends ParametrizedC
                 g.font = `bold 18px sans-serif`
                 g.fillStyle = COLOR_COMPONENT_BORDER
                 g.textAlign = "center"
-                g.textBaseline = "middle"
-                g.fillText(this.moduleName, this.posX, this.posY - 6)
+                fillTextVAlign(g, TextVAlign.middle, this.moduleName, this.posX, this.posY - 6)
                 g.font = `11px sans-serif`
                 const numWordsStr = this.numWords >= 1024 ? `${this.numWords / 1024}k` : this.numWords.toString()
-                g.fillText(`${numWordsStr} × ${this.numDataBits} bits`, this.posX, this.posY + 12)
+                fillTextVAlign(g, TextVAlign.middle, `${numWordsStr} × ${this.numDataBits} bits`, this.posX, this.posY + 12)
                 labelCenter = this.posX
                 contentBottom = this.posY + 25
             } else {
@@ -219,12 +218,11 @@ export abstract class ROMRAMBase<TRepr extends ROMRAMRepr> extends ParametrizedC
             }
 
             if (this._displayRadix !== undefined) {
-                g.textAlign = "center"
-                g.textBaseline = "top"
                 const word = isUnknown(addr) ? Unknown : displayValuesFromArray(mem[addr], false)[1]
                 const repr = formatWithRadix(word, this._displayRadix, this.numDataBits, true)
                 g.fillStyle = COLOR_COMPONENT_BORDER
-                g.fillText(`${repr}`, labelCenter, contentBottom + 3)
+                g.textAlign = "center"
+                fillTextVAlign(g, TextVAlign.top, `${repr}`, labelCenter, contentBottom + 3)
             }
         })
     }
