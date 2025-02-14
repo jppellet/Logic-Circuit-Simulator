@@ -488,7 +488,7 @@ export class ComponentFactory {
         const { inputs, outputs } = checkResult
 
         const s = S.Messages
-        const max = 6
+        const max = 10
 
         const inputsByBit: Array<[Input, number]> = []
         let numInputs = 0

@@ -395,11 +395,7 @@ export function setDisplay(elem: HTMLElement, display: UIDisplay) {
 }
 
 export function setActive(elem: HTMLElement, active: boolean) {
-    if (active) {
-        elem.classList.add("active")
-    } else {
-        elem.classList.remove("active")
-    }
+    elem.classList.toggle("active", active)
 }
 
 export function showModal(dlog: HTMLDialogElement): boolean {
@@ -748,7 +744,16 @@ export enum Mode {
     FULL,    // can additionally force output nodes to 'unset' state and draw undetermined dates
 }
 
-export function copyToClipboard(textToCopy: string): boolean {
+export async function copyToClipboard(textToCopy: string): Promise<boolean> {
+
+    try {
+        await navigator.clipboard.writeText(textToCopy)
+        console.log("Text copied to clipboard with new API")
+        return true
+    } catch (e) {
+        // fallback to old method
+    }
+
     function isOS() {
         //can use a better detection logic here
         return navigator.userAgent.match(/ipad|iphone/i)
@@ -778,7 +783,16 @@ export function copyToClipboard(textToCopy: string): boolean {
     return ok
 }
 
-export function pasteFromClipboard(): string | undefined {
+export async function pasteFromClipboard(): Promise<string | undefined> {
+
+    try {
+        const text = await navigator.clipboard.readText()
+        console.log("Text pasted from clipboard with new API")
+        return text
+    } catch (e) {
+        // fallback to old method
+    }
+
     const textArea = document.createElement('textarea')
     textArea.readOnly = false
     textArea.contentEditable = "true"

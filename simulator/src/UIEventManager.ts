@@ -466,20 +466,16 @@ export class UIEventManager {
 
                 case "Backspace":
                 case "Delete": {
-                    let selComp
-                    if ((selComp = this.currentSelection?.previouslySelectedElements) !== undefined && selComp.size !== 0) {
-                        let anyDeleted = false
-                        for (const comp of selComp) {
-                            anyDeleted = editor.eventMgr.tryDeleteDrawable(comp).isChange || anyDeleted
-                        }
-                        if (anyDeleted) {
-                            editor.editTools.undoMgr.takeSnapshot()
-                        }
-                    } else if ((selComp = this.currentMouseOverComp) !== null) {
-                        const result = editor.eventMgr.tryDeleteDrawable(selComp)
-                        editor.editTools.undoMgr.takeSnapshot(result)
-                    }
                     e.preventDefault()
+                    if (!editor.deleteSelection()) {
+                        // if nothing was deleted, we try to delete the hovered component
+                        if (this.currentMouseOverComp !== null) {
+                            const result = editor.eventMgr.tryDeleteDrawable(this.currentMouseOverComp)
+                            if (result.isChange) {
+                                editor.editTools.undoMgr.takeSnapshot(result)
+                            }
+                        }
+                    }
                     return
                 }
 
@@ -508,64 +504,63 @@ export class UIEventManager {
             }
         }))
 
-        canvas.addEventListener("keydown", editor.wrapHandler(e => {
+        canvas.addEventListener("keydown", editor.wrapAsyncHandler(async e => {
             const ctrlOrCommand = e.ctrlKey || e.metaKey
             const keyLower = e.key.toLowerCase()
             const shift = e.shiftKey || (keyLower !== e.key)
             switch (keyLower) {
                 case "a":
                     if (ctrlOrCommand && editor.mode >= Mode.CONNECT && !targetIsFieldOrOtherInput(e)) {
-                        this.selectAll()
                         e.preventDefault()
+                        this.selectAll()
                     }
                     return
 
                 case "s":
                     if (ctrlOrCommand && editor.isSingleton) {
-                        editor.saveCurrentStateToUrl()
                         e.preventDefault()
+                        editor.saveCurrentStateToUrl()
                     }
                     return
 
                 case "z":
                     if (ctrlOrCommand && !targetIsFieldOrOtherInput(e)) {
+                        e.preventDefault()
                         if (shift) {
                             editor.editTools.undoMgr.redoOrRepeat()
                         } else {
                             editor.editTools.undoMgr.undo()
                         }
-                        e.preventDefault()
                     }
                     return
                 case "y":
                     if (ctrlOrCommand && !targetIsFieldOrOtherInput(e)) {
-                        editor.editTools.undoMgr.redoOrRepeat()
                         e.preventDefault()
+                        editor.editTools.undoMgr.redoOrRepeat()
                     }
                     return
                 case "x":
                     if (ctrlOrCommand && !targetIsFieldOrOtherInput(e)) {
-                        editor.cut()
                         e.preventDefault()
+                        await editor.cut()
                     }
                     return
                 case "c":
                     if (ctrlOrCommand && !targetIsFieldOrOtherInput(e)) {
-                        if (editor.copy()) {
-                            e.preventDefault()
-                        }
+                        e.preventDefault()
+                        await editor.copy()
                     }
                     return
                 case "v":
                     if (ctrlOrCommand && !targetIsFieldOrOtherInput(e)) {
-                        editor.paste()
                         e.preventDefault()
+                        await editor.paste()
                     }
                     return
                 case "g":
                     if (ctrlOrCommand && editor.mode >= Mode.CONNECT) {
-                        editor.makeGroupWithSelection()
                         e.preventDefault()
+                        editor.makeGroupWithSelection()
                     }
                     return
 
@@ -1130,7 +1125,7 @@ class EditHandlers extends ToolHandlers {
                         return li(cls("menu-item-static"), item.caption).render()
                     case "item": {
                         const but = mkButton(item, item.shortcut, item.danger ?? false).render()
-                        but.addEventListener("click", this.editor.wrapHandler(async (itemEvent: MouseEvent | TouchEvent) => {
+                        but.addEventListener("click", this.editor.wrapAsyncHandler(async (itemEvent: MouseEvent | TouchEvent) => {
                             const result = await Promise.resolve(item.action(itemEvent, e))
                             this.editor.editTools.undoMgr.takeSnapshot(result as Exclude<typeof result, void>)
                             this.editor.focus()

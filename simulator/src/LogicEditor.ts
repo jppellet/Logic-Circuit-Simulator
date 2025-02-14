@@ -1557,7 +1557,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
             // TODO show the info some other way
 
-            if (copyToClipboard(fullUrl)) {
+            if (await copyToClipboard(fullUrl)) {
                 console.log("  -> Copied!")
             } else {
                 console.log("  -> Could not copy!")
@@ -1600,9 +1600,6 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         // console.log("Full JSON:\n" + jsonFull)
         // console.log("JSON for URL:\n" + jsonForUri)
-
-        // We did this in the past, but now we're compressing things a bit
-        // const encodedJson1 = btoa(json).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "%3D")
 
         // this can compress to like 40-50% of the original size
         const compressedJsonForUri = LZString.compressToEncodedURIComponent(jsonForUri)
@@ -2308,12 +2305,32 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     }
 
-    public cut() {
-        // TODO stubs
-        console.log("cut")
+    public deleteSelection() {
+        if (this.eventMgr.currentSelectionEmpty()) {
+            return false
+        }
+        let anyDeleted = false
+        for (const elem of this.eventMgr.currentSelection?.previouslySelectedElements ?? []) {
+            anyDeleted = this.eventMgr.tryDeleteDrawable(elem).isChange || anyDeleted
+        }
+
+        if (!anyDeleted) {
+            return false
+        }
+
+        this.editTools.undoMgr.takeSnapshot()
+        return true
     }
 
-    public copy(): boolean {
+    public async cut() {
+        const copied = await this.copy()
+        if (!copied) {
+            return
+        }
+        await this.deleteSelection()
+    }
+
+    public async copy(): Promise<boolean> {
         if (this.eventMgr.currentSelectionEmpty()) {
             return false
         }
@@ -2334,18 +2351,22 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
 
         const jsonStr = Serialization.stringifyObject(reprs, false)
-        console.log("Copied:\n" + jsonStr)
-        copyToClipboard(jsonStr)
+        const copied = await copyToClipboard(jsonStr)
+        if (copied) {
+            console.log("Copied:\n" + jsonStr)
+        } else {
+            console.log("Could not copy")
+        }
         this.focus()
-        return true
+        return copied
     }
 
-    public paste() {
+    public async paste() {
         const oldDontHogFocus = this._dontHogFocus
         this._dontHogFocus = true
         let jsonStr: string | undefined = undefined
         try {
-            jsonStr = pasteFromClipboard()
+            jsonStr = await pasteFromClipboard()
         } finally {
             this._dontHogFocus = oldDontHogFocus
         }
@@ -2365,9 +2386,17 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.focus()
     }
 
-    public wrapHandler<T extends unknown[], R>(f: (...params: T) => R): (...params: T) => R {
+    public wrapHandler<T extends unknown[], R>(f: (...params: T) => R extends Promise<any> ? never : R): (...params: T) => R {
         return (...params: T) => {
             const result = f(...params)
+            this.recalcPropagateAndDrawIfNeeded()
+            return result
+        }
+    }
+
+    public wrapAsyncHandler<T extends unknown[], R>(f: (...params: T) => Promise<R>): (...params: T) => Promise<R> {
+        return async (...params: T) => {
+            const result = await f(...params)
             this.recalcPropagateAndDrawIfNeeded()
             return result
         }
