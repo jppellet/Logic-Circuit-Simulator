@@ -24,7 +24,7 @@ import { MoveManager } from "./MoveManager"
 import { NodeManager } from "./NodeManager"
 import { RecalcManager, RedrawManager } from "./RedrawRecalcManager"
 import { SVGRenderingContext } from "./SVGRenderingContext"
-import { Serialization } from "./Serialization"
+import { Circuit, Serialization } from "./Serialization"
 import { TestCaseCombinational, TestCaseResult, TestCaseResultMismatch, TestCaseValueMap, TestSuite, TestSuiteResults, TestSuites } from "./TestSuite"
 import { Tests } from "./Tests"
 import { TestsPalette } from "./TestsPalette"
@@ -204,6 +204,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     private _isEmbedded = false
     private _isSingleton = false
+    private _persistenceId: string | undefined = "_dummy_id" // TODO
     private _maxInstanceMode: Mode = MAX_MODE_WHEN_EMBEDDED // can be set later
     private _isDirty = false
     private _isRunningOrCreatingTests = false // when inputs are being set programmatically over a longer period
@@ -1124,6 +1125,26 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     public override focus() {
         this.html.mainCanvas.focus()
+    }
+
+    /**
+     * This saves the passed circuit to both sessionStorage and localStorage.
+     * The idea is that sessionStorage is always restored (page reload),
+     * and localStorage items can be proposed in the UI for reloading.
+     */
+    public trySaveInBrowserStorage(circuit: Circuit) {
+        if (this._persistenceId === undefined) {
+            return
+        }
+
+        const circuitStr = Serialization.stringifyObject(circuit, true)
+        const now = Date.now()
+        try {
+            localStorage.setItem("logic_" + this._persistenceId, now + ";" + circuitStr)
+            sessionStorage.setItem("logic_" + this._persistenceId, circuitStr)
+        } catch (e) {
+            console.error("Failed to save circuit to browser storage", e)
+        }
     }
 
     public tryLoadFrom(file: File) {

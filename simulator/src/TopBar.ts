@@ -25,6 +25,7 @@ export class TopBar {
     private readonly customComponentTab: HTMLDivElement
 
     private readonly openButton: HTMLButtonElement
+    private readonly loadFromBrowserButton: HTMLButtonElement
     private readonly closeCustomComponentButton: HTMLButtonElement
     private readonly undoButton: HTMLButtonElement
     private readonly redoButton: HTMLButtonElement
@@ -87,6 +88,8 @@ export class TopBar {
 
         this.openButton = this.makeButtonWithLabel("open", s.Open,
             this.openHandler.bind(this))
+        // this.loadFromBrowserButton = this.makeButtonWithLabel("browserload", s.Restore,
+        //     this.loadFromBrowser.bind(this))
         this.downloadButton = this.makeButtonWithLabel("download", s.Download,
             this.saveHandler.bind(this))
         this.screenshotButton = this.makeButtonWithLabel("screenshot", s.Screenshot,
@@ -140,6 +143,7 @@ export class TopBar {
 
                 this.makeSep(),
                 this.openButton,
+                this.loadFromBrowserButton,
                 this.downloadButton,
                 this.screenshotButton,
 
@@ -207,6 +211,11 @@ export class TopBar {
         this.editor.runFileChooser("text/plain|image/png|application/json|application/json5", file => {
             this.editor.tryLoadFrom(file)
         })
+    }
+
+    private loadFromBrowser() {
+        sessionStorage
+        // TODO
     }
 
     private saveHandler(e: MouseEvent) {

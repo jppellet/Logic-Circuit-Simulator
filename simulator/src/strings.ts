@@ -207,6 +207,7 @@ const Strings_fr = {
         Download: tuple("Télécharger", "Télécharge le circuit (ou les composants personnalisés avec la touche Option/Alt)"),
         Screenshot: tuple("Screenshot", "Télécharge le circuit sous forme d’image (PNG ou SVG avec touche Option/Alt)"),
         Open: tuple("Ouvrir", "Ouvre un circuit précédemment téléchargé"),
+        Restore: tuple("Restaurer", "Restaure le circuit précédemment modifié"),
         Reset: tuple("Réinitialiser", "Réinitialise l’état de ce circuit"),
 
         TimelinePlay: tuple("Play", "Démarre l’écoulement du temps"),
@@ -996,6 +997,7 @@ const Strings_en: Strings = {
         Download: tuple("Download", "Download the circuit (or the custom components with Option/Alt key down)"),
         Screenshot: tuple("Screenshot", "Download the circuit as an image (PNG or SVG with Option/Alt key down)"),
         Open: tuple("Open", "Open a previously downloaded circuit"),
+        Restore: tuple("Restore", "Restore the circuit to the last state"),
         Reset: tuple("Reset", "Reset the state of this circuit"),
 
         TimelinePlay: tuple("Play", "Starts logical time"),

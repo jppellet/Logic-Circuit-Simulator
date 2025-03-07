@@ -64,8 +64,9 @@ export class UndoManager {
         // const nowStr = new Date(now).toISOString()
         // console.log("Taking snapshot at " + nowStr + " (repeatAction=" + repeatAction + ")")
 
-        const dataObject = this.editor.save()
-        const jsonStr = Serialization.stringifyObject(dataObject, true)
+        const circuit = this.editor.save()
+        const jsonStr = Serialization.stringifyObject(circuit, true)
+        this.editor.trySaveInBrowserStorage(circuit)
         this._undoSnapshots.push({ time: now, circuitStr: jsonStr, repeatAction })
         while (this._undoSnapshots.length > MAX_UNDO_SNAPSHOTS) {
             this._undoSnapshots.shift()

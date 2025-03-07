@@ -238,6 +238,46 @@ export function ArrayClampOrPad<T>(arr: T[], len: number, padValue: T): T[] {
 }
 
 
+// Binary strings
+
+const BinChars = ["0", "1", "?", "Z", "*"] as const
+
+type BinChar = typeof BinChars[number]
+
+type _CheckBinaryStringRec<FullStr extends string, S extends string> =
+    S extends `${BinChar}${infer Rest}` // First character must be '1' or '0'
+    ? (Rest extends "" ? FullStr : _CheckBinaryStringRec<FullStr, Rest>)
+    : never
+
+type BinString = t.Branded<string, "BinString">
+
+/** Statically check that the passed string is a binary string */
+export function b<S extends string>(s: _CheckBinaryStringRec<S, S>): BinString {
+    return s as BinString
+}
+
+/** Checks at runtime that the passed string is a binary string.
+ * Don't pass string literals, which should be validated statically with the
+ * other function above. */
+export function BinaryStringAssert<S extends string>(s: string extends S ? S : never): BinString {
+    let valid = true
+    if (s.length === 0) {
+        valid = false
+    } else {
+        for (const c of s) {
+            if (!BinChars.includes(c)) {
+                valid = false
+                break
+            }
+        }
+    }
+    if (!valid) {
+        throw new Error(`BinaryStringAssert: invalid binary string '${s}'`)
+    }
+    return s as unknown as BinString
+}
+
+
 // Fixed-size array types
 
 // assuming N is a number literal; non-literals filtered by main type
@@ -272,6 +312,7 @@ export type ReadonlyFixedArray<T, N extends number> =
 
 // export type FixedArrayLength<T extends readonly any[]> = _FixedArrayLength<T, 0>
 
+
 export function FixedArrayFillWith<T, N extends number>(val: T, n: N): FixedArray<T, N> {
     return ArrayFillWith(val, n) as any
 }
@@ -288,7 +329,7 @@ export function FixedArrayAssert<T, N extends number>(arr: readonly T[], n: N): 
     if (arr.length !== n) {
         throw new Error(`FixedArrayAssert: expected length ${n}, got ${arr.length}`)
     }
-    return arr as any
+    return arr as FixedArray<T, N>
 }
 
 

@@ -9,6 +9,7 @@
 // icons
 import add from '../img/icons/add.icon.svg'; // @ts-ignore
 import bordercolor from '../img/icons/bordercolor.icon.svg'; // @ts-ignore
+import browserload from '../img/icons/browserload.icon.svg'; // @ts-ignore
 import check from '../img/icons/check.icon.svg'; // @ts-ignore
 import close from '../img/icons/close.icon.svg'; // @ts-ignore
 import connect from '../img/icons/connect.icon.svg'; // @ts-ignore
@@ -129,6 +130,7 @@ void 0 // dummy line to consume the last 'ts-ignore'
 const icons = {
     add,
     bordercolor,
+    browserload,
     check,
     close,
     connect,

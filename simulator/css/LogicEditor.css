@@ -41,6 +41,8 @@ logic-editor:not(:defined) {
   display: flex;
   flex-direction: column;
   color: black;
+  border-top: 1px solid rgba(0, 0, 0, 0.125);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.125);
 }
 
 .leftToolbarHeader {
@@ -466,6 +468,8 @@ svg text {
 .topBar {
   background-color: rgb(239, 239, 239);
   border-left: 1px solid lightgray;
+  border-right: 1px solid lightgray;
+  border-top: 1px solid lightgray;
 }
 
 .dark .topBar {
