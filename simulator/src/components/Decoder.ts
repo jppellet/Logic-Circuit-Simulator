@@ -4,7 +4,7 @@ import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, LogicValue, Unknown, isUnknown, typeOrUndefined } from "../utils"
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupVertical, param } from "./Component"
-import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
+import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
 
 
 export const DecoderDef =
@@ -99,7 +99,12 @@ export class Decoder extends ParametrizedComponentBase<DecoderRepr> {
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {
-        return this.makeForceOutputsContextMenuItem()
+        const s = S.Components.Generic.contextMenu
+        return [
+            this.makeChangeParamsContextMenuItem("outputs", s.ParamNumBits, this.numFrom, "bits"),
+            ["mid", MenuData.sep()],
+            ...this.makeForceOutputsContextMenuItem(),
+        ]
     }
 
 }
