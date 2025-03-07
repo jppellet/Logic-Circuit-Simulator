@@ -424,7 +424,7 @@ export class Wire extends Drawable {
         const passthrough = PassthroughDef.make<Passthrough>(parent, { bits: 1 })
         passthrough.setSpawned()
         passthrough.setPosition(x, y, false)
-        passthrough.anchor = this.startNode.component
+        // passthrough.anchor = this.startNode.component // this is too intrusive
 
         // modify this wire to go to the passthrough
         this.setEndNode(passthrough.inputs.In[0])
@@ -477,7 +477,7 @@ export class Wire extends Drawable {
         }
 
         const waypoint = new Waypoint(this, [x, y, orient])
-        waypoint.anchor = this.startNode.component
+        // waypoint.anchor = this.startNode.component // this is too intrusive
         // partIndex - 1 because there is always a "lead" part before the main connecting parts (and also an end part, which we don't care about)
         this._waypoints.splice(partIndex - 1, 0, waypoint)
         this.invalidateWirePath()
