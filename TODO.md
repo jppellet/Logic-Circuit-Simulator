@@ -20,15 +20,6 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
  * High-Z bus logic
  * Allow to swap RAM width/height (for Christophe Declercq)
  * Add tootips to components, e.g., describe what happens on the next state transition, etc.
- * Save/restore using browser's storage
-    * standalone
-      * no long term storage
-      * sessionstorage pour recharger la page et restaurer le contenu
-      * localstorage pour reproposer le contenu si rechargé plus tard, 1 seule entrée
-      * avec un bouton
-    * embedded
-      * with manually-defined id
-      * only with sessionstorage
 
 
 ## Low priority
@@ -42,6 +33,7 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
 
 ### DONE
  
+ * Save/restore using browser's storage
  * New custom components should show up in library even with showonly
  * Way to test a circuit according to inputs/outputs
  * Automatically generate tests for a given set of inputs/outputs

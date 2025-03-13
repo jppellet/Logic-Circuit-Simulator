@@ -16,6 +16,12 @@ export type UndoState = {
     canRedoOrRepeat: boolean
 }
 
+function areStatesEqual(s1: UndoState, s2: UndoState): boolean {
+    return s1.canUndo === s2.canUndo
+        && s1.canRedoOrRepeat === s2.canRedoOrRepeat
+}
+
+
 export class UndoManager {
 
     public readonly editor: LogicEditor
@@ -131,7 +137,7 @@ export class UndoManager {
     }
 
     private loadSnapshot(snapshot: Snapshot) {
-        Serialization.loadCircuitOrLibrary(this.editor, snapshot.circuitStr, { isUndoRedoAction: true })
+        Serialization.loadCircuitOrLibrary(this.editor, snapshot.circuitStr, false)
     }
 
     private fireStateChangedIfNeeded() {
@@ -142,9 +148,4 @@ export class UndoManager {
         }
     }
 
-}
-
-function areStatesEqual(s1: UndoState, s2: UndoState): boolean {
-    return s1.canUndo === s2.canUndo
-        && s1.canRedoOrRepeat === s2.canRedoOrRepeat
 }

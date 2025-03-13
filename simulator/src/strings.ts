@@ -231,6 +231,9 @@ const Strings_fr = {
         NotImplemented: "Cette fonctionnalité n’est pas encore implémentée.",
         NoPermission: "Cette action n’est pas autorisée dans ce mode.",
         ReallyCloseWindow: "Voulez-vous vraiment fermer la fenêtre sans prendre en compte les derniers changements?",
+        LoadedCircuitFromSessionStorage: template("Circuit restauré depuis sauvegarde automatique du ${day} à ${time}"),
+        FailedToLoadCircuitFromStorage: template("Impossible de restaurer le circuit (${error})."),
+        NoSavedData: "Rien à restaurer pour cet éditeur.",
         DevelopedBy: "Développé par ",
 
         DidUndo: "Annuler",
@@ -1021,6 +1024,9 @@ const Strings_en: Strings = {
         NotImplemented: "This feature is not implemented yet.",
         NoPermission: "This action is not allowed in this mode.",
         ReallyCloseWindow: "Do you really want to close the window without saving the changes?",
+        LoadedCircuitFromSessionStorage: template("Loaded from last session on ${day} at ${time}"),
+        FailedToLoadCircuitFromStorage: template("Failed to load the circuit (${error})"),
+        NoSavedData: "Nothing to restore for this editor.",
         DevelopedBy: "Developed by",
 
         DidUndo: "Undo",

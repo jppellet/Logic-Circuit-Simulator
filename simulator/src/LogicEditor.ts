@@ -43,7 +43,7 @@ import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
 import { makeIcon } from "./images"
 import { DefaultLang, S, getLang, isLang, setLang } from "./strings"
-import { Any, InBrowser, KeysOfByType, LogicValue, UIDisplay, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, setDisplay, setVisible, showModal, toggleVisible, valuesFromReprForInput } from "./utils"
+import { Any, InBrowser, KeysOfByType, LogicValue, UIDisplay, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toggleVisible, valuesFromReprForInput } from "./utils"
 
 
 
@@ -61,10 +61,14 @@ const MAX_MODE_WHEN_SINGLETON = Mode.FULL
 const MAX_MODE_WHEN_EMBEDDED = Mode.DESIGN
 const DEFAULT_MODE = Mode.DESIGN
 
+const SINGLETON_INSTANCE_ID = "_main"
+
 const ATTRIBUTE_NAMES = {
     lang: "lang",
     singleton: "singleton", // whether this is the only editor in the page
     mode: "mode",
+    id: "id",
+    autosave: "autosave",
     hidereset: "hidereset",
     exportformat: "exportformat", // differences between MyST and pymarkdown
 
@@ -204,7 +208,16 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     private _isEmbedded = false
     private _isSingleton = false
-    private _persistenceId: string | undefined = "_dummy_id" // TODO
+    /** Mirrors the id HTML attribute, is used to preserve the state across a simple reload with sessionStorage */
+    private _instanceId: string | undefined = undefined
+    public get instanceId() { return this._instanceId }
+    private get persistenceKey() { return this._instanceId === undefined ? undefined : "logic/" + this._instanceId }
+    /** Stores the id used for exporting. This is generated once if we are in the standalone editor, or reused if we are in a populated instance */
+    private _idWhenExporting: string | undefined = undefined
+    public get idWhenExporting() { if (this._idWhenExporting === undefined) { this._idWhenExporting = randomString(6) } return this._idWhenExporting }
+    /** Whether localStorage should be used in addition to sessionStorage, saving the state across page visits */
+    private _autosave: boolean = false
+    public get autosave() { return this._autosave }
     private _maxInstanceMode: Mode = MAX_MODE_WHEN_EMBEDDED // can be set later
     private _isDirty = false
     private _isRunningOrCreatingTests = false // when inputs are being set programmatically over a longer period
@@ -493,7 +506,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this._maxInstanceMode = this._isSingleton && !this._isEmbedded ? MAX_MODE_WHEN_SINGLETON : MAX_MODE_WHEN_EMBEDDED
         this._exportformat = this.getAttribute(ATTRIBUTE_NAMES.exportformat) ?? undefined
 
-        // Transfer from URL param to attributes if we are in singleton mode
+        // Transfer from URL param to attributes if we are in singleton mode or embedded with data transferred in the URL
         if (this._isSingleton || this._isEmbedded) {
             const transferUrlParamToAttribute = (name: string) => {
                 const value = getURLParameter(name)
@@ -504,6 +517,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
             for (const attr of [
                 ATTRIBUTE_NAMES.mode,
+                ATTRIBUTE_NAMES.id,
                 ATTRIBUTE_NAMES.showonly,
                 ATTRIBUTE_NAMES.showgatetypes,
                 ATTRIBUTE_NAMES.showdisconnectedpins,
@@ -614,6 +628,27 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             this._maxInstanceMode = (Mode as any)[modeAttr]
         }
 
+        const autosaveAttr = this.getAttribute(ATTRIBUTE_NAMES.autosave)
+        if (autosaveAttr !== null && !isFalsyString(autosaveAttr)) {
+            this._autosave = true
+        }
+
+        const idAttr = this.getAttribute(ATTRIBUTE_NAMES.id)
+        if (idAttr !== null || this._isSingleton) {
+            if (idAttr !== null) {
+                this._instanceId = idAttr
+                if (idAttr !== SINGLETON_INSTANCE_ID) {
+                    this._idWhenExporting = idAttr
+                }
+            } else {
+                this._instanceId = SINGLETON_INSTANCE_ID // default id for singleton
+            }
+        } else {
+            const fct = this._autosave ? "error" : "warn"
+            console[fct]("No id attribute on logic-editor, undownloaded state will be lost", this)
+            this._autosave = false
+        }
+
         const showonlyAttr = this.getAttribute(ATTRIBUTE_NAMES.showonly)
         if (showonlyAttr !== null) {
             this._options.showOnly = showonlyAttr.toLowerCase().split(/[, +]+/).filter(x => x.trim())
@@ -650,7 +685,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                     this._initialData = { _type: "json", json: innerScriptElem.innerHTML }
                     innerScriptElem.remove() // remove the data element to hide the raw data
                     // do this manually
-                    this.tryLoadCircuitFromData()
+                    this.tryLoadCircuitFromData(true, false)
                     this.doRedraw(true)
                     return true
                 } else {
@@ -916,7 +951,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             this.redraw()
         })
 
-        this.tryLoadCircuitFromData()
+        this.tryLoadCircuitFromData(true, false)
         // also triggers redraw, should be last thing called here
 
         this.setModeFromString(this.getAttribute(ATTRIBUTE_NAMES.mode))
@@ -951,8 +986,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         // make gallery available globally
         window.gallery = gallery
 
-        window.addEventListener("mousemove", e => {
-            // console.log({ x: e.clientX, y: e.clientY })
+        window.addEventListener("pointermove", e => {
+            // console.log(`pointermove with x=${e.clientX}, y=${e.clientY}`)
             for (const editor of LogicEditor._allConnectedEditors) {
                 const canvasContainer = editor.html.canvasContainer
                 if (canvasContainer !== undefined) {
@@ -1133,17 +1168,130 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
      * and localStorage items can be proposed in the UI for reloading.
      */
     public trySaveInBrowserStorage(circuit: Circuit) {
-        if (this._persistenceId === undefined) {
+        const key = this.persistenceKey
+        if (key === undefined) {
+            // console.log("No persistence ID set, not saving circuit")
             return
         }
 
-        const circuitStr = Serialization.stringifyObject(circuit, true)
         const now = Date.now()
+        const saveStr = now + ";" + Serialization.stringifyObject(circuit, true)
         try {
-            localStorage.setItem("logic_" + this._persistenceId, now + ";" + circuitStr)
-            sessionStorage.setItem("logic_" + this._persistenceId, circuitStr)
+            sessionStorage.setItem(key, saveStr)
+            if (this._autosave) {
+                localStorage.setItem(key, saveStr)
+                console.log(`Saved circuit to session and local storage with key '${key}'`)
+            } else {
+                console.log(`Saved circuit to session (not local) storage with key '${key}'`)
+            }
         } catch (e) {
             console.error("Failed to save circuit to browser storage", e)
+        }
+    }
+
+    /**
+     * Automatically called upon load after the initial data has been loaded.
+     * Allows to restore the circuit from the session storage only (local storage is
+     * only upon user request).
+     */
+    public tryLoadFromSessionStorage(): boolean {
+        const savedTime = this.tryLoadFromStorage(sessionStorage, false)
+        if (savedTime === undefined) {
+            return false
+        }
+        if (isString(savedTime)) {
+            console.error("Failed to load circuit from session storage", savedTime)
+            return false
+        }
+        this.showLoadedMessage(savedTime, true)
+        return true
+    }
+
+    /**
+     * This does something similar as `tryLoadFromSessionStorage` but it is initiated
+     * by the user and should show errors
+     */
+    public tryLoadFromLocalStorage(): boolean {
+        const savedTime = this.tryLoadFromStorage(localStorage, true)
+        if (savedTime === undefined) {
+            window.alert(S.Messages.NoSavedData)
+            return false
+        }
+
+        if (isString(savedTime)) {
+            window.alert(S.Messages.FailedToLoadCircuitFromStorage.expand({ error: savedTime }))
+            console.error("Failed to load circuit from session storage", savedTime)
+            return false
+        }
+        this.showLoadedMessage(savedTime, false)
+        return true
+    }
+
+    private showLoadedMessage(savedTime: Date, keepOpen: boolean) {
+        const day = savedTime.toLocaleDateString(undefined, {
+            year: '2-digit',
+            month: '2-digit',
+            day: '2-digit',
+        })
+        const time = savedTime.toLocaleTimeString(undefined, {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: undefined,
+        })
+
+        this.showMessage(S.Messages.LoadedCircuitFromSessionStorage.expand({ day, time }), keepOpen ? 0 : 2000, keepOpen)
+    }
+
+    /**
+     * @returns undefined if no persistence id is set or nothing is saved; a string in case of an error to report; a Date if loaded successfully
+     */
+    private tryLoadFromStorage(storage: Storage, takeSnapshot: boolean): undefined | Date | string {
+        const key = this.persistenceKey
+        if (key === undefined) {
+            return undefined
+        }
+
+        const savedStr = storage.getItem(key)
+        if (savedStr === null || savedStr.length === 0) {
+            // console.log(`Nothing to load from ${storage === localStorage ? "local" : "session"} storage with key '${key}'`)
+            return undefined
+        }
+        // console.log(`Loading circuit from ${storage === localStorage ? "local" : "session"} storage with key '${key}'`)
+
+        let semicolIndex = -1
+        if ((semicolIndex = savedStr.indexOf(";")) === -1) {
+            return "unparseable saved string"
+        }
+
+        const circuitStr = savedStr.substring(semicolIndex + 1)
+        const error = Serialization.loadCircuitOrLibrary(this, circuitStr, takeSnapshot)
+        if (error !== undefined) {
+            return error
+        }
+
+        try {
+            return new Date(Number(savedStr.substring(0, semicolIndex)))
+        } catch (e) {
+            return new Date()
+        }
+    }
+
+    public tryClearBrowserStorage() {
+        const key = this.persistenceKey
+        if (key === undefined) {
+            return
+        }
+
+        try {
+            localStorage.removeItem(key)
+        } catch (e) {
+            // ignore
+        }
+
+        try {
+            sessionStorage.removeItem(key)
+        } catch (e) {
+            // ignore
         }
     }
 
@@ -1171,7 +1319,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                     if (isString(compressedJSON)) {
                         this._initialData = { _type: "compressed", str: compressedJSON }
                         this.wrapHandler(() => {
-                            this.tryLoadCircuitFromData()
+                            this.tryLoadCircuitFromData(false, true)
                         })()
                     }
                 }
@@ -1202,74 +1350,85 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
     }
 
-    public tryLoadCircuitFromData() {
-        if (this._initialData === undefined) {
-            return
-        }
+    public tryLoadCircuitFromData(tryLoadStorage: boolean, takeSnapshot: boolean) {
+        // console.log(`tryLoadCircuitFromData with tryLoadStorage=${tryLoadStorage}, takeSnapshot=${takeSnapshot}`)
+        if (this._initialData !== undefined) {
 
-        if (this._initialData._type === "url") {
-            // load from URL
-            const url = this._initialData.url
-            // will only work within the same domain for now
-            fetch(url, { mode: "cors" }).then(response => response.text()).then(json => {
-                console.log(`Loaded initial data from URL '${url}'`)
-                this._initialData = { _type: "json", json }
-                this.tryLoadCircuitFromData()
-            })
+            // if URL, load and call the function again
+            if (this._initialData._type === "url") {
+                // load from URL
+                const url = this._initialData.url
+                // will only work within the same domain for now
+                fetch(url, { mode: "cors" }).then(response => response.text()).then(json => {
+                    console.log(`Loaded initial data from URL '${url}'`)
+                    this._initialData = { _type: "json", json }
+                    this.tryLoadCircuitFromData(tryLoadStorage, takeSnapshot)
+                })
 
-            // TODO try fetchJSONP if this fails?
-
-            return
-        }
-
-        let error: undefined | string = undefined
-
-        if (this._initialData._type === "json") {
-            // already decompressed
-            try {
-                error = Serialization.loadCircuitOrLibrary(this, this._initialData.json)
-            } catch (e) {
-                error = String(e) + " (JSON)"
+                // TODO try fetchJSONP if this fails?
+                return
             }
 
-        } else {
-            let decodedData
-            try {
-                decodedData = LZString.decompressFromEncodedURIComponent(this._initialData.str)
-                if (this._initialData.str.length !== 0 && (decodedData?.length ?? 0) === 0) {
-                    throw new Error("zero decoded length")
-                }
-            } catch (err) {
-                error = String(err) + " (LZString)"
+            let error: undefined | string = undefined
 
-                // try the old, uncompressed way of storing the data in the URL
+            if (this._initialData._type === "json") {
+                // already decompressed
                 try {
-                    decodedData = LogicEditor.decodeFromURLOld(this._initialData.str)
-                    error = undefined
+                    error = Serialization.loadCircuitOrLibrary(this, this._initialData.json, takeSnapshot)
                 } catch (e) {
-                    // swallow error from old format
+                    error = String(e) + " (JSON)"
+                }
+
+            } else {
+                let decodedData
+                try {
+                    decodedData = LZString.decompressFromEncodedURIComponent(this._initialData.str)
+                    if (this._initialData.str.length !== 0 && (decodedData?.length ?? 0) === 0) {
+                        throw new Error("zero decoded length")
+                    }
+                } catch (err) {
+                    error = String(err) + " (LZString)"
+
+                    // try the old, uncompressed way of storing the data in the URL
+                    try {
+                        decodedData = LogicEditor.decodeFromURLOld(this._initialData.str)
+                        error = undefined
+                    } catch (e) {
+                        // swallow error from old format
+                    }
+                }
+
+                if (error === undefined && isString(decodedData)) {
+                    // remember the decompressed/decoded value
+                    error = Serialization.loadCircuitOrLibrary(this, decodedData, takeSnapshot)
+                    if (error === undefined) {
+                        this._initialData = { _type: "json", json: decodedData }
+                    }
                 }
             }
 
-            if (error === undefined && isString(decodedData)) {
-                // remember the decompressed/decoded value
-                error = Serialization.loadCircuitOrLibrary(this, decodedData)
-                if (error === undefined) {
-                    this._initialData = { _type: "json", json: decodedData }
-                }
+
+            if (error !== undefined) {
+                console.log("ERROR could not not load initial data: " + error)
             }
         }
 
+        let isConsideredDirty = false
+        if (tryLoadStorage) {
+            // try restore from session storage
+            if (this.tryLoadFromSessionStorage()) {
+                isConsideredDirty = true
+            }
+        }
 
-        if (error !== undefined) {
-            console.log("ERROR could not not load initial data: " + error)
-        } else {
+        if (!isConsideredDirty) {
             this.clearDirty()
         }
     }
 
     public resetCircuit() {
-        this.editor.tryLoadCircuitFromData()
+        this.tryClearBrowserStorage()
+        this.editor.tryLoadCircuitFromData(false, false)
     }
 
     public tryCloseCustomComponentEditor() {
@@ -1297,7 +1456,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     public loadCircuitOrLibrary(jsonStringOrObject: string | Record<string, unknown>) {
         this.wrapHandler(
             (jsonStringOrObject: string | Record<string, unknown>) =>
-                Serialization.loadCircuitOrLibrary(this, jsonStringOrObject)
+                Serialization.loadCircuitOrLibrary(this, jsonStringOrObject, true)
         )(jsonStringOrObject)
     }
 
@@ -1394,8 +1553,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.html.canvasContainer.style.cursor = cursor
     }
 
-    public showMessage(msg: Modifier, duration: number = 2000): () => void {
-        return this._messageBar?.showMessage(msg, duration) ?? (() => undefined)
+    public showMessage(msg: Modifier, duration: number = 2000, withCloseButton: boolean = false): () => void {
+        return this._messageBar?.showMessage(msg, duration, withCloseButton) ?? (() => undefined)
     }
 
     public offsetXYForContextMenu(e: MouseEvent | TouchEvent | MouseDragEvent | TouchDragEvent, snapToGrid = false): [number, number] {
@@ -1539,11 +1698,12 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             this._mode = MAX_MODE_WHEN_EMBEDDED
         }
         const modeStr = Mode[mode].toLowerCase()
+        const idWhenExporting = this.idWhenExporting
         const { fullJson, compressedJsonForUri, showOnlyArr } = this.fullJsonStateAndCompressedForUri(true)
 
         console.log("JSON:\n" + fullJson)
 
-        const fullUrl = this.fullUrlForMode(mode, compressedJsonForUri, showOnlyArr)
+        const fullUrl = this.fullUrlForMode(mode, compressedJsonForUri, showOnlyArr, idWhenExporting)
         this.html.embedUrl.value = fullUrl
 
         const modeParam = mode === MAX_MODE_WHEN_EMBEDDED ? "" : `:mode: ${modeStr}`
@@ -1553,9 +1713,9 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const markdownBlock =
             this._exportformat === "superfence"
                 // superfence
-                ? `\`\`\`{.logic height=${embedHeight} mode=${modeStr}${showOnlySpaceDelim === undefined ? '' : `showonly=${showOnlySpaceDelim}`}}\n${fullJson}\n\`\`\``
+                ? `\`\`\`{.logic id=${idWhenExporting} height=${embedHeight} mode=${modeStr}${showOnlySpaceDelim === undefined ? '' : `showonly=${showOnlySpaceDelim}`}}\n${fullJson}\n\`\`\``
                 // default, myst-style
-                : `\`\`\`{logic}\n:height: ${embedHeight}\n${modeParam}\n${showOnlySpaceDelim === undefined ? '' : `:showonly: ${showOnlySpaceDelim}\n`}\n${fullJson}\n\`\`\``
+                : `\`\`\`{logic}\n:id: ${idWhenExporting}\n:height: ${embedHeight}\n${modeParam}\n${showOnlySpaceDelim === undefined ? '' : `:showonly: ${showOnlySpaceDelim}\n`}\n${fullJson}\n\`\`\``
         this.html.embedMarkdown.value = markdownBlock
 
         const showOnlyHtmlAttr = showOnlySpaceDelim === undefined ? "" : ` showonly="${showOnlySpaceDelim}"`
@@ -1563,9 +1723,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const iframeEmbed = `<iframe style="width: 100%; height: ${embedHeight}px; border: 0"${showOnlyHtmlAttr} src="${fullUrl}"></iframe>`
         this.html.embedIframe.value = iframeEmbed
 
-        const webcompEmbed = `<div style="width: 100%; height: ${embedHeight}px">\n  <logic-editor mode="${Mode[mode].toLowerCase()}"${showOnlyHtmlAttr}>\n    <script type="application/json5">\n      ${fullJson.replace(/\n/g, "\n      ")}\n    </script>\n  </logic-editor>\n</div>`
+        const webcompEmbed = `<div style="width: 100%; height: ${embedHeight}px">\n  <logic-editor id="${idWhenExporting}" mode="${Mode[mode].toLowerCase()}"${showOnlyHtmlAttr}>\n    <script type="application/json5">\n      ${fullJson.replace(/\n/g, "\n      ")}\n    </script>\n  </logic-editor>\n</div>`
         this.html.embedWebcomp.value = webcompEmbed
-
 
         // const dataUrl = await QRCode.toDataURL(fullUrl, { margin: 0, errorCorrectionLevel: 'L' })
         // const qrcodeImg = this.html.embedUrlQRCode
@@ -1598,7 +1757,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     public saveToUrl(compressedUriSafeJson: string, showOnly: string[] | undefined) {
         if (this._isSingleton) {
-            history.pushState(null, "", this.fullUrlForMode(MAX_MODE_WHEN_SINGLETON, compressedUriSafeJson, showOnly))
+            history.pushState(null, "", this.fullUrlForMode(MAX_MODE_WHEN_SINGLETON, compressedUriSafeJson, showOnly, this.instanceId))
             this.clearDirty()
             this.showMessage(S.Messages.SavedToUrl)
         }
@@ -1627,14 +1786,18 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         return { fullJson, compressedJsonForUri, showOnlyArr }
     }
 
-    private fullUrlForMode(mode: Mode, compressedUriSafeJson: string, showOnlyArr: string[] | undefined): string {
+    private fullUrlForMode(mode: Mode, compressedUriSafeJson: string, showOnlyArr: string[] | undefined, id: string | undefined): string {
         const loc = window.location
         const showOnlyParam = showOnlyArr === undefined ? "" : `&${ATTRIBUTE_NAMES.showonly}=${showOnlyArr.join(",")}`
         const currentLang = getLang()
         const hasCorrectLangParam = new URL(loc.href).searchParams.get(ATTRIBUTE_NAMES.lang) === currentLang
         const langParam = !hasCorrectLangParam ? "" // no param, keep default lang
             : `&${ATTRIBUTE_NAMES.lang}=${currentLang}` // keep currently set lang
-        return `${loc.protocol}//${loc.host}${loc.pathname}?${ATTRIBUTE_NAMES.mode}=${Mode[mode].toLowerCase()}${langParam}${showOnlyParam}&${ATTRIBUTE_NAMES.data}=${compressedUriSafeJson}`
+        if (id === SINGLETON_INSTANCE_ID) {
+            id = undefined
+        }
+        const idParam = id === undefined ? "" : `id=${id}&`
+        return `${loc.protocol}//${loc.host}${loc.pathname}?${idParam}${ATTRIBUTE_NAMES.mode}=${Mode[mode].toLowerCase()}${langParam}${showOnlyParam}&${ATTRIBUTE_NAMES.data}=${compressedUriSafeJson}`
     }
 
     public toBase64(blob: Blob | null | undefined): Promise<string | undefined> {
@@ -2449,7 +2612,7 @@ export class LogicStatic {
             diagramRefs = [diagramRefs]
         }
         for (const diagramRef of diagramRefs) {
-            const diagram = document.getElementById("logic_" + diagramRef)
+            const diagram = document.getElementById("logic_" + diagramRef) ?? document.getElementById(diagramRef)
             if (diagram === null) {
                 console.log(`Cannot find logic diagram with reference '${diagramRef}'`)
                 return

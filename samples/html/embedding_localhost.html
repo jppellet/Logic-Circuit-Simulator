@@ -9,7 +9,7 @@
 	<title>Logic</title>
 
 
-	<script src="http://localhost:8088/simulator/lib/bundle.js"></script>
+	<script src="http://localhost:8088/simulator/lib/bundle-dev.js"></script>
 	<style>
 		* {
 			box-sizing: border-box;
@@ -23,14 +23,50 @@
 	<p>Here's an embed test.</p>
 
 	<div style="width: 600px; height: 300px; margin: 30px; padding: 5px; border: 1px solid lightgray; border-radius: 5px;">
-		<logic-editor mode="connect">
+		<logic-editor mode="connect" id="test1">
 			<script type="application/json5">
-			  {
-				"v": 2,
-				"in": [{"pos": [150, 210], "id": 7, "name": "Clock (horloge)", "val": 0, "isPushButton": true}],
-				"components": [{"type": "counter", "pos": [230, 80], "in": [0, 1], "out": [2, 3, 4, 5, 6], "count": 4}],
-				"wires": [[7, 0]]
-			  }
+				{ // JSON5
+					v: 6,
+					components: [
+					  {pos: [150, 210], id: 7, name: 'Clock (horloge)', val: 0, isPushButton: true, type: 'in'},
+					  {type: 'counter', pos: [230, 80], in: [0, 1], out: [2, 3, 4, 5, 6], count: 4},
+					],
+					wires: [[7, 0]]
+				  }
+			</script>
+		</logic-editor>
+	</div>
+
+	<p>Here's another embed test.</p>
+
+	<div style="width: 600px; height: 300px; margin: 30px; padding: 5px; border: 1px solid lightgray; border-radius: 5px;">
+		<logic-editor mode="design" id="test2" autosave>
+			<script type="application/json5">
+				{ // JSON5
+					v: 6,
+					components: [
+					  {pos: [150, 210], id: 7, name: 'Clock (horloge)', val: 0, isPushButton: true, type: 'in'},
+					  {type: 'counter', pos: [230, 80], in: [0, 1], out: [2, 3, 4, 5, 6], count: 4},
+					],
+					wires: [[7, 0]]
+				  }
+			</script>
+		</logic-editor>
+	</div>
+
+	<p>And another.</p>
+
+	<div style="width: 600px; height: 300px; margin: 30px; padding: 5px; border: 1px solid lightgray; border-radius: 5px;">
+		<logic-editor mode="full" id="test3">
+			<script type="application/json5">
+				{ // JSON5
+					v: 6,
+					components: [
+					  {pos: [150, 210], id: 7, name: 'Clock (horloge)', val: 0, isPushButton: true, type: 'in'},
+					  {type: 'counter', pos: [230, 80], in: [0, 1], out: [2, 3, 4, 5, 6], count: 4},
+					],
+					wires: [[7, 0]]
+				  }
 			</script>
 		</logic-editor>
 	</div>

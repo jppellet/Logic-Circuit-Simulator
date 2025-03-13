@@ -88,8 +88,8 @@ export class TopBar {
 
         this.openButton = this.makeButtonWithLabel("open", s.Open,
             this.openHandler.bind(this))
-        // this.loadFromBrowserButton = this.makeButtonWithLabel("browserload", s.Restore,
-        //     this.loadFromBrowser.bind(this))
+        this.loadFromBrowserButton = this.makeButtonWithLabel("browserload", s.Restore,
+            this.loadFromBrowserHandler.bind(this))
         this.downloadButton = this.makeButtonWithLabel("download", s.Download,
             this.saveHandler.bind(this))
         this.screenshotButton = this.makeButtonWithLabel("screenshot", s.Screenshot,
@@ -143,7 +143,7 @@ export class TopBar {
 
                 this.makeSep(),
                 this.openButton,
-                this.loadFromBrowserButton,
+                this.editor.autosave ? this.loadFromBrowserButton : emptyMod,
                 this.downloadButton,
                 this.screenshotButton,
 
@@ -213,9 +213,8 @@ export class TopBar {
         })
     }
 
-    private loadFromBrowser() {
-        sessionStorage
-        // TODO
+    private loadFromBrowserHandler() {
+        this.editor.tryLoadFromLocalStorage()
     }
 
     private saveHandler(e: MouseEvent) {

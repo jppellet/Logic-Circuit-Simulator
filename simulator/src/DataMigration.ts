@@ -1,13 +1,11 @@
-import { Serialization, stringifySmart } from "./Serialization"
+import { Serialization } from "./Serialization"
 import { binaryStringRepr, isAllZeros, isArray, isRecord, isString, toLogicValue } from "./utils"
 
 export const CurrentFormatVersion = 6
 
-export function migrateData(data: Record<string, unknown>) {
+export function migrateData(data: Record<string, unknown>, editorId: string | undefined) {
 
-    const LogBeforeAfter = false
-
-    const initialRepr = !LogBeforeAfter ? undefined : isString(data) ? data : stringifySmart(data, { maxLength: 140 })
+    // const initialRepr = !LogBeforeAfter ? undefined : isString(data) ? data : stringifySmart(data, { maxLength: 140 })
 
     let jsonVersion = Number(data.v ?? 0)
     const savedVersion = jsonVersion
@@ -34,13 +32,10 @@ export function migrateData(data: Record<string, unknown>) {
         data.v = jsonVersion
     }
     if (jsonVersion !== savedVersion) {
-        console.log(`Migrated data format from v${savedVersion} to v${jsonVersion}, consider upgrading the source`)
-        if (LogBeforeAfter) {
-            console.log("BEFORE:\n" + initialRepr)
-            console.log("AFTER:\n" + Serialization.stringifyObject(data, false))
-        }
-    } else if (LogBeforeAfter) {
-        console.log(`Data format ${savedVersion} is up to date, no migration necessary`)
+        const newRepr = Serialization.stringifyObject(data, false)
+        const editorIdStr = editorId !== undefined ? ` for editor '${editorId}'` : ""
+        console.log(`LogicEditor${editorIdStr} migrated data format from v${savedVersion} to v${jsonVersion}, consider upgrading its source to this:\n${newRepr}`)
+        // console.log("WAS:\n" + initialRepr)
     }
 }
 

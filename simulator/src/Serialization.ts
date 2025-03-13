@@ -61,7 +61,6 @@ export type ComponentAndWires = {
 }
 
 type LoadOptions = {
-    isUndoRedoAction?: boolean,
     immediateWirePropagation?: boolean,
     skipMigration?: boolean
 }
@@ -84,7 +83,7 @@ class _Serialization {
         saveAs(blob, filename)
     }
 
-    public loadCircuitOrLibrary(editor: LogicEditor, content: string | Record<string, unknown>, opts?: LoadOptions) {
+    public loadCircuitOrLibrary(editor: LogicEditor, content: string | Record<string, unknown>, takeSnapshot: boolean, opts?: LoadOptions) {
         let parsed: Record<string, unknown>
         if (!isString(content)) {
             parsed = content
@@ -100,7 +99,7 @@ class _Serialization {
         if (isLib) {
             return this.doLoadLibrary(editor, parsed)
         } else {
-            return this.loadCircuit(editor, parsed, opts)
+            return this.loadCircuit(editor, parsed, takeSnapshot, opts)
         }
     }
 
@@ -137,7 +136,7 @@ class _Serialization {
     // Private
 
     private doLoadLibrary(editor: LogicEditor, parsed: Record<string, unknown>) {
-        migrateData(parsed)
+        migrateData(parsed, editor.instanceId)
         const numLoaded = editor.factory.tryLoadCustomDefsFrom(parsed.defs)
         editor.updateCustomComponentButtons()
         editor.showMessage(S.Messages.LoadedDefinitions.expand({ n: numLoaded }))
@@ -147,6 +146,7 @@ class _Serialization {
     public loadCircuit(
         parent: DrawableParent,
         parsed_: Record<string, unknown>,
+        takeSnapshot: boolean,
         opts?: LoadOptions,
     ): undefined | string { // string is an error
 
@@ -155,7 +155,7 @@ class _Serialization {
 
         try {
             if (!(opts?.skipMigration ?? false)) {
-                migrateData(parsed)
+                migrateData(parsed, parent.editor.instanceId)
             }
         } catch (err) {
             console.error(err)
@@ -217,8 +217,7 @@ class _Serialization {
             parent.setPartialOptions(parsed.opts as any)
             delete parsed.opts
 
-            const isUndoRedoAction = opts?.isUndoRedoAction ?? false
-            if (!isUndoRedoAction) {
+            if (takeSnapshot) {
                 parent.editor.editTools.undoMgr.takeSnapshot()
             }
 
@@ -251,7 +250,7 @@ class _Serialization {
     }
 
     public loadCircuitForCustomComponent(customComp: CustomComponent, parsed: Record<string, unknown>): string | undefined {
-        const error = this.loadCircuit(customComp, parsed, { immediateWirePropagation: true, skipMigration: true })
+        const error = this.loadCircuit(customComp, parsed, false, { immediateWirePropagation: true, skipMigration: true })
         if (error !== undefined) {
             return error
         }

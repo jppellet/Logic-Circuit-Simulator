@@ -89,6 +89,15 @@ export function mergeWhereDefined<A, B>(a: A, b: B): A & PickDefined<B> {
     return obj
 }
 
+export function randomString(n: number) {
+    const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    let str = ""
+    for (let i = 0; i < n; i++) {
+        str += chars[Math.floor(Math.random() * chars.length)]
+    }
+    return str
+}
+
 export function brand<B>() {
     return <A>(val: A): t.Branded<A, B> => {
         return val as any
