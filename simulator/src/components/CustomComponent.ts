@@ -467,8 +467,8 @@ export class CustomComponent extends ComponentBase<CustomComponentRepr, LogicVal
         }
     }
 
-    public override mouseDoubleClicked(e: MouseEvent | TouchEvent) {
-        const result = super.mouseDoubleClicked(e)
+    public override pointerDoubleClicked(e: PointerEvent) {
+        const result = super.pointerDoubleClicked(e)
         if (result.isChange) {
             return result
         }

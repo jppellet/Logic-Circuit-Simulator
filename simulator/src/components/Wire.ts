@@ -5,7 +5,7 @@ import { span, style, title } from "../htmlgen"
 import { DrawParams } from "../LogicEditor"
 import { S } from "../strings"
 import { Timestamp } from "../Timeline"
-import { MouseDragEvent, TouchDragEvent } from "../UIEventManager"
+import { PointerDragEvent } from "../UIEventManager"
 import { InteractionResult, LogicValue, Mode, isArray, isString, toLogicValueRepr, typeOrNull, typeOrUndefined } from "../utils"
 import { Component, NodeGroup } from "./Component"
 import { DrawContext, Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, GraphicsRendering, MenuData, Orientation, Orientations_, PositionSupportRepr } from "./Drawable"
@@ -93,7 +93,7 @@ export class Waypoint extends DrawableWithDraggablePosition {
         this.wire.invalidateWirePath()
     }
 
-    public override cursorWhenMouseover(e?: MouseEvent | TouchEvent) {
+    public override cursorWhenMouseover(e?: PointerEvent) {
         const mode = this.parent.mode
         if ((e?.ctrlKey ?? false) && mode >= Mode.CONNECT) {
             return "context-menu"
@@ -416,7 +416,7 @@ export class Wire extends Drawable {
         return this.startNode.isAlive && this.endNode.isAlive
     }
 
-    public addPassthroughFrom(e: MouseEvent | TouchEvent | MouseDragEvent | TouchDragEvent): Passthrough | undefined {
+    public addPassthroughFrom(e: MouseEvent): Passthrough | undefined {
         const parent = this.parent
         const [x, y] = parent.editor.offsetXYForContextMenu(e, true)
         const endNode = this.endNode
@@ -439,7 +439,7 @@ export class Wire extends Drawable {
         return passthrough
     }
 
-    public addWaypointFrom(e: MouseEvent | TouchEvent | MouseDragEvent | TouchDragEvent): Waypoint {
+    public addWaypointFrom(e: MouseEvent): Waypoint {
         const [x, y] = this.parent.editor.offsetXYForContextMenu(e, false)
         return this.addWaypointWith(x, y)
     }
@@ -585,32 +585,32 @@ export class Wire extends Drawable {
         return this.wirePath.isOver(x, y)
     }
 
-    public override mouseDown(e: MouseEvent | TouchEvent) {
+    public override pointerDown(e: PointerEvent) {
         if (e.altKey && this.parent.mode >= Mode.DESIGN) {
             const passthrough = this.addPassthroughFrom(e)
             if (passthrough !== undefined) {
-                return passthrough.outputs.Out[0].mouseDown(e)
+                return passthrough.outputs.Out[0].pointerDown(e)
             }
         }
-        return super.mouseDown(e)
+        return super.pointerDown(e)
     }
 
-    public override mouseDragged(e: MouseDragEvent | TouchDragEvent) {
+    public override pointerDragged(e: PointerDragEvent) {
         if (this._waypointBeingDragged !== undefined) {
-            this._waypointBeingDragged.mouseDragged(e)
+            this._waypointBeingDragged.pointerDragged(e)
         } else {
             if (this.parent.editor.eventMgr.currentSelectionEmpty()) {
                 const waypoint = this.addWaypointFrom(e)
                 this._waypointBeingDragged = waypoint
-                waypoint.mouseDown(e)
-                waypoint.mouseDragged(e)
+                waypoint.pointerDown(e)
+                waypoint.pointerDragged(e)
             }
         }
     }
 
-    public override mouseUp(e: MouseEvent | TouchEvent) {
+    public override pointerUp(e: PointerEvent) {
         if (this._waypointBeingDragged !== undefined) {
-            this._waypointBeingDragged.mouseUp(e)
+            this._waypointBeingDragged.pointerUp(e)
             this._waypointBeingDragged = undefined
             return InteractionResult.SimpleChange
         }
@@ -971,8 +971,8 @@ export class LinkManager {
             const y1 = nodeFrom.posY
             const editor = this.parent.editor
             const zoomFactor = editor.options.zoom / 100
-            const x2 = editor.mouseX / zoomFactor
-            const y2 = editor.mouseY / zoomFactor
+            const x2 = editor.pointerX / zoomFactor
+            const y2 = editor.pointerY / zoomFactor
             g.beginPath()
             g.moveTo(x1, y1)
             if (this.parent.editor.options.wireStyle === WireStyles.straight) {
@@ -1001,8 +1001,8 @@ export class LinkManager {
             const y1 = drawable.posY
             const editor = this.parent.editor
             const zoomFactor = editor.options.zoom / 100
-            const x2 = editor.mouseX / zoomFactor
-            const y2 = editor.mouseY / zoomFactor
+            const x2 = editor.pointerX / zoomFactor
+            const y2 = editor.pointerY / zoomFactor
             drawAnchorTo(g, x1, y1, x2, y2, 6, COLOR_ANCHOR_NEW, undefined)
         }
     }

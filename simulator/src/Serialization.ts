@@ -118,7 +118,7 @@ class _Serialization {
         if (isArray(parsed.pos)) {
             const editor = parent.editor
             const ceil10 = (x: number) => Math.ceil(x / 10) * 10
-            offsetPos = [ceil10(editor.mouseX - parsed.pos[0]), ceil10(editor.mouseY - parsed.pos[1])]
+            offsetPos = [ceil10(editor.pointerX - parsed.pos[0]), ceil10(editor.pointerY - parsed.pos[1])]
             // console.log(`offsetPos = ${offsetPos}`)
         }
 

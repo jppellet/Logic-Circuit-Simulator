@@ -5,26 +5,25 @@ import { CustomComponent } from './components/CustomComponent'
 import { Drawable, DrawableWithDraggablePosition, DrawableWithPosition, MenuData, MenuItem } from "./components/Drawable"
 import { Node } from "./components/Node"
 import { Waypoint, Wire } from './components/Wire'
-import { distSquared, DrawZIndex, GRID_STEP, setColorMouseOverIsDanger } from "./drawutils"
+import { distSquared, DrawZIndex, GRID_STEP, setColorPointerOverIsDanger } from "./drawutils"
 import { applyModifiersTo, button, cls, emptyMod, li, Modifier, ModifierObject, mods, span, type, ul } from './htmlgen'
 import { IconName, makeIcon } from './images'
-import { LogicEditor, MouseAction, MouseActionParams } from './LogicEditor'
+import { LogicEditor, PointerAction, PoionterActionParams } from './LogicEditor'
 import { S } from './strings'
 import { getScrollParent, InteractionResult, Mode, targetIsFieldOrOtherInput, TimeoutHandle } from "./utils"
 
-type MouseDownData = {
+type PointerDownData = {
     mainComp: Drawable | Element
     selectionComps: Drawable[]
-    firedMouseDraggedAlready: boolean
-    fireMouseClickedOnFinish: boolean
+    firedPointerDraggedAlready: boolean
+    fireClickedOnFinish: boolean
     initialXY: [number, number]
     triggeredContextMenu: boolean
 }
 
-export type MouseDragEvent = MouseEvent & { dragStartX: number, dragStartY: number }
-export type TouchDragEvent = TouchEvent & { dragStartX: number, dragStartY: number }
+export type PointerDragEvent = PointerEvent & { dragStartX: number, dragStartY: number }
 
-function setDragStartData(e: MouseEvent | TouchEvent, dragStartX: number, dragStartY: number): asserts e is MouseDragEvent | TouchDragEvent {
+function setDragStartOnEvent(e: PointerEvent, dragStartX: number, dragStartY: number): asserts e is PointerDragEvent {
     const _e = e as any
     _e.dragStartX = dragStartX
     _e.dragStartY = dragStartY
@@ -88,14 +87,14 @@ export class EditorSelection {
 export class UIEventManager {
 
     public readonly editor: LogicEditor
-    private _currentMouseOverComp: Drawable | null = null
-    private _currentMouseOverPopper: [popper: PopperInstance, removeScrollListener: () => void] | null = null
-    private _currentMouseDownData: MouseDownData | null = null
+    private _currentPointerOverComp: Drawable | null = null
+    private _currentPointerOverPopper: [popper: PopperInstance, removeScrollListener: () => void] | null = null
+    private _currentPointerDownData: PointerDownData | null = null
     private _startHoverTimeoutHandle: TimeoutHandle | null = null
-    private _startDragTimeoutHandle: TimeoutHandle | null = null
-    private _currentAction: MouseAction
+    private _longPressTimeoutHandle: TimeoutHandle | null = null
+    private _currentAction: PointerAction
     private _currentHandlers: ToolHandlers
-    private _lastTouchEnd: [Drawable, number] | undefined = undefined
+    private _lastPointerEnd: [Drawable, number] | undefined = undefined
     public currentSelection: EditorSelection | undefined = undefined
 
     public constructor(editor: LogicEditor) {
@@ -104,16 +103,16 @@ export class UIEventManager {
         this._currentHandlers = new EditHandlers(editor)
     }
 
-    public get currentMouseOverComp() {
-        return this._currentMouseOverComp
+    public get currentPointerOverComp() {
+        return this._currentPointerOverComp
     }
 
-    public get currentMouseDownData() {
-        return this._currentMouseDownData
+    public get currentPointerDownData() {
+        return this._currentPointerDownData
     }
 
 
-    public setHandlersFor<M extends MouseAction>(action: M, ...params: MouseActionParams<M>): boolean {
+    public setHandlersFor<M extends PointerAction>(action: M, ...params: PoionterActionParams<M>): boolean {
         if (action === this._currentAction) {
             return false
         }
@@ -125,42 +124,54 @@ export class UIEventManager {
                 case "move":
                     return new MoveHandlers(this.editor)
                 case "setanchor":
-                    return new SetAnchorHandlers(this.editor, ...(params as MouseActionParams<"setanchor">))
+                    return new SetAnchorHandlers(this.editor, ...(params as PoionterActionParams<"setanchor">))
                 case "edit": default:
                     return new EditHandlers(this.editor)
             }
         })()
         this._currentHandlers.unmount()
         this._currentHandlers = newHandlers
-        setColorMouseOverIsDanger(action === "delete")
+        setColorPointerOverIsDanger(action === "delete")
         return true
     }
 
-    public setStartDragTimeout(startMouseDownData: MouseDownData, e: MouseEvent | TouchEvent) {
+    public startLongPressTimeout(startPointerDownData: PointerDownData, e: PointerEvent) {
         // we do this because firefox otherwise sets back offsetX/Y to 0
         const _e = e as any
         _e._savedOffsetX = _e.offsetX
         _e._savedOffsetY = _e.offsetY
         _e._savedTarget = _e.target
 
-        this._startDragTimeoutHandle = setTimeout(
+        this._longPressTimeoutHandle = setTimeout(
             this.editor.wrapHandler(() => {
-                let fireDrag = true
-                const endMouseDownData = this._currentMouseDownData
-                if (endMouseDownData !== null) {
-                    endMouseDownData.fireMouseClickedOnFinish = false
-                    if (endMouseDownData.triggeredContextMenu) {
-                        fireDrag = false
+                let cancelLongPressAction = false
+                const endPointerDownData = this._currentPointerDownData
+                if (endPointerDownData !== null) {
+                    // mark this as handled and not needing a click event
+                    endPointerDownData.fireClickedOnFinish = false
+                    if (endPointerDownData.triggeredContextMenu) {
+                        // cancel the long press action if a context menu was already triggered
+                        cancelLongPressAction = true
                     }
                 }
-                if (fireDrag) {
+                if (cancelLongPressAction) {
+                    return
+                }
+
+                // for mouse events, we trigger a drag after some time
+                if (e.pointerType === "mouse") {
                     const [dragStartX, dragStartY] = this.editor.offsetXY(e, true)
-                    setDragStartData(e, dragStartX, dragStartY)
-                    if (startMouseDownData.mainComp instanceof Drawable) {
-                        this._currentHandlers.mouseDraggedOn(startMouseDownData.mainComp, e)
+                    setDragStartOnEvent(e, dragStartX, dragStartY)
+                    if (startPointerDownData.mainComp instanceof Drawable) {
+                        this._currentHandlers.pointerDraggedOn(startPointerDownData.mainComp, e)
                     }
-                    for (const comp of startMouseDownData.selectionComps) {
-                        this._currentHandlers.mouseDraggedOn(comp, e)
+                    for (const comp of startPointerDownData.selectionComps) {
+                        this._currentHandlers.pointerDraggedOn(comp, e)
+                    }
+                } else {
+                    // for touch events, we trigger a context menu
+                    if (this.editor.mode >= Mode.CONNECT && startPointerDownData.mainComp instanceof Drawable) {
+                        this._currentHandlers.contextMenuOn(startPointerDownData.mainComp, e)
                     }
                 }
             }),
@@ -168,10 +179,10 @@ export class UIEventManager {
         )
     }
 
-    public clearStartDragTimeout() {
-        if (this._startDragTimeoutHandle !== null) {
-            clearTimeout(this._startDragTimeoutHandle)
-            this._startDragTimeoutHandle = null
+    public clearLongPressTimeout() {
+        if (this._longPressTimeoutHandle !== null) {
+            clearTimeout(this._longPressTimeoutHandle)
+            this._longPressTimeoutHandle = null
         }
     }
 
@@ -182,19 +193,19 @@ export class UIEventManager {
         }
     }
 
-    public setCurrentMouseOverComp(comp: Drawable | null) {
-        if (comp !== this._currentMouseOverComp) {
+    public setCurrentPointerOverComp(comp: Drawable | null) {
+        if (comp !== this._currentPointerOverComp) {
             this.clearPopperIfNecessary()
             this.clearHoverTimeoutHandle()
 
-            this._currentMouseOverComp = comp
+            this._currentPointerOverComp = comp
             if (comp !== null) {
                 this._startHoverTimeoutHandle = setTimeout(() => {
-                    this._currentHandlers.mouseHoverOn(comp)
+                    this._currentHandlers.pointerHoverOn(comp)
                     this._startHoverTimeoutHandle = null
                 }, 1200)
             }
-            this.editor.editTools.redrawMgr.requestRedraw({ why: "mouseover changed" })
+            this.editor.editTools.redrawMgr.requestRedraw({ why: "pointerover changed" })
             // console.log("Over component: ", comp)
         }
     }
@@ -203,26 +214,26 @@ export class UIEventManager {
         return this.currentSelection === undefined || this.currentSelection.previouslySelectedElements.size === 0
     }
 
-    public updateMouseOver([x, y]: [number, number], pullingWire: boolean, settingAnchor: boolean) {
+    public updatePointerOver([x, y]: [number, number], pullingWire: boolean, settingAnchor: boolean) {
 
-        // Mouseover search order:
+        // pointerover search order:
         // * Components - overlays
         // * Components - normal, and nodes, sometimes
         // * Wires, sometimes
         // * Components - background
 
-        const findMouseOver: () => Drawable | null = () => {
+        const findPointerOver: () => Drawable | null = () => {
             // easy optimization: maybe we're still over the
             // same component as before, so quickly check this
-            const prevMouseOver = this._currentMouseOverComp
-            if (prevMouseOver !== null && prevMouseOver.drawZIndex !== 0) {
-                // second condition says: always revalidate the mouseover of background components (with z index 0)
+            const prevPointerOver = this._currentPointerOverComp
+            if (prevPointerOver !== null && prevPointerOver.drawZIndex !== 0) {
+                // second condition says: always revalidate the pointerover of background components (with z index 0)
 
                 // we always revalidate wires
                 // if we're setting an anchor, we only want components, not drawables
-                const rejectThis = prevMouseOver instanceof Wire || (settingAnchor && !(prevMouseOver instanceof ComponentBase))
-                if (!rejectThis && prevMouseOver.isOver(x, y)) {
-                    return this._currentMouseOverComp
+                const rejectThis = prevPointerOver instanceof Wire || (settingAnchor && !(prevPointerOver instanceof ComponentBase))
+                if (!rejectThis && prevPointerOver.isOver(x, y)) {
+                    return this._currentPointerOverComp
                 }
             }
             const root = this.editor.editorRoot
@@ -282,7 +293,7 @@ export class UIEventManager {
             return null
         }
 
-        this.setCurrentMouseOverComp(findMouseOver())
+        this.setCurrentPointerOverComp(findPointerOver())
     }
 
     public selectAll() {
@@ -312,11 +323,11 @@ export class UIEventManager {
 
 
     public clearPopperIfNecessary() {
-        if (this._currentMouseOverPopper !== null) {
-            const [popper, removeListener] = this._currentMouseOverPopper
+        if (this._currentPointerOverPopper !== null) {
+            const [popper, removeListener] = this._currentPointerOverPopper
             removeListener()
             popper.destroy()
-            this._currentMouseOverPopper = null
+            this._currentPointerOverPopper = null
             this.editor.html.tooltipElem.style.display = "none"
         }
     }
@@ -338,7 +349,7 @@ export class UIEventManager {
         const scrollListener = () => popper.update()
         scrollParent.addEventListener("scroll", scrollListener)
         const removeListener = () => scrollParent.removeEventListener("scroll", scrollListener)
-        this._currentMouseOverPopper = [popper, removeListener]
+        this._currentPointerOverPopper = [popper, removeListener]
 
         tooltipElem.setAttribute('data-show', '')
         popper.update()
@@ -377,46 +388,36 @@ export class UIEventManager {
             return false
         }
 
-        canvas.addEventListener("touchstart", editor.wrapHandler((e) => {
-            // console.log("canvas touchstart %o %o, composedPath = %o", offsetXY(e), e, e.composedPath())
+        // cancel touch events
+        canvas.addEventListener("touchstart", e => {
             if (this.editor.mode >= Mode.CONNECT) {
                 // prevent scrolling when we can connect
                 e.preventDefault()
             }
-            this._mouseDownTouchStart(e)
-        }))
+        })
 
-        canvas.addEventListener("touchmove", editor.wrapHandler((e) => {
-            // console.log("canvas touchmove %o %o, composedPath = %o", offsetXY(e), e, e.composedPath())
+        canvas.addEventListener("touchmove", e => {
             if (this.editor.mode >= Mode.CONNECT) {
                 // prevent scrolling when we can connect
                 e.preventDefault()
             }
-            this._mouseMoveTouchMove(e)
-        }))
+        })
 
-        canvas.addEventListener("touchend", editor.wrapHandler((e) => {
-            // console.log("canvas touchend %o %o, composedPath = %o", offsetXY(e), e, e.composedPath())
+        canvas.addEventListener("touchend", e => {
             // touchend should always be prevented, otherwise it may
             // generate mouse/click events
             e.preventDefault()
-            this._mouseUpTouchEnd(e)
-            this.setCurrentMouseOverComp(null)
-            this.editor.focus()
+        })
+
+
+        canvas.addEventListener("pointerdown", editor.wrapHandler((e) => {
+            // console.log("pointerdown %o, composedPath = %o", e, e.composedPath())
+            this._pointerDown(e)
         }))
 
-        // canvasContainer.addEventListener("touchcancel", wrapHandler((e) => {
-        //     // console.log("canvas touchcancel %o %o, composedPath = %o", offsetXY(e), e, e.composedPath())
-        // }))
-
-        canvas.addEventListener("mousedown", editor.wrapHandler((e) => {
-            // console.log("mousedown %o, composedPath = %o", e, e.composedPath())
-            this._mouseDownTouchStart(e)
-        }))
-
-        canvas.addEventListener("mousemove", editor.wrapHandler((e) => {
-            // console.log("mousemove %o, composedPath = %o", e, e.composedPath())
-            this._mouseMoveTouchMove(e)
+        canvas.addEventListener("pointermove", editor.wrapHandler((e) => {
+            // console.log("pointermove %o, composedPath = %o", e, e.composedPath())
+            this._pointerMove(e)
             this.editor.updateCursor(e)
         }))
 
@@ -424,19 +425,29 @@ export class UIEventManager {
             this.clearPopperIfNecessary()
         }))
 
-        canvas.addEventListener("mouseup", editor.wrapHandler((e) => {
-            // console.log("mouseup %o, composedPath = %o", e, e.composedPath())
-            this._mouseUpTouchEnd(e)
-            this.updateMouseOver(this.editor.offsetXY(e), false, false)
-            this.editor.updateCursor(e)
+        document.addEventListener("pointerdown", e => this._currentHandlers.hideContextMenuIfNeeded(e))
+
+        canvas.addEventListener("pointerup", editor.wrapHandler((e) => {
+            // console.log("pointerup %o, composedPath = %o", e, e.composedPath())
+            this._pointerUp(e)
+            if (e.pointerType === "touch") {
+                this.setCurrentPointerOverComp(null)
+            } else {
+                this.updatePointerOver(this.editor.offsetXY(e), false, false)
+                this.editor.updateCursor(e)
+            }
             this.editor.focus()
         }))
+
+        // canvas.addEventListener("pointercancel", editor.wrapHandler((e) => {
+        //     // console.log("canvas touchcancel %o %o, composedPath = %o", offsetXY(e), e, e.composedPath())
+        // }))
 
         canvas.addEventListener("contextmenu", editor.wrapHandler((e) => {
             // console.log("contextmenu %o, composedPath = %o", e, e.composedPath())
             e.preventDefault()
-            if (this.editor.mode >= Mode.CONNECT && this._currentMouseOverComp !== null) {
-                this._currentHandlers.contextMenuOn(this._currentMouseOverComp, e)
+            if (this.editor.mode >= Mode.CONNECT && this._currentPointerOverComp !== null) {
+                this._currentHandlers.contextMenuOn(this._currentPointerOverComp, e)
             }
         }))
 
@@ -455,7 +466,7 @@ export class UIEventManager {
                         handled = this.editor.tryCloseCustomComponentEditor()
                     }
                     if (!handled) {
-                        handled = editor.setCurrentMouseAction("edit")
+                        handled = editor.setCurrentPointerAction("edit")
                     }
 
                     if (handled) {
@@ -469,8 +480,8 @@ export class UIEventManager {
                     e.preventDefault()
                     if (!editor.deleteSelection()) {
                         // if nothing was deleted, we try to delete the hovered component
-                        if (this.currentMouseOverComp !== null) {
-                            const result = editor.eventMgr.tryDeleteDrawable(this.currentMouseOverComp)
+                        if (this.currentPointerOverComp !== null) {
+                            const result = editor.eventMgr.tryDeleteDrawable(this.currentPointerOverComp)
                             if (result.isChange) {
                                 editor.editTools.undoMgr.takeSnapshot(result)
                             }
@@ -480,17 +491,17 @@ export class UIEventManager {
                 }
 
                 case "e":
-                    editor.setCurrentMouseAction("edit")
+                    editor.setCurrentPointerAction("edit")
                     e.preventDefault()
                     return
 
                 case "d":
-                    editor.setCurrentMouseAction("delete")
+                    editor.setCurrentPointerAction("delete")
                     e.preventDefault()
                     return
 
                 case "m":
-                    editor.setCurrentMouseAction("move")
+                    editor.setCurrentPointerAction("move")
                     e.preventDefault()
                     return
 
@@ -586,10 +597,10 @@ export class UIEventManager {
                     break
             }
 
-            // console.log("keydown %o %o, comp: %o", e, keyLower, this._currentMouseOverComp)
+            // console.log("keydown %o %o, comp: %o", e, keyLower, this._currentPointerOverComp)
 
-            if (this._currentMouseOverComp !== null) {
-                this._currentMouseOverComp.keyDown(e)
+            if (this._currentPointerOverComp !== null) {
+                this._currentPointerOverComp.keyDown(e)
             }
         }))
     }
@@ -661,71 +672,71 @@ export class UIEventManager {
         }
     }
 
-    private _mouseDownTouchStart(e: MouseEvent | TouchEvent) {
+    private _pointerDown(e: PointerEvent) {
         this.clearHoverTimeoutHandle()
         this.clearPopperIfNecessary()
-        if (this._currentMouseDownData === null) {
+        if (this._currentPointerDownData === null) {
             const xy = this.editor.offsetXY(e)
-            this.updateMouseOver(xy, false, false)
-            if (this._currentMouseOverComp !== null) {
-                // mouse down on component
-                const { wantsDragEvents } = this._currentHandlers.mouseDownOn(this._currentMouseOverComp, e)
+            this.updatePointerOver(xy, false, false)
+            if (this._currentPointerOverComp !== null) {
+                // pointer down on component
+                const { wantsDragEvents } = this._currentHandlers.pointerDownOn(this._currentPointerOverComp, e)
                 if (wantsDragEvents) {
                     const selectedComps = this.currentSelection === undefined ? [] : [...this.currentSelection.previouslySelectedElements]
                     for (const comp of selectedComps) {
-                        if (comp !== this._currentMouseOverComp) {
-                            this._currentHandlers.mouseDownOn(comp, e)
+                        if (comp !== this._currentPointerOverComp) {
+                            this._currentHandlers.pointerDownOn(comp, e)
                         }
                     }
-                    const mouseDownData: MouseDownData = {
-                        mainComp: this._currentMouseOverComp,
+                    const pointerDownData: PointerDownData = {
+                        mainComp: this._currentPointerOverComp,
                         selectionComps: selectedComps,
-                        firedMouseDraggedAlready: false,
-                        fireMouseClickedOnFinish: true,
+                        firedPointerDraggedAlready: false,
+                        fireClickedOnFinish: true,
                         initialXY: xy,
                         triggeredContextMenu: false,
                     }
-                    this._currentMouseDownData = mouseDownData
-                    this.setStartDragTimeout(mouseDownData, e)
+                    this._currentPointerDownData = pointerDownData
+                    this.startLongPressTimeout(pointerDownData, e)
                 }
-                this.editor.editTools.redrawMgr.requestRedraw({ why: "mousedown" })
+                this.editor.editTools.redrawMgr.requestRedraw({ why: "pointerdown" })
             } else {
-                // mouse down on background
-                this._currentMouseDownData = {
+                // pointer down on background
+                this._currentPointerDownData = {
                     mainComp: this.editor.html.canvasContainer,
                     selectionComps: [], // ignore selection
-                    firedMouseDraggedAlready: false,
-                    fireMouseClickedOnFinish: true,
+                    firedPointerDraggedAlready: false,
+                    fireClickedOnFinish: true,
                     initialXY: xy,
                     triggeredContextMenu: false,
                 }
-                this._currentHandlers.mouseDownOnBackground(e)
+                this._currentHandlers.pointerDownOnBackground(e)
             }
             this.editor.updateCursor(e)
         } else {
-            // we got a mousedown while a component had programmatically
-            // been determined as being mousedown'd; ignore
+            // we got a pointerdown while a component had programmatically
+            // been determined as being pointerdown'd; ignore
         }
     }
 
-    private _mouseMoveTouchMove(e: MouseEvent | TouchEvent) {
-        if (this._currentMouseDownData !== null) {
-            if (this._currentMouseDownData.triggeredContextMenu) {
+    private _pointerMove(e: PointerEvent) {
+        if (this._currentPointerDownData !== null) {
+            if (this._currentPointerDownData.triggeredContextMenu) {
                 // cancel it all
-                this._currentMouseDownData = null
+                this._currentPointerDownData = null
             } else {
-                const initialXY = this._currentMouseDownData.initialXY
-                setDragStartData(e, initialXY[0], initialXY[1])
-                if (this._currentMouseDownData.mainComp instanceof Drawable) {
+                const initialXY = this._currentPointerDownData.initialXY
+                setDragStartOnEvent(e, initialXY[0], initialXY[1])
+                if (this._currentPointerDownData.mainComp instanceof Drawable) {
                     // check if the drag is too small to be taken into account now
                     // (e.g., touchmove is fired very quickly)
                     let fireDragEvent =
                         // if we fired a drag event already for this "click session", we go on
-                        this._currentMouseDownData.firedMouseDraggedAlready
+                        this._currentPointerDownData.firedPointerDraggedAlready
 
                     if (!fireDragEvent) {
                         // we check if we should fire a drag event and cancel it if the move is too small,
-                        const d2 = distSquared(...this.editor.offsetXY(e), ...this._currentMouseDownData.initialXY)
+                        const d2 = distSquared(...this.editor.offsetXY(e), ...this._currentPointerDownData.initialXY)
                         // NaN is returned when no input point was specified and
                         // dragging should then happen regardless
                         fireDragEvent = isNaN(d2) || d2 >= 5 * 5 // 5 pixels
@@ -733,58 +744,55 @@ export class UIEventManager {
 
                     if (fireDragEvent) {
                         // dragging component
-                        this.clearStartDragTimeout()
-                        this._currentMouseDownData.fireMouseClickedOnFinish = false
-                        this._currentHandlers.mouseDraggedOn(this._currentMouseDownData.mainComp, e)
-                        for (const comp of this._currentMouseDownData.selectionComps) {
-                            if (comp !== this._currentMouseDownData.mainComp) {
-                                this._currentHandlers.mouseDraggedOn(comp, e)
+                        this.clearLongPressTimeout()
+                        this._currentPointerDownData.fireClickedOnFinish = false
+                        this._currentHandlers.pointerDraggedOn(this._currentPointerDownData.mainComp, e)
+                        for (const comp of this._currentPointerDownData.selectionComps) {
+                            if (comp !== this._currentPointerDownData.mainComp) {
+                                this._currentHandlers.pointerDraggedOn(comp, e)
                             }
                         }
-                        this._currentMouseDownData.firedMouseDraggedAlready = true
+                        this._currentPointerDownData.firedPointerDraggedAlready = true
                     }
                 } else {
                     // dragging background
-                    this._currentHandlers.mouseDraggedOnBackground(e)
+                    this._currentHandlers.pointerDraggedOnBackground(e)
                 }
             }
         } else {
-            // moving mouse or dragging without a locked component
+            // moving pointer or dragging without a locked component
             const linkMgr = this.editor.editorRoot.linkMgr
-            this.updateMouseOver(this.editor.offsetXY(e), linkMgr.isAddingWire, linkMgr.isSettingAnchor)
+            this.updatePointerOver(this.editor.offsetXY(e), linkMgr.isAddingWire, linkMgr.isSettingAnchor)
         }
     }
 
-    private _mouseUpTouchEnd(e: MouseEvent | TouchEvent) {
+    private _pointerUp(e: PointerEvent) {
         // our target is either the locked component that
-        // was clicked or the latest mouse over component
-        const mouseUpTarget = this._currentMouseDownData?.mainComp ?? this._currentMouseOverComp
-        if (mouseUpTarget instanceof Drawable) {
-            // mouseup on component
-            if (this._startDragTimeoutHandle !== null) {
-                clearTimeout(this._startDragTimeoutHandle)
-                this._startDragTimeoutHandle = null
-            }
-            let change = this._currentHandlers.mouseUpOn(mouseUpTarget, e)
-            for (const comp of this._currentMouseDownData?.selectionComps ?? []) {
-                if (comp !== mouseUpTarget) {
-                    const newChange = this._currentHandlers.mouseUpOn(comp, e)
+        // was clicked or the latest poin ter over component
+        const pointerUpTarget = this._currentPointerDownData?.mainComp ?? this._currentPointerOverComp
+        if (pointerUpTarget instanceof Drawable) {
+            // pointerup on component
+            this.clearLongPressTimeout()
+            let change = this._currentHandlers.pointerUpOn(pointerUpTarget, e)
+            for (const comp of this._currentPointerDownData?.selectionComps ?? []) {
+                if (comp !== pointerUpTarget) {
+                    const newChange = this._currentHandlers.pointerUpOn(comp, e)
                     change = InteractionResult.merge(change, newChange)
                 }
             }
 
-            const mouseDownData = this._currentMouseDownData
-            const fireMouseClicked = mouseDownData === null ? false : mouseDownData.fireMouseClickedOnFinish && !mouseDownData.triggeredContextMenu
-            if (fireMouseClicked) {
+            const pointerDownData = this._currentPointerDownData
+            const firePointerClicked = pointerDownData === null ? false : pointerDownData.fireClickedOnFinish && !pointerDownData.triggeredContextMenu
+            if (firePointerClicked) {
                 let newChange
-                if (this.isDoubleClick(mouseUpTarget, e)) {
-                    newChange = this._currentHandlers.mouseDoubleClickedOn(mouseUpTarget, e)
+                if (this.isDoubleClick(pointerUpTarget, e)) {
+                    newChange = this._currentHandlers.pointerDoubleClickedOn(pointerUpTarget, e)
                     if (!newChange.isChange) {
                         // no double click handler, so we trigger a normal click
-                        newChange = this._currentHandlers.mouseClickedOn(mouseUpTarget, e)
+                        newChange = this._currentHandlers.pointerClickedOn(pointerUpTarget, e)
                     }
                 } else {
-                    newChange = this._currentHandlers.mouseClickedOn(mouseUpTarget, e)
+                    newChange = this._currentHandlers.pointerClickedOn(pointerUpTarget, e)
                 }
                 change = InteractionResult.merge(change, newChange)
             }
@@ -794,20 +802,20 @@ export class UIEventManager {
             }
 
         } else {
-            // mouseup on background
-            this._currentHandlers.mouseUpOnBackground(e)
+            // pointerup on background
+            this._currentHandlers.pointerUpOnBackground(e)
         }
-        this._currentMouseDownData = null
-        this.editor.editTools.redrawMgr.requestRedraw({ why: "mouseup" })
+        this._currentPointerDownData = null
+        this.editor.editTools.redrawMgr.requestRedraw({ why: "pointerup" })
     }
 
-    private isDoubleClick(clickedComp: Drawable, e: MouseEvent | TouchEvent) {
+    private isDoubleClick(clickedComp: Drawable, e: PointerEvent) {
         if ("offsetX" in e) {
             return e.detail === 2
         } else {
-            const oldLastTouchEnd = this._lastTouchEnd
+            const oldLastTouchEnd = this._lastPointerEnd
             const now = new Date().getTime()
-            this._lastTouchEnd = [clickedComp, now]
+            this._lastPointerEnd = [clickedComp, now]
             if (oldLastTouchEnd === undefined) {
                 return false
             }
@@ -815,7 +823,7 @@ export class UIEventManager {
             const elapsedTimeMillis = now - lastTime
             const isDoubleTouch = lastComp === clickedComp && elapsedTimeMillis > 0 && elapsedTimeMillis < 300
             if (isDoubleTouch) {
-                this._lastTouchEnd = undefined
+                this._lastPointerEnd = undefined
             }
             return isDoubleTouch
         }
@@ -824,53 +832,54 @@ export class UIEventManager {
     public registerButtonListenersOn(componentButtons: HTMLButtonElement[], isCustomElement: boolean) {
         const editor = this.editor
         for (const compButton of componentButtons) {
-            const buttonMouseDownTouchStart = (e: MouseEvent | TouchEvent) => {
-                this.editor.setCurrentMouseAction("edit")
+
+            compButton.addEventListener("touchstart", e => e.preventDefault())
+            compButton.addEventListener("touchmove", e => e.preventDefault())
+            compButton.addEventListener("touchend", e => e.preventDefault())
+
+            const buttonPointerDown = (e: PointerEvent) => {
+                this.editor.setCurrentPointerAction("edit")
                 e.preventDefault()
                 this.editor.eventMgr.currentSelection = undefined
                 const newComponent = editor.factory.makeFromButton(editor.editorRoot, compButton)
                 if (newComponent === undefined) {
                     return
                 }
-                this._currentMouseOverComp = newComponent
-                const { wantsDragEvents } = this._currentHandlers.mouseDownOn(newComponent, e)
+                this._currentPointerOverComp = newComponent
+                const { wantsDragEvents } = this._currentHandlers.pointerDownOn(newComponent, e)
                 if (wantsDragEvents) {
-                    this._currentMouseDownData = {
-                        mainComp: this._currentMouseOverComp,
+                    this._currentPointerDownData = {
+                        mainComp: this._currentPointerOverComp,
                         selectionComps: [], // ignore selection when dragging new component
-                        firedMouseDraggedAlready: false,
-                        fireMouseClickedOnFinish: false,
+                        firedPointerDraggedAlready: false,
+                        fireClickedOnFinish: false,
                         initialXY: [NaN, NaN],
                         triggeredContextMenu: false,
                     }
                 }
                 const [x, y] = editor.offsetXY(e, true)
-                setDragStartData(e, x, y)
-                this._currentHandlers.mouseDraggedOn(newComponent, e)
+                setDragStartOnEvent(e, x, y)
+                this._currentHandlers.pointerDraggedOn(newComponent, e)
             }
 
-            compButton.addEventListener("mousedown", editor.wrapHandler((e) => {
-                // console.log("button mousedown %o %o", editor.offsetXY(e), e)
+            compButton.addEventListener("pointerdown", editor.wrapHandler((e) => {
+                // console.log("button pointerdown %o %o", editor.offsetXY(e), e)
                 if (e.button === 2 || (e.button === 0 && e.ctrlKey)) {
                     // will be handled by context menu
                     return
                 }
-                buttonMouseDownTouchStart(e)
+                buttonPointerDown(e as any)
             }))
-            compButton.addEventListener("touchstart", editor.wrapHandler((e) => {
-                // console.log("button touchstart %o %o", editor.offsetXY(e), e)
-                buttonMouseDownTouchStart(e)
-            }))
-            compButton.addEventListener("touchmove", editor.wrapHandler((e) => {
-                // console.log("button touchmove %o %o", editor.offsetXY(e), e)
+            compButton.addEventListener("pointermove", editor.wrapHandler((e) => {
+                // console.log("button pointermove %o %o", editor.offsetXY(e), e)
                 e.preventDefault()
-                this._mouseMoveTouchMove(e)
+                this._pointerMove(e as any)
             }))
-            compButton.addEventListener("touchend", editor.wrapHandler((e) => {
-                // console.log("button touchend %o %o", editor.offsetXY(e), e)
+            compButton.addEventListener("pointerup", editor.wrapHandler((e) => {
+                // console.log("button pointerup %o %o", editor.offsetXY(e), e)
                 e.preventDefault() // otherwise, may generate mouseclick, etc.
-                this._mouseUpTouchEnd(e)
-                this.setCurrentMouseOverComp(null)
+                this._pointerUp(e as any)
+                this.setCurrentPointerOverComp(null)
             }))
 
             compButton.addEventListener("contextmenu", editor.wrapHandler((e) => {
@@ -923,37 +932,40 @@ abstract class ToolHandlers {
         this.editor = editor
     }
 
-    public mouseHoverOn(__comp: Drawable) {
+    public pointerHoverOn(__comp: Drawable) {
         // empty
     }
-    public mouseDownOn(__comp: Drawable, __e: MouseEvent | TouchEvent) {
+    public pointerDownOn(__comp: Drawable, __e: PointerEvent) {
         return { wantsDragEvents: true }
     }
-    public mouseDraggedOn(__comp: Drawable, __e: MouseDragEvent | TouchDragEvent) {
+    public pointerDraggedOn(__comp: Drawable, __e: PointerDragEvent) {
         // empty
     }
-    public mouseUpOn(__comp: Drawable, __e: MouseEvent | TouchEvent): InteractionResult {
+    public pointerUpOn(__comp: Drawable, __e: PointerEvent): InteractionResult {
         return InteractionResult.NoChange
     }
-    public mouseClickedOn(__comp: Drawable, __e: MouseEvent | TouchEvent): InteractionResult {
+    public pointerClickedOn(__comp: Drawable, __e: PointerEvent): InteractionResult {
         return InteractionResult.NoChange
     }
-    public mouseDoubleClickedOn(__comp: Drawable, __e: MouseEvent | TouchEvent): InteractionResult {
+    public pointerDoubleClickedOn(__comp: Drawable, __e: PointerEvent): InteractionResult {
         return InteractionResult.NoChange
     }
-    public contextMenuOn(__comp: Drawable, __e: MouseEvent | TouchEvent): boolean {
+    public contextMenuOn(__comp: Drawable, __e: MouseEvent): boolean {
         return false // false means unhandled
     }
-    public contextMenuOnButton(__props: ButtonDataset, __e: MouseEvent | TouchEvent) {
+    public contextMenuOnButton(__props: ButtonDataset, __e: MouseEvent) {
         // empty
     }
-    public mouseDownOnBackground(__e: MouseEvent | TouchEvent) {
+    public hideContextMenuIfNeeded(__e?: PointerEvent) {
         // empty
     }
-    public mouseDraggedOnBackground(__e: MouseDragEvent | TouchDragEvent) {
+    public pointerDownOnBackground(__e: PointerEvent) {
         // empty
     }
-    public mouseUpOnBackground(__e: MouseEvent | TouchEvent) {
+    public pointerDraggedOnBackground(__e: PointerDragEvent) {
+        // empty
+    }
+    public pointerUpOnBackground(__e: PointerEvent) {
         // empty
     }
     public unmount() {
@@ -969,7 +981,7 @@ class EditHandlers extends ToolHandlers {
         super(editor)
     }
 
-    public override mouseHoverOn(comp: Drawable) {
+    public override pointerHoverOn(comp: Drawable) {
         const editor = this.editor
         editor.eventMgr.clearPopperIfNecessary()
         if (editor.options.hideTooltips) {
@@ -987,39 +999,39 @@ class EditHandlers extends ToolHandlers {
                 const [cx, cy, w, h] =
                     comp instanceof DrawableWithPosition
                         ? [comp.posX * f, comp.posY * f, comp.width * f, comp.height * f]
-                        : [editor.mouseX, editor.mouseY, 4, 4]
+                        : [editor.pointerX, editor.pointerY, 4, 4]
                 return new DOMRect(containerRect.x + cx - w / 2, containerRect.y + cy - h / 2, w, h)
             }
             editor.eventMgr.makePopper(tooltip, rect)
         }
     }
-    public override mouseDownOn(comp: Drawable, e: MouseEvent | TouchEvent) {
-        return comp.mouseDown(e)
+    public override pointerDownOn(comp: Drawable, e: PointerEvent) {
+        return comp.pointerDown(e)
     }
-    public override mouseDraggedOn(comp: Drawable, e: MouseDragEvent | TouchDragEvent) {
-        comp.mouseDragged(e)
+    public override pointerDraggedOn(comp: Drawable, e: PointerDragEvent) {
+        comp.pointerDragged(e)
     }
-    public override mouseUpOn(comp: Drawable, e: MouseEvent | TouchEvent) {
-        const change = comp.mouseUp(e)
+    public override pointerUpOn(comp: Drawable, e: PointerEvent) {
+        const change = comp.pointerUp(e)
         this.editor.editorRoot.linkMgr.tryCancelWireOrAnchor()
         return change
     }
-    public override mouseClickedOn(comp: Drawable, e: MouseEvent | TouchEvent) {
-        // console.log("mouseClickedOn %o", comp)
-        return comp.mouseClicked(e)
+    public override pointerClickedOn(comp: Drawable, e: PointerEvent) {
+        // console.log("pointerClickedOn %o", comp)
+        return comp.pointerClicked(e)
     }
-    public override mouseDoubleClickedOn(comp: Drawable, e: MouseEvent | TouchEvent) {
-        return comp.mouseDoubleClicked(e)
+    public override pointerDoubleClickedOn(comp: Drawable, e: PointerEvent) {
+        return comp.pointerDoubleClicked(e)
     }
-    public override contextMenuOn(comp: Drawable, e: MouseEvent | TouchEvent) {
+    public override contextMenuOn(comp: Drawable, e: PointerEvent) {
         // console.log("contextMenuOn: %o", comp)
         return this.showContextMenu(comp.makeContextMenu(), e)
     }
-    public override contextMenuOnButton(props: ButtonDataset, e: MouseEvent | TouchEvent) {
+    public override contextMenuOnButton(props: ButtonDataset, e: PointerEvent) {
         return this.showContextMenu(this.editor.factory.makeContextMenu(props.type), e)
     }
 
-    public override mouseDownOnBackground(e: MouseEvent | TouchEvent) {
+    public override pointerDownOnBackground(e: PointerEvent) {
         const editor = this.editor
         const eventMgr = editor.eventMgr
         const currentSelection = eventMgr.currentSelection
@@ -1040,7 +1052,7 @@ class EditHandlers extends ToolHandlers {
             editor.editTools.redrawMgr.requestRedraw({ why: "selection rect changed" })
         }
     }
-    public override mouseDraggedOnBackground(e: MouseDragEvent | TouchDragEvent) {
+    public override pointerDraggedOnBackground(e: PointerDragEvent) {
         const editor = this.editor
         const allowSelection = editor.mode >= Mode.CONNECT
         if (allowSelection) {
@@ -1063,7 +1075,7 @@ class EditHandlers extends ToolHandlers {
         }
     }
 
-    public override mouseUpOnBackground(__e: MouseEvent | TouchEvent) {
+    public override pointerUpOnBackground(__e: PointerEvent) {
         const editor = this.editor
         editor.linkMgr.tryCancelWireOrAnchor()
 
@@ -1075,120 +1087,115 @@ class EditHandlers extends ToolHandlers {
         }
     }
 
-    private showContextMenu(menuData: MenuData | undefined, e: MouseEvent | TouchEvent) {
-        const hideMenu = () => {
-            if (this._openedContextMenu !== null) {
+    public override hideContextMenuIfNeeded(e?: PointerEvent) {
+        // if e is passed, only hide if the target is not the context menu
+        if (this._openedContextMenu !== null) {
+            const menuContainsTarget = e !== undefined && this._openedContextMenu.contains(e.composedPath()[0] as Element)
+            if (!menuContainsTarget) {
                 this._openedContextMenu.classList.remove('show-menu')
                 this._openedContextMenu.innerHTML = ""
                 this._openedContextMenu = null
             }
         }
+    }
 
-        hideMenu()
+    private showContextMenu(menuData: MenuData | undefined, e: PointerEvent) {
+        this.hideContextMenuIfNeeded()
 
         // console.log("asking for menu: %o got: %o", comp, MenuData)
-        if (menuData !== undefined) {
-
-            // console.log("setting triggered")
-            const currentMouseDownData = this.editor.eventMgr.currentMouseDownData
-            if (currentMouseDownData !== null) {
-                currentMouseDownData.triggeredContextMenu = true
-            }
-
-            // console.log("building menu for %o", MenuData)
-
-            let hasContentJustifyingSeparator = false
-
-            const defToElem = (item: MenuItem): Modifier => {
-                function mkButton(spec: { icon?: IconName | undefined, caption: Modifier }, shortcut: string | undefined, danger: boolean) {
-                    return button(type("button"), cls(`menu-btn${(danger ? " danger" : "")}`),
-                        spec.icon === undefined
-                            ? spec.caption
-                            : mods(
-                                makeIcon(spec.icon),
-                                span(cls("menu-text"), spec.caption)
-                            ),
-                        shortcut === undefined ? emptyMod : span(cls("menu-shortcut"), shortcut),
-                    )
-                }
-
-                hasContentJustifyingSeparator ||= item._tag !== "sep"
-                switch (item._tag) {
-                    case "sep":
-                        if (hasContentJustifyingSeparator) {
-                            hasContentJustifyingSeparator = false
-                            return li(cls("menu-separator")).render()
-                        } else {
-                            return emptyMod
-                        }
-                    case "text":
-                        return li(cls("menu-item-static"), item.caption).render()
-                    case "item": {
-                        const but = mkButton(item, item.shortcut, item.danger ?? false).render()
-                        but.addEventListener("click", this.editor.wrapAsyncHandler(async (itemEvent: MouseEvent | TouchEvent) => {
-                            const result = await Promise.resolve(item.action(itemEvent, e))
-                            this.editor.editTools.undoMgr.takeSnapshot(result as Exclude<typeof result, void>)
-                            this.editor.focus()
-                        }))
-                        return li(cls("menu-item"), but).render()
-                    }
-                    case "submenu": {
-                        return li(cls("menu-item submenu"),
-                            mkButton(item, undefined, false),
-                            ul(cls("menu"),
-                                ...item.items.map(defToElem)
-                            )
-                        ).render()
-                    }
-                }
-            }
-
-            const items = menuData.map(defToElem)
-
-            const mainContextMenu = this.editor.html.mainContextMenu
-            applyModifiersTo(mainContextMenu, items)
-            const em = e as MouseEvent
-            mainContextMenu.classList.add("show-menu")
-
-            let menuTop = em.pageY
-            mainContextMenu.style.top = menuTop + 'px'
-            mainContextMenu.style.left = em.pageX + 'px'
-
-            let needsScrollY = false
-            const menuRect = mainContextMenu.getBoundingClientRect()
-            const hOverflow = window.innerHeight - menuRect.bottom
-            if (hOverflow < 0) {
-                menuTop += Math.min(0, hOverflow)
-                if (menuTop < 5) {
-                    menuTop = 5
-                    needsScrollY = true
-                }
-                mainContextMenu.style.top = menuTop + 'px'
-            }
-
-            // TODO this causes some weird behavior with submenus, to be fixed
-            if (needsScrollY) {
-                mainContextMenu.style.setProperty("max-height", (window.innerHeight - 10) + "px")
-                mainContextMenu.style.setProperty("overflow-y", "scroll")
-            } else {
-                mainContextMenu.style.removeProperty("max-height")
-                mainContextMenu.style.removeProperty("overflow-y")
-            }
-
-            this._openedContextMenu = mainContextMenu
-
-            const clickHandler = () => {
-                hideMenu()
-                document.removeEventListener("click", clickHandler)
-            }
-
-            setTimeout(() => {
-                document.addEventListener("click", clickHandler, false)
-            }, 200)
-
-            return true // handled
+        if (menuData === undefined) {
+            return false
         }
-        return false // unhandled
+
+        // console.log("setting triggered")
+        const currentPointerDownData = this.editor.eventMgr.currentPointerDownData
+        if (currentPointerDownData !== null) {
+            currentPointerDownData.triggeredContextMenu = true
+        }
+
+        // console.log("building menu for %o", MenuData)
+
+        let hasContentJustifyingSeparator = false
+
+        const defToElem = (item: MenuItem): Modifier => {
+            function mkButton(spec: { icon?: IconName | undefined, caption: Modifier }, shortcut: string | undefined, danger: boolean) {
+                return button(type("button"), cls(`menu-btn${(danger ? " danger" : "")}`),
+                    spec.icon === undefined
+                        ? spec.caption
+                        : mods(
+                            makeIcon(spec.icon),
+                            span(cls("menu-text"), spec.caption)
+                        ),
+                    shortcut === undefined ? emptyMod : span(cls("menu-shortcut"), shortcut),
+                )
+            }
+
+            hasContentJustifyingSeparator ||= item._tag !== "sep"
+            switch (item._tag) {
+                case "sep":
+                    if (hasContentJustifyingSeparator) {
+                        hasContentJustifyingSeparator = false
+                        return li(cls("menu-separator")).render()
+                    } else {
+                        return emptyMod
+                    }
+                case "text":
+                    return li(cls("menu-item-static"), item.caption).render()
+                case "item": {
+                    const but = mkButton(item, item.shortcut, item.danger ?? false).render()
+                    but.addEventListener("click", this.editor.wrapAsyncHandler(async (itemEvent: MouseEvent) => {
+                        this.hideContextMenuIfNeeded()
+                        const result = await Promise.resolve(item.action(itemEvent, e))
+                        this.editor.editTools.undoMgr.takeSnapshot(result as Exclude<typeof result, void>)
+                        this.editor.focus()
+                    }))
+                    return li(cls("menu-item"), but).render()
+                }
+                case "submenu": {
+                    return li(cls("menu-item submenu"),
+                        mkButton(item, undefined, false),
+                        ul(cls("menu"),
+                            ...item.items.map(defToElem)
+                        )
+                    ).render()
+                }
+            }
+        }
+
+        const items = menuData.map(defToElem)
+
+        const mainContextMenu = this.editor.html.mainContextMenu
+        applyModifiersTo(mainContextMenu, items)
+        mainContextMenu.classList.add("show-menu")
+
+        let menuTop = e.pageY
+        mainContextMenu.style.top = menuTop + 'px'
+        mainContextMenu.style.left = e.pageX + 'px'
+
+        let needsScrollY = false
+        const menuRect = mainContextMenu.getBoundingClientRect()
+        const hOverflow = window.innerHeight - menuRect.bottom
+        if (hOverflow < 0) {
+            menuTop += Math.min(0, hOverflow)
+            if (menuTop < 5) {
+                menuTop = 5
+                needsScrollY = true
+            }
+            mainContextMenu.style.top = menuTop + 'px'
+        }
+
+        // TODO this causes some weird behavior with submenus, to be fixed
+        if (needsScrollY) {
+            mainContextMenu.style.setProperty("max-height", (window.innerHeight - 10) + "px")
+            mainContextMenu.style.setProperty("overflow-y", "scroll")
+        } else {
+            mainContextMenu.style.removeProperty("max-height")
+            mainContextMenu.style.removeProperty("overflow-y")
+        }
+
+        this._openedContextMenu = mainContextMenu
+
+        return true // handled
     }
 }
 
@@ -1198,7 +1205,7 @@ class DeleteHandlers extends ToolHandlers {
         super(editor)
     }
 
-    public override mouseClickedOn(comp: Drawable, __: MouseEvent) {
+    public override pointerClickedOn(comp: Drawable, __: PointerEvent) {
         return this.editor.eventMgr.tryDeleteDrawable(comp)
     }
 }
@@ -1221,10 +1228,10 @@ class SetAnchorHandlers extends ToolHandlers {
 
     private finish() {
         // always go back to edit mode after setting an anchor
-        this.editor.setCurrentMouseAction("edit")
+        this.editor.setCurrentPointerAction("edit")
     }
 
-    public override mouseClickedOn(comp: Drawable, __: MouseEvent) {
+    public override pointerClickedOn(comp: Drawable, __: PointerEvent) {
         let result: InteractionResult = InteractionResult.NoChange
         if (comp instanceof ComponentBase) {
             result = this.editor.linkMgr.trySetAnchor(this._from, comp)
@@ -1235,7 +1242,7 @@ class SetAnchorHandlers extends ToolHandlers {
         return result
     }
 
-    public override mouseUpOnBackground(__: MouseEvent) {
+    public override pointerUpOnBackground(__: PointerEvent) {
         this.editor.linkMgr.tryCancelSetAnchor()
         this.finish()
     }
@@ -1247,33 +1254,33 @@ class MoveHandlers extends ToolHandlers {
         super(editor)
     }
 
-    public override mouseDownOnBackground(e: MouseEvent) {
+    public override pointerDownOnBackground(e: PointerEvent) {
         for (const comp of this.editor.components.all()) {
-            comp.mouseDown(e)
+            comp.pointerDown(e)
         }
         for (const wire of this.editor.linkMgr.wires) {
             for (const waypoint of wire.waypoints) {
-                waypoint.mouseDown(e)
+                waypoint.pointerDown(e)
             }
         }
     }
-    public override mouseDraggedOnBackground(e: MouseDragEvent) {
+    public override pointerDraggedOnBackground(e: PointerDragEvent) {
         for (const comp of this.editor.components.all()) {
-            comp.mouseDragged(e)
+            comp.pointerDragged(e)
         }
         for (const wire of this.editor.linkMgr.wires) {
             for (const waypoint of wire.waypoints) {
-                waypoint.mouseDragged(e)
+                waypoint.pointerDragged(e)
             }
         }
     }
-    public override mouseUpOnBackground(e: MouseEvent) {
+    public override pointerUpOnBackground(e: PointerEvent) {
         for (const comp of this.editor.components.all()) {
-            comp.mouseUp(e)
+            comp.pointerUp(e)
         }
         for (const wire of this.editor.linkMgr.wires) {
             for (const waypoint of wire.waypoints) {
-                waypoint.mouseUp(e)
+                waypoint.pointerUp(e)
             }
         }
     }

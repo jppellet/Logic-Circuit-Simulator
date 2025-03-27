@@ -138,8 +138,8 @@ export class Label extends ComponentBase<LabelRepr> {
         }
     }
 
-    public override mouseDoubleClicked(e: MouseEvent | TouchEvent) {
-        const superChange = super.mouseDoubleClicked(e)
+    public override pointerDoubleClicked(e: PointerEvent) {
+        const superChange = super.pointerDoubleClicked(e)
         if (superChange.isChange) {
             return superChange // already handled
         }

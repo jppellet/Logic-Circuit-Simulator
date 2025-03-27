@@ -429,12 +429,12 @@ export abstract class GateBase<
         }
     }
 
-    public override mouseDoubleClicked(e: MouseEvent | TouchEvent) {
+    public override pointerDoubleClicked(e: PointerEvent) {
         if (this.parent.mode >= Mode.FULL && e.altKey) {
             this.doSetShowAsUnknown(!this._showAsUnknown)
             return InteractionResult.SimpleChange
         }
-        return super.mouseDoubleClicked(e)
+        return super.pointerDoubleClicked(e)
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {
@@ -587,8 +587,8 @@ export class Gate1 extends GateBase<Gate1Repr> {
         return super.toJSONBase()
     }
 
-    public override mouseDoubleClicked(e: MouseEvent | TouchEvent) {
-        const superChange = super.mouseDoubleClicked(e)
+    public override pointerDoubleClicked(e: PointerEvent) {
+        const superChange = super.pointerDoubleClicked(e)
         if (superChange.isChange) {
             return superChange // already handled
         }
@@ -670,8 +670,8 @@ export class GateN extends GateBase<GateNRepr> {
         }
     }
 
-    public override mouseDoubleClicked(e: MouseEvent | TouchEvent) {
-        const superChange = super.mouseDoubleClicked(e)
+    public override pointerDoubleClicked(e: PointerEvent) {
+        const superChange = super.pointerDoubleClicked(e)
         if (superChange.isChange) {
             return superChange // already handled
         }

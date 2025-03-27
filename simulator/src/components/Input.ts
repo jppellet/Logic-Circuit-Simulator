@@ -317,7 +317,7 @@ export class Input extends InputBase<InputRepr> {
         return reprForLogicValues(this.value, undefinedIfTrivial)
     }
 
-    public override cursorWhenMouseover(e?: MouseEvent | TouchEvent) {
+    public override cursorWhenMouseover(e?: PointerEvent) {
         const mode = this.parent.mode
         if (mode === Mode.STATIC) {
             // signal we can't switch it here
@@ -364,9 +364,9 @@ export class Input extends InputBase<InputRepr> {
         return !this._isConstant
     }
 
-    public override mouseClicked(e: MouseEvent | TouchEvent) {
+    public override pointerClicked(e: PointerEvent) {
         let result
-        if ((result = super.mouseClicked(e)).isChange) {
+        if ((result = super.pointerClicked(e)).isChange) {
             return result
         }
 
@@ -396,18 +396,18 @@ export class Input extends InputBase<InputRepr> {
         return InteractionResult.RepeatableChange(doChange)
     }
 
-    public override mouseDown(e: MouseEvent | TouchEvent) {
+    public override pointerDown(e: PointerEvent) {
         this.trySetPushButtonBit(true, e)
-        return super.mouseDown(e)
+        return super.pointerDown(e)
     }
 
-    public override mouseUp(e: MouseEvent | TouchEvent) {
-        const result = super.mouseUp(e)
+    public override pointerUp(e: PointerEvent) {
+        const result = super.pointerUp(e)
         this.trySetPushButtonBit(false, e)
         return result
     }
 
-    private clickedBitIndex(e: MouseEvent | TouchEvent): number {
+    private clickedBitIndex(e: PointerEvent): number {
         const h = this.unrotatedHeight
         const y = this.parent.editor.offsetXYForComponent(e, this)[1] - this.posY + h / 2
         const i = Math.floor(y * this.numBits / h)
@@ -417,7 +417,7 @@ export class Input extends InputBase<InputRepr> {
         return -1
     }
 
-    private trySetPushButtonBit(v: LogicValue, e: MouseEvent | TouchEvent) {
+    private trySetPushButtonBit(v: LogicValue, e: PointerEvent) {
         let i
         if (this.parent.mode === Mode.STATIC
             || !this._isPushButton

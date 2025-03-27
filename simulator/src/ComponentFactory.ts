@@ -413,9 +413,9 @@ export class ComponentFactory {
 
         const customComp = maker.make(editor)
         customComp.setSpawned()
-        customComp.setPosition(editor.mouseX + customComp.unrotatedWidth / 2 - 5, editor.mouseY, true)
+        customComp.setPosition(editor.pointerX + customComp.unrotatedWidth / 2 - 5, editor.pointerY, true)
         editor.eventMgr.currentSelection = undefined
-        editor.eventMgr.setCurrentMouseOverComp(customComp)
+        editor.eventMgr.setCurrentPointerOverComp(customComp)
 
         for (const comp of componentsToInclude) {
             editor.components.tryDelete(comp)

@@ -223,8 +223,8 @@ export class DisplayBar extends DisplayBarBase<DisplayBarRepr, LogicValue> {
         }
     }
 
-    public override mouseDoubleClicked(e: MouseEvent | TouchEvent) {
-        const superChange = super.mouseDoubleClicked(e)
+    public override pointerDoubleClicked(e: PointerEvent) {
+        const superChange = super.pointerDoubleClicked(e)
         if (superChange.isChange) {
             return superChange // already handled
         }

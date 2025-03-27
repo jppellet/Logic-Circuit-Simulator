@@ -30,7 +30,7 @@ import { Tests } from "./Tests"
 import { TestsPalette } from "./TestsPalette"
 import { Timeline } from "./Timeline"
 import { TopBar } from "./TopBar"
-import { EditorSelection, MouseDragEvent, TouchDragEvent, UIEventManager } from "./UIEventManager"
+import { EditorSelection, PointerDragEvent, UIEventManager } from "./UIEventManager"
 import { UndoManager } from './UndoManager'
 import { Component, ComponentBase } from "./components/Component"
 import { CustomComponent } from "./components/CustomComponent"
@@ -115,7 +115,7 @@ const DEFAULT_EDITOR_OPTIONS = {
 
 export type EditorOptions = typeof DEFAULT_EDITOR_OPTIONS
 
-export const MouseActions = {
+export const PointerActions = {
     edit: {
         cursor: null,
         paramTypes: [],
@@ -137,9 +137,9 @@ export const MouseActions = {
     paramTypes: any[]
 }>
 
-export type MouseActionParams<M extends keyof typeof MouseActions> = typeof MouseActions[M]["paramTypes"]
+export type PoionterActionParams<M extends keyof typeof PointerActions> = typeof PointerActions[M]["paramTypes"]
 
-export type MouseAction = keyof typeof MouseActions
+export type PointerAction = keyof typeof PointerActions
 
 type InitialData = { _type: "url", url: string } | { _type: "json", json: string } | { _type: "compressed", str: string }
 
@@ -284,8 +284,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     private _baseDrawingScale = 1
     private _actualZoomFactor = 1
-    public mouseX = -1000 // offscreen at start
-    public mouseY = -1000
+    public pointerX = -1000 // offscreen at start
+    public pointerY = -1000
 
     public constructor() {
         super()
@@ -739,7 +739,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 console.log("ERROR: Could not find group button")
             }
         } else {
-            groupButton.addEventListener("mousedown", this.wrapHandler(e => {
+            groupButton.addEventListener("pointerdown", this.wrapHandler(e => {
                 const success = this.makeGroupWithSelection()
                 if (success) {
                     e.preventDefault()
@@ -834,7 +834,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             textArea.addEventListener("focus", selectAllListener)
         }
 
-        this.setCurrentMouseAction("edit", true)
+        this.setCurrentPointerAction("edit", true)
         this.timeline.reset()
 
         // Options
@@ -987,14 +987,14 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         window.gallery = gallery
 
         window.addEventListener("pointermove", e => {
-            // console.log(`pointermove with x=${e.clientX}, y=${e.clientY}`)
+            // console.log(`pointermove (type '${e.pointerType}') with x=${e.clientX}, y=${e.clientY}`)
             for (const editor of LogicEditor._allConnectedEditors) {
                 const canvasContainer = editor.html.canvasContainer
                 if (canvasContainer !== undefined) {
                     const canvasPos = canvasContainer.getBoundingClientRect()
                     // console.log(canvasContainer.getBoundingClientRect(), { x: e.clientX - canvasPos.left, y: e.clientY - canvasPos.top })
-                    editor.mouseX = e.clientX - canvasPos.left
-                    editor.mouseY = e.clientY - canvasPos.top
+                    editor.pointerX = e.clientX - canvasPos.left
+                    editor.pointerY = e.clientY - canvasPos.top
                 }
             }
             // console.log("--")
@@ -1088,7 +1088,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             })
 
             if (mode < Mode.CONNECT) {
-                this.setCurrentMouseAction("edit")
+                this.setCurrentPointerAction("edit")
             }
 
             const showComponentsAndEditControls: UIDisplay =
@@ -1180,9 +1180,9 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             sessionStorage.setItem(key, saveStr)
             if (this._autosave) {
                 localStorage.setItem(key, saveStr)
-                console.log(`Saved circuit to session and local storage with key '${key}'`)
+                // console.log(`Saved circuit to session and local storage with key '${key}'`)
             } else {
-                console.log(`Saved circuit to session (not local) storage with key '${key}'`)
+                // console.log(`Saved circuit to session (not local) storage with key '${key}'`)
             }
         } catch (e) {
             console.error("Failed to save circuit to browser storage", e)
@@ -1524,7 +1524,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this._highlightedItems = undefined
         this.eventMgr.currentSelection = undefined
         this.eventMgr.clearPopperIfNecessary()
-        this.eventMgr.updateMouseOver([this.mouseX, this.mouseY], false, false)
+        this.eventMgr.updatePointerOver([this.pointerX, this.pointerY], false, false)
         this.editTools.testsPalette.update()
         this.editTools.moveMgr.clear()
         this.editTools.redrawMgr.requestRedraw({ why: "editor root changed", invalidateMask: true, invalidateTests: true })
@@ -1532,10 +1532,10 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.focus()
     }
 
-    public setCurrentMouseAction<M extends MouseAction>(action: M, forceUpdate: boolean = false, ...params: MouseActionParams<M>): boolean {
+    public setCurrentPointerAction<M extends PointerAction>(action: M, forceUpdate: boolean = false, ...params: PoionterActionParams<M>): boolean {
         const changed = this.eventMgr.setHandlersFor(action, ...params)
         if (forceUpdate || changed) {
-            this.setToolCursor(MouseActions[action].cursor)
+            this.setToolCursor(PointerActions[action].cursor)
             this._topBar?.updateActiveTool(action)
             this.editTools.redrawMgr.requestRedraw({ why: "mouse action changed" })
             this.editor.focus()
@@ -1543,12 +1543,12 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         return changed
     }
 
-    public updateCursor(e?: MouseEvent | TouchEvent) {
+    public updateCursor(e?: PointerEvent) {
         const cursor =
             this.editTools.moveMgr.areDrawablesMoving()
                 ? "grabbing"
                 : this._toolCursor
-                ?? this.eventMgr.currentMouseOverComp?.cursorWhenMouseover(e)
+                ?? this.eventMgr.currentPointerOverComp?.cursorWhenMouseover(e)
                 ?? "default"
         this.html.canvasContainer.style.cursor = cursor
     }
@@ -1557,7 +1557,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         return this._messageBar?.showMessage(msg, duration, withCloseButton) ?? (() => undefined)
     }
 
-    public offsetXYForContextMenu(e: MouseEvent | TouchEvent | MouseDragEvent | TouchDragEvent, snapToGrid = false): [number, number] {
+    public offsetXYForContextMenu(e: MouseEvent | PointerDragEvent, snapToGrid = false): [number, number] {
         const mainCanvas = this.html.mainCanvas
         let x, y
 
@@ -1578,7 +1578,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         return [x, y]
     }
 
-    public offsetXY(e: MouseEvent | TouchEvent, skipScaling: boolean = false): [number, number] {
+    public offsetXY(e: MouseEvent, skipScaling: boolean = false): [number, number] {
         const [unscaledX, unscaledY] = (() => {
             const mainCanvas = this.html.mainCanvas
             let target = e.target
@@ -1612,28 +1612,30 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                     ]
                 }
             } else {
-                const elemRect = (target as HTMLElement).getBoundingClientRect()
-                const bodyRect = document.body.getBoundingClientRect()
-                const touch = e.changedTouches[0]
-                const offsetX = touch.pageX - (elemRect.left - bodyRect.left)
-                const offsetY = touch.pageY - (elemRect.top - bodyRect.top)
+                console.error("calling offsetXY with TouchEvent")
+                throw new Error("not implemented")
+                // const elemRect = (target as HTMLElement).getBoundingClientRect()
+                // const bodyRect = document.body.getBoundingClientRect()
+                // const touch = e.changedTouches[0]
+                // const offsetX = touch.pageX - (elemRect.left - bodyRect.left)
+                // const offsetY = touch.pageY - (elemRect.top - bodyRect.top)
 
-                if (target === mainCanvas) {
-                    return [offsetX, offsetY]
-                } else {
-                    const canvasRect = mainCanvas.getBoundingClientRect()
-                    return [
-                        Math.max(GRID_STEP * 2, offsetX + elemRect.x - canvasRect.x),
-                        Math.max(GRID_STEP * 2, offsetY + elemRect.y - canvasRect.y),
-                    ]
-                }
+                // if (target === mainCanvas) {
+                //     return [offsetX, offsetY]
+                // } else {
+                //     const canvasRect = mainCanvas.getBoundingClientRect()
+                //     return [
+                //         Math.max(GRID_STEP * 2, offsetX + elemRect.x - canvasRect.x),
+                //         Math.max(GRID_STEP * 2, offsetY + elemRect.y - canvasRect.y),
+                //     ]
+                // }
             }
         })()
         const currentScale = skipScaling ? 1 : this._actualZoomFactor
         return [unscaledX / currentScale, unscaledY / currentScale]
     }
 
-    public offsetXYForComponent(e: MouseEvent | TouchEvent, comp: Component): [number, number] {
+    public offsetXYForComponent(e: PointerEvent, comp: Component): [number, number] {
         const offset = this.offsetXY(e)
         if (comp.orient === Orientation.default) {
             return offset
@@ -2390,7 +2392,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const drawTime = this.timeline.logicalTime()
         const drawTimeAnimationFraction = !this._options.animateWires ? undefined : (drawTime / 1000) % 1
         g.strokeStyle = COLOR_COMPONENT_BORDER
-        const currentMouseOverComp = this.eventMgr.currentMouseOverComp
+        const currentMouseOverComp = this.eventMgr.currentPointerOverComp
         const drawParams: DrawParams = {
             drawTime,
             drawTimeAnimationFraction,
@@ -2529,7 +2531,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         // ... but then, beware of duplicated custom components if pasting into the same circuit,
         // or find some compatibility criterion for component defs (e.g., number of in/out nodes
         // and names) that would seem enough to determine they are the same (beyond their id/name)
-        const reprs = Serialization.buildComponentsAndWireObject(componentsToInclude, [], [this.mouseX, this.mouseY])
+        const reprs = Serialization.buildComponentsAndWireObject(componentsToInclude, [], [this.pointerX, this.pointerY])
         if (reprs.components === undefined && reprs.wires === undefined) {
             return false
         }

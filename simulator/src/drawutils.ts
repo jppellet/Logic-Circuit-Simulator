@@ -260,7 +260,7 @@ function doSetColors(darkMode: boolean) {
         turquoise: ColorString([0, 162, 162, 0.5]),
     }
     COLOR_COMPONENT_BORDER = ColorString(COLORCOMP_COMPONENT_BORDER)
-    setColorMouseOverIsDanger(false)
+    setColorPointerOverIsDanger(false)
     COLOR_FULL = ColorString(COLORCOMPS_FULL)
     COLOR_EMPTY = ColorString(COLORCOMPS_EMPTY)
     COLOR_FULL_ALT = ligherColor(COLOR_FULL, 40)
@@ -303,7 +303,7 @@ function createStripedPattern(background: ColorString, stripeColor: string) {
     return pattern!
 }
 
-export function setColorMouseOverIsDanger(mouseOverIsDanger: boolean) {
+export function setColorPointerOverIsDanger(mouseOverIsDanger: boolean) {
     COLOR_MOUSE_OVER = mouseOverIsDanger ? COLOR_MOUSE_OVER_DANGER : COLOR_MOUSE_OVER_NORMAL
 }
 

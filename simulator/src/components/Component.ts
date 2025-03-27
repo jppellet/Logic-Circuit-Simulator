@@ -2,7 +2,7 @@ import * as t from "io-ts"
 import JSON5 from "json5"
 import type { ComponentKey, DefAndParams, LibraryButtonOptions, LibraryButtonProps, LibraryItem } from "../ComponentMenu"
 import { DrawParams, LogicEditor } from "../LogicEditor"
-import { MouseDragEvent, TouchDragEvent } from "../UIEventManager"
+import { PointerDragEvent } from "../UIEventManager"
 import { UIPermissions } from "../UIPermissions"
 import { COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, DrawingRect, GRID_STEP, drawClockInput, drawComponentName, drawLabel, drawWireLineToComponent, isTrivialNodeName, shouldDrawLeadsTo, useCompact } from "../drawutils"
 import { IconName, ImageName } from "../images"
@@ -1047,7 +1047,7 @@ export abstract class ComponentBase<
         return newComp
     }
 
-    public override mouseDown(e: MouseEvent | TouchEvent) {
+    public override pointerDown(e: PointerEvent) {
         if (this.parent.mode >= Mode.CONNECT && !e.shiftKey) {
             // try clearing selection
             const eventMgr = this.parent.editor.eventMgr
@@ -1059,16 +1059,16 @@ export abstract class ComponentBase<
             }
         }
 
-        return super.mouseDown(e)
+        return super.pointerDown(e)
     }
 
-    public override mouseUp(e: MouseEvent | TouchEvent): InteractionResult {
+    public override pointerUp(e: PointerEvent): InteractionResult {
         let wasSpawning = false
         if (this._state === ComponentState.SPAWNING) {
             this._state = ComponentState.SPAWNED
             wasSpawning = true
         }
-        const wasMoving = super.mouseUp(e).isChange
+        const wasMoving = super.pointerUp(e).isChange
         if (wasSpawning || wasMoving) {
             const newLinks = this.parent.nodeMgr.tryConnectNodesOf(this)
             if (newLinks.length > 0) {
@@ -1088,7 +1088,7 @@ export abstract class ComponentBase<
         // by default, do nothing
     }
 
-    protected override updateSelfPositionIfNeeded(x: number, y: number, snapToGrid: boolean, e: MouseDragEvent | TouchDragEvent): undefined | [number, number] {
+    protected override updateSelfPositionIfNeeded(x: number, y: number, snapToGrid: boolean, e: PointerDragEvent): undefined | [number, number] {
         if (this._state === ComponentState.SPAWNING) {
             return this.trySetPosition(x, y, snapToGrid)
         }
@@ -1102,7 +1102,7 @@ export abstract class ComponentBase<
         }
     }
 
-    public override mouseClicked(e: MouseEvent | TouchEvent): InteractionResult {
+    public override pointerClicked(e: PointerEvent): InteractionResult {
         if (this.parent.mode >= Mode.CONNECT && e.shiftKey) {
             this.parent.editor.eventMgr.toggleSelect(this)
             return InteractionResult.SimpleChange
@@ -1110,7 +1110,7 @@ export abstract class ComponentBase<
         return InteractionResult.NoChange
     }
 
-    public override mouseDoubleClicked(e: MouseEvent | TouchEvent): InteractionResult {
+    public override pointerDoubleClicked(e: PointerEvent): InteractionResult {
         if (this.parent.mode >= Mode.CONNECT && e.metaKey && this.canRotate()) {
             const doChange = () => {
                 this.doSetOrient(Orientation.nextClockwise(this.orient))
@@ -1134,7 +1134,7 @@ export abstract class ComponentBase<
         }
     }
 
-    public override cursorWhenMouseover(e?: MouseEvent | TouchEvent): string | undefined {
+    public override cursorWhenMouseover(e?: PointerEvent): string | undefined {
         const mode = this.parent.mode
         if ((e?.ctrlKey ?? false) && mode >= Mode.CONNECT) {
             return "context-menu"
@@ -1498,7 +1498,7 @@ export abstract class ParametrizedComponentBase<
 
         const newComp = this.replaceWithNewParams({ [paramName]: newParamValue } as Partial<TParams>)
         if (newComp !== undefined) {
-            this.parent.editor.eventMgr.setCurrentMouseOverComp(newComp)
+            this.parent.editor.eventMgr.setCurrentPointerOverComp(newComp)
         }
     }
 

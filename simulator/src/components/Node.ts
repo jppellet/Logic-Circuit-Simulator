@@ -295,16 +295,16 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         }
     }
 
-    public override cursorWhenMouseover(__e?: MouseEvent | TouchEvent) {
+    public override cursorWhenMouseover(__e?: PointerEvent) {
         return "crosshair"
     }
 
-    public override mouseDown(__: MouseEvent | TouchEvent) {
+    public override pointerDown(__: PointerEvent) {
         this.parent.linkMgr.startDraggingWireFrom(this.asNode)
         return { wantsDragEvents: false }
     }
 
-    public override mouseUp(__: MouseEvent | TouchEvent) {
+    public override pointerUp(__: PointerEvent) {
         const newWire = this.parent.linkMgr.stopDraggingWireOn(this.asNode)
         if (newWire === undefined) {
             return InteractionResult.NoChange
@@ -469,8 +469,8 @@ export class NodeOut extends NodeBase<NodeOut> {
         return disconnected ? NodeStyle.OUT_DISCONNECTED : NodeStyle.OUT_CONNECTED
     }
 
-    public override mouseDoubleClicked(e: MouseEvent | TouchEvent): InteractionResult {
-        const superChange = super.mouseDoubleClicked(e)
+    public override pointerDoubleClicked(e: PointerEvent): InteractionResult {
+        const superChange = super.pointerDoubleClicked(e)
         if (superChange.isChange) {
             return superChange // already handled
         }

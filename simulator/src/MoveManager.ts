@@ -37,19 +37,19 @@ export class MoveManager {
         return undefined
     }
 
-    public setDrawableMoving(comp: DrawableWithPosition, e?: MouseEvent | TouchEvent) {
+    public setDrawableMoving(comp: DrawableWithPosition, e?: PointerEvent) {
         this.changeMovingDrawables(() => {
             this._movingDrawables.add(comp)
         }, e)
     }
 
-    public setDrawableStoppedMoving(comp: DrawableWithPosition, e?: MouseEvent | TouchEvent) {
+    public setDrawableStoppedMoving(comp: DrawableWithPosition, e?: PointerEvent) {
         this.changeMovingDrawables(() => {
             this._movingDrawables.delete(comp)
         }, e)
     }
 
-    private changeMovingDrawables(change: () => void, e?: MouseEvent | TouchEvent) {
+    private changeMovingDrawables(change: () => void, e?: PointerEvent) {
         const emptyBefore = this._movingDrawables.size === 0
         change()
         const emptyAfter = this._movingDrawables.size === 0

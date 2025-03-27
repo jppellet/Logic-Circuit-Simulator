@@ -412,7 +412,7 @@ export class Rectangle extends ComponentBase<RectangleRepr> {
         }
     }
 
-    public override mouseDoubleClicked(__e: MouseEvent | TouchEvent): InteractionResult {
+    public override pointerDoubleClicked(__e: PointerEvent): InteractionResult {
         // TODO: implement dragging for resizing the rectangle
         // don't call super, which would rotate the rectangle, this is useless here
         this.runSetSizeDialog(this.makeCurrentSizeString())

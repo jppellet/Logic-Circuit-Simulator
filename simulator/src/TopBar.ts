@@ -1,4 +1,4 @@
-import { LogicEditor, MouseAction } from "./LogicEditor"
+import { LogicEditor, PointerAction } from "./LogicEditor"
 import { Serialization } from "./Serialization"
 import { TimelineState } from "./Timeline"
 import { UndoState } from "./UndoManager"
@@ -107,17 +107,17 @@ export class TopBar {
         this.timeLabel.style.fontSize = "8pt"
 
         this.designButton = this.makeButtonWithLabel("mouse", s.Design,
-            () => this.editor.setCurrentMouseAction("edit"))
+            () => this.editor.setCurrentPointerAction("edit"))
 
         this.deleteButton = this.makeButtonWithLabel("trash", s.Delete,
-            () => this.editor.setCurrentMouseAction("delete"))
+            () => this.editor.setCurrentPointerAction("delete"))
 
         this.testsButton = this.makeButtonWithLabel("check", s.Tests,
             () => this.editor.setTestsPaletteVisible(!this.testsButton.classList.contains("active")))
 
         this.flexibleSep = div(style("flex: auto")).render()
         this.moveButton = this.makeButton("move", s.Move[1],
-            () => this.editor.setCurrentMouseAction("move"))
+            () => this.editor.setCurrentPointerAction("move"))
         this.zoomLevelInput = input(type("number"),
             style("margin: 0 2px 0 0; width: 4em; background-color: inherit;"),
             attr("min", "0"), attr("step", "10"),
@@ -393,7 +393,7 @@ export class TopBar {
             (ms < 100 ? (ms < 10 ? "00" : "0") : "") + ms
     }
 
-    public updateActiveTool(tool: MouseAction) {
+    public updateActiveTool(tool: PointerAction) {
         setActive(this.designButton, tool === "edit")
         setActive(this.deleteButton, tool === "delete")
         setActive(this.moveButton, tool === "move")

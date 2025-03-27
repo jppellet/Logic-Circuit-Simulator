@@ -7,7 +7,7 @@ import { RecalcManager, RedrawManager, RedrawRequest } from "../RedrawRecalcMana
 import { type SVGRenderingContext } from "../SVGRenderingContext"
 import { TestSuites } from "../TestSuite"
 import { TestsPalette } from "../TestsPalette"
-import { MouseDragEvent, TouchDragEvent } from "../UIEventManager"
+import { PointerDragEvent } from "../UIEventManager"
 import { UndoManager } from "../UndoManager"
 import { COLOR_COMPONENT_BORDER, COLOR_MOUSE_OVER, COLOR_MOUSE_OVER_DANGER, ColorString, DrawZIndex, GRID_STEP, inRect } from "../drawutils"
 import { fixedWidthInContextMenu, Modifier, ModifierObject, span } from "../htmlgen"
@@ -56,7 +56,7 @@ export type MenuItem =
         caption: Modifier,
         shortcut: string | undefined,
         danger: boolean | undefined,
-        action: (itemEvent: MouseEvent | TouchEvent, menuEvent: MouseEvent | TouchEvent) => PromiseOrValue<InteractionResult | undefined | void>
+        action: (itemEvent: MouseEvent, menuEvent: MouseEvent) => PromiseOrValue<InteractionResult | undefined | void>
     }
 
 export type MenuData = MenuItem[]
@@ -67,7 +67,7 @@ export const MenuData = {
     text(caption: Modifier): MenuItem {
         return { _tag: "text", caption }
     },
-    item(icon: IconName | undefined, caption: Modifier, action: (itemEvent: MouseEvent | TouchEvent, menuEvent: MouseEvent | TouchEvent) => PromiseOrValue<InteractionResult | undefined | void>, shortcut?: string, danger?: boolean): MenuItem {
+    item(icon: IconName | undefined, caption: Modifier, action: (itemEvent: MouseEvent, menuEvent: MouseEvent) => PromiseOrValue<InteractionResult | undefined | void>, shortcut?: string, danger?: boolean): MenuItem {
         return { _tag: "item", icon, caption, action, shortcut, danger }
     },
     submenu(icon: IconName | undefined, caption: Modifier, items: MenuData): MenuItem {
@@ -212,7 +212,7 @@ export abstract class Drawable {
         return false
     }
 
-    public cursorWhenMouseover(__e?: MouseEvent | TouchEvent): string | undefined {
+    public cursorWhenMouseover(__e?: PointerEvent): string | undefined {
         return undefined
     }
 
@@ -287,30 +287,30 @@ export abstract class Drawable {
     // Return { wantsDragEvents: true } (default) to signal the component
     // wants to get all mouseDragged and the final mouseUp event. Useful to
     // return false to allow drag destinations to get a mouseUp
-    public mouseDown(__: MouseEvent | TouchEvent): { wantsDragEvents: boolean } {
+    public pointerDown(__: PointerEvent): { wantsDragEvents: boolean } {
         // empty default implementation
         return { wantsDragEvents: true }
     }
 
-    public mouseDragged(__: MouseEvent | TouchEvent) {
+    public pointerDragged(__: PointerEvent) {
         // empty default implementation
     }
 
-    public mouseUp(__: MouseEvent | TouchEvent): InteractionResult {
-        // empty default implementation
-        return InteractionResult.NoChange
-    }
-
-    // Return true to indicate it was handled and had an effect
-    // (and presumably doesn't need to be handled any more)
-    public mouseClicked(__: MouseEvent | TouchEvent): InteractionResult {
+    public pointerUp(__: PointerEvent): InteractionResult {
         // empty default implementation
         return InteractionResult.NoChange
     }
 
     // Return true to indicate it was handled and had an effect
     // (and presumably doesn't need to be handled any more)
-    public mouseDoubleClicked(__: MouseEvent | TouchEvent): InteractionResult {
+    public pointerClicked(__: PointerEvent): InteractionResult {
+        // empty default implementation
+        return InteractionResult.NoChange
+    }
+
+    // Return true to indicate it was handled and had an effect
+    // (and presumably doesn't need to be handled any more)
+    public pointerDoubleClicked(__: PointerEvent): InteractionResult {
         // empty default implementation
         return InteractionResult.NoChange
     }
@@ -422,8 +422,8 @@ export abstract class DrawableWithPosition extends Drawable implements HasPositi
         } else {
             // creating new object
             const editor = this.parent.editor
-            this._posX = Math.max(0, editor.mouseX)
-            this._posY = editor.mouseY
+            this._posX = Math.max(0, editor.pointerX)
+            this._posY = editor.pointerY
             this._lockPos = false
             this._orient = Orientation.default
         }
@@ -572,7 +572,7 @@ export abstract class DrawableWithPosition extends Drawable implements HasPositi
         const anchorItem: MenuItems = this._anchor === undefined ? [
             ["start", MenuData.item("none", s.SetAnchor, () => {
                 this.parent.editor.showMessage(S.Messages.SetAnchorPrompt)
-                this.parent.editor.setCurrentMouseAction("setanchor", false, this)
+                this.parent.editor.setCurrentPointerAction("setanchor", false, this)
             })],
         ] : [
             ["start", MenuData.item("none", span(s.ClearAnchor[0], span(fixedWidthInContextMenu, this._anchor.ref ?? "???"), s.ClearAnchor[1]), () => {
@@ -650,7 +650,7 @@ export abstract class DrawableWithDraggablePosition extends DrawableWithPosition
         return this._isMovingWithContext !== undefined
     }
 
-    private tryStartMoving(e: MouseEvent | TouchEvent) {
+    private tryStartMoving(e: PointerEvent) {
         if (this.lockPos) {
             return
         }
@@ -666,7 +666,7 @@ export abstract class DrawableWithDraggablePosition extends DrawableWithPosition
         }
     }
 
-    private tryStopMoving(e: MouseEvent | TouchEvent): boolean {
+    private tryStopMoving(e: PointerEvent): boolean {
         let wasMoving = false
         if (this._isMovingWithContext !== undefined) {
             this._isMovingWithContext = undefined
@@ -684,7 +684,7 @@ export abstract class DrawableWithDraggablePosition extends DrawableWithPosition
         }
     }
 
-    public override mouseDown(e: MouseEvent | TouchEvent) {
+    public override pointerDown(e: PointerEvent) {
         if (this.parent.mode >= Mode.CONNECT) {
             if (e.metaKey) {
                 this.parent.linkMgr.startSettingAnchorFrom(this)
@@ -695,7 +695,7 @@ export abstract class DrawableWithDraggablePosition extends DrawableWithPosition
         return { wantsDragEvents: true }
     }
 
-    public override mouseDragged(e: MouseDragEvent | TouchDragEvent) {
+    public override pointerDragged(e: PointerDragEvent) {
         if (this.parent.mode >= Mode.CONNECT && !this.lockPos) {
             this.parent.ifEditing?.moveMgr.setDrawableMoving(this, e)
             const [x, y] = this.parent.editor.offsetXY(e)
@@ -704,20 +704,20 @@ export abstract class DrawableWithDraggablePosition extends DrawableWithPosition
         }
     }
 
-    public override mouseUp(e: MouseEvent | TouchEvent): InteractionResult {
-        this._isMovingWithContext?.createdClone?.mouseUp(e)
+    public override pointerUp(e: PointerEvent): InteractionResult {
+        this._isMovingWithContext?.createdClone?.pointerUp(e)
         const result = this.tryStopMoving(e)
         return InteractionResult.fromBoolean(result)
     }
 
-    protected updateSelfPositionIfNeeded(x: number, y: number, snapToGrid: boolean, e: MouseDragEvent | TouchDragEvent): undefined | [number, number] {
+    protected updateSelfPositionIfNeeded(x: number, y: number, snapToGrid: boolean, e: PointerDragEvent): undefined | [number, number] {
         if (this._isMovingWithContext === undefined) {
             return undefined
         }
         const { mouseOffsetToPosX, mouseOffsetToPosY, lastAnchorX, lastAnchorY, createdClone } = this._isMovingWithContext
 
         if (createdClone !== undefined) {
-            createdClone.mouseDragged(e)
+            createdClone.pointerDragged(e)
             return undefined
         }
 
@@ -741,7 +741,7 @@ export abstract class DrawableWithDraggablePosition extends DrawableWithPosition
         let clone
         if (e.altKey && this.parent.mode >= Mode.DESIGN && (clone = this.makeClone(true)) !== undefined) {
             this._isMovingWithContext.createdClone = clone
-            this.parent.editor.eventMgr.setCurrentMouseOverComp(clone)
+            this.parent.editor.eventMgr.setCurrentPointerOverComp(clone)
         } else {
             this.doSetPosition(...newPos)
         }

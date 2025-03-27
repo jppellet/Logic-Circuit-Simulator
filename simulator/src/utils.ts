@@ -861,7 +861,9 @@ export async function pasteFromClipboard(): Promise<string | undefined> {
 export function targetIsFieldOrOtherInput(e: Event) {
     const targets = e.composedPath()
     let elem, tagName
-    return targets.length !== 0 && (elem = targets[0]) instanceof HTMLElement && ((tagName = elem.tagName) === "INPUT" || tagName === "SELECT")
+    return targets.length !== 0 &&
+        (elem = targets[0]) instanceof HTMLElement &&
+        ((tagName = elem.tagName) === "INPUT" || tagName === "SELECT")
 }
 
 export function getScrollParent(element: HTMLElement): HTMLElement | Document {
