@@ -1,9 +1,9 @@
-import { createPopper, Instance as PopperInstance } from '@popperjs/core'
+import { createPopper as createTooltip, Instance as TooltipInstance } from '@popperjs/core'
 import { ButtonDataset } from './ComponentFactory'
 import { Component, ComponentBase, ComponentState } from './components/Component'
 import { CustomComponent } from './components/CustomComponent'
 import { Drawable, DrawableWithDraggablePosition, DrawableWithPosition, MenuData, MenuItem } from "./components/Drawable"
-import { Node } from "./components/Node"
+import { Node, NodeBase } from "./components/Node"
 import { Waypoint, Wire } from './components/Wire'
 import { distSquared, DrawZIndex, GRID_STEP, setColorPointerOverIsDanger } from "./drawutils"
 import { applyModifiersTo, button, cls, emptyMod, li, Modifier, ModifierObject, mods, span, type, ul } from './htmlgen'
@@ -28,6 +28,10 @@ function setDragStartOnEvent(e: PointerEvent, dragStartX: number, dragStartY: nu
     _e.dragStartX = dragStartX
     _e.dragStartY = dragStartY
 }
+function preventDefaultAlways(e: Event) {
+    e.preventDefault()
+}
+
 
 export class EditorSelection {
 
@@ -87,14 +91,14 @@ export class EditorSelection {
 export class UIEventManager {
 
     public readonly editor: LogicEditor
-    private _currentPointerOverComp: Drawable | null = null
-    private _currentPointerOverPopper: [popper: PopperInstance, removeScrollListener: () => void] | null = null
+    private _currentComponentUnderPointer: Drawable | null = null
+    private _currentTooltip: [tooltip: TooltipInstance, removeScrollListener: () => void] | null = null
     private _currentPointerDownData: PointerDownData | null = null
     private _startHoverTimeoutHandle: TimeoutHandle | null = null
     private _longPressTimeoutHandle: TimeoutHandle | null = null
     private _currentAction: PointerAction
     private _currentHandlers: ToolHandlers
-    private _lastPointerEnd: [Drawable, number] | undefined = undefined
+    private _lastTouchEnd: [Drawable, number] | undefined = undefined
     public currentSelection: EditorSelection | undefined = undefined
 
     public constructor(editor: LogicEditor) {
@@ -103,8 +107,8 @@ export class UIEventManager {
         this._currentHandlers = new EditHandlers(editor)
     }
 
-    public get currentPointerOverComp() {
-        return this._currentPointerOverComp
+    public get currentComponentUnderPointer() {
+        return this._currentComponentUnderPointer
     }
 
     public get currentPointerDownData() {
@@ -193,12 +197,12 @@ export class UIEventManager {
         }
     }
 
-    public setCurrentPointerOverComp(comp: Drawable | null) {
-        if (comp !== this._currentPointerOverComp) {
-            this.clearPopperIfNecessary()
+    public setCurrentComponentUnderPointer(comp: Drawable | null) {
+        if (comp !== this._currentComponentUnderPointer) {
+            this.clearTooltipIfNeeded()
             this.clearHoverTimeoutHandle()
 
-            this._currentPointerOverComp = comp
+            this._currentComponentUnderPointer = comp
             if (comp !== null) {
                 this._startHoverTimeoutHandle = setTimeout(() => {
                     this._currentHandlers.pointerHoverOn(comp)
@@ -214,26 +218,29 @@ export class UIEventManager {
         return this.currentSelection === undefined || this.currentSelection.previouslySelectedElements.size === 0
     }
 
-    public updatePointerOver([x, y]: [number, number], pullingWire: boolean, settingAnchor: boolean) {
+    public updateComponentUnderPointer([x, y]: [number, number], pullingWire: boolean, settingAnchor: boolean, isTouch: boolean) {
 
-        // pointerover search order:
+        // Here is the pointerover search order:
         // * Components - overlays
         // * Components - normal, and nodes, sometimes
         // * Wires, sometimes
         // * Components - background
+        // We use isTouchMove to determine if we should make finger connections to nodes easier by being more tolerant
 
-        const findPointerOver: () => Drawable | null = () => {
+        const findComponenentUnderPointer: () => Drawable | null = () => {
             // easy optimization: maybe we're still over the
             // same component as before, so quickly check this
-            const prevPointerOver = this._currentPointerOverComp
-            if (prevPointerOver !== null && prevPointerOver.drawZIndex !== 0) {
+            const prevCompUnderPointer = this._currentComponentUnderPointer
+            if (prevCompUnderPointer !== null && prevCompUnderPointer.drawZIndex !== 0) {
                 // second condition says: always revalidate the pointerover of background components (with z index 0)
 
-                // we always revalidate wires
+                // we always revalidate wires and nodes (because of tolerant hit radiuses)
                 // if we're setting an anchor, we only want components, not drawables
-                const rejectThis = prevPointerOver instanceof Wire || (settingAnchor && !(prevPointerOver instanceof ComponentBase))
-                if (!rejectThis && prevPointerOver.isOver(x, y)) {
-                    return this._currentPointerOverComp
+                const rejectThis = prevCompUnderPointer instanceof Wire ||
+                    prevCompUnderPointer instanceof NodeBase ||
+                    (settingAnchor && !(prevCompUnderPointer instanceof ComponentBase))
+                if (!rejectThis && prevCompUnderPointer.isOver(x, y)) {
+                    return this._currentComponentUnderPointer
                 }
             }
             const root = this.editor.editorRoot
@@ -249,17 +256,20 @@ export class UIEventManager {
 
             // normal components or their nodes
             for (const comp of root.components.withZIndex(DrawZIndex.Normal)) {
-                let nodeOver: Node | null = null
+                let nodeOver: Node | undefined = undefined
+                let bestDistanceSquared = Number.POSITIVE_INFINITY
                 if (!settingAnchor) {
-                    // check nodes
+                    // check nodes -- all of them to be able to get the smallest distance,
+                    // which prevents too big hit radius from making "hidden" nodes unreachable
                     for (const node of comp.allNodes()) {
-                        if (node.isOver(x, y)) {
+                        const dist = node.distSquaredIfOver(x, y, isTouch)
+                        if (dist !== undefined && dist < bestDistanceSquared) {
+                            bestDistanceSquared = dist
                             nodeOver = node
-                            break
                         }
                     }
                 }
-                if (nodeOver !== null && (!pullingWire || root.linkMgr.isValidNodeToConnect(nodeOver))) {
+                if (nodeOver !== undefined && (!pullingWire || root.linkMgr.isValidNodeToConnect(nodeOver))) {
                     return nodeOver
                 }
                 if (!pullingWire && comp.isOver(x, y)) {
@@ -293,7 +303,7 @@ export class UIEventManager {
             return null
         }
 
-        this.setCurrentPointerOverComp(findPointerOver())
+        this.setCurrentComponentUnderPointer(findComponenentUnderPointer())
     }
 
     public selectAll() {
@@ -321,23 +331,36 @@ export class UIEventManager {
         this.editor.editTools.redrawMgr.requestRedraw({ why: "toggled selection" })
     }
 
+    private moveSelection(dx: number, dy: number, snapToGrid: boolean): boolean {
+        const sel = this.currentSelection
+        if (sel === undefined || sel.previouslySelectedElements.size === 0) {
+            return false
+        }
+        for (const comp of sel.previouslySelectedElements) {
+            if (comp instanceof DrawableWithDraggablePosition) {
+                comp.setPosition(comp.posX + dx, comp.posY + dy, snapToGrid)
+            }
+        }
+        return true
+    }
 
-    public clearPopperIfNecessary() {
-        if (this._currentPointerOverPopper !== null) {
-            const [popper, removeListener] = this._currentPointerOverPopper
+
+    public clearTooltipIfNeeded() {
+        if (this._currentTooltip !== null) {
+            const [tooltip, removeListener] = this._currentTooltip
             removeListener()
-            popper.destroy()
-            this._currentPointerOverPopper = null
+            tooltip.destroy()
+            this._currentTooltip = null
             this.editor.html.tooltipElem.style.display = "none"
         }
     }
 
-    public makePopper(tooltipHtml: ModifierObject, rect: () => DOMRect) {
+    public makeTooltip(tooltipHtml: ModifierObject, rect: () => DOMRect) {
         const { tooltipContents, tooltipElem, mainCanvas } = this.editor.html
         tooltipContents.innerHTML = ""
         tooltipHtml.applyTo(tooltipContents)
         tooltipElem.style.removeProperty("display")
-        const popper = createPopper({
+        const tooltip = createTooltip({
             getBoundingClientRect: rect,
             contextElement: mainCanvas,
         }, tooltipElem, {
@@ -346,111 +369,194 @@ export class UIEventManager {
         })
 
         const scrollParent = getScrollParent(mainCanvas)
-        const scrollListener = () => popper.update()
+        const scrollListener = () => tooltip.update()
         scrollParent.addEventListener("scroll", scrollListener)
         const removeListener = () => scrollParent.removeEventListener("scroll", scrollListener)
-        this._currentPointerOverPopper = [popper, removeListener]
+        this._currentTooltip = [tooltip, removeListener]
 
         tooltipElem.setAttribute('data-show', '')
-        popper.update()
+        tooltip.update()
+    }
+
+    public hideContextMenuIfNeeded(e: PointerEvent) {
+        this._currentHandlers.hideContextMenuIfNeeded(e)
     }
 
     public registerCanvasListenersOn(canvas: HTMLCanvasElement) {
         const editor = this.editor
+
         const returnFalse = () => false
-        canvas.ondragenter = returnFalse
-        canvas.ondragover = returnFalse
-        canvas.ondragend = returnFalse
-
-        canvas.ondrop = e => {
-            if (e.dataTransfer === null) {
-                return false
+        const preventDefaultIfCanConnect = (e: Event) => {
+            // prevent scrolling when we can connect
+            if (this.editor.mode >= Mode.CONNECT) {
+                e.preventDefault()
             }
-
-            e.preventDefault()
-            const file = e.dataTransfer.files?.[0]
-            if (file !== undefined) {
-                editor.tryLoadFrom(file)
-            } else {
-                const dataItems = e.dataTransfer.items
-                if (dataItems !== undefined) {
-                    for (const dataItem of dataItems) {
-                        if (dataItem.kind === "string" && (dataItem.type === "application/json" || dataItem.type === "application/json5" || dataItem.type === "text/plain")) {
-                            dataItem.getAsString(content => {
-                                e.dataTransfer!.dropEffect = "copy"
-                                editor.loadCircuitOrLibrary(content)
-                            })
-                            break
-                        }
-                    }
-                }
-            }
-            return false
         }
 
-        // cancel touch events
-        canvas.addEventListener("touchstart", e => {
-            if (this.editor.mode >= Mode.CONNECT) {
-                // prevent scrolling when we can connect
-                e.preventDefault()
+        // Prevent scrolling
+        canvas.ontouchstart = preventDefaultIfCanConnect
+        canvas.ontouchmove = preventDefaultIfCanConnect
+        canvas.ontouchend = preventDefaultAlways
+
+        // Handle pointer events
+
+        // Typical sequence:
+        // pointerenter -> pointerover -> pointerdown? -> pointermove* -> pointerup || pointercancel -> pointerout -> pointerleave
+        // We're interested in:           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+        // We don't use e.isPrimary since there could be several primary pointers, one
+        // per pointer type. Instead, we use the pointerId to determine the one to listen to.
+        // We still use custom logic to move and zoom the canvas when two pointers are used.
+
+        // This tracks the active pointers, the first one being our main pointer
+        const downPointers: Map<number, PointerEvent> = new Map()
+        let trackedPointerId: number | undefined = undefined
+
+        type Transform = { zoom: number, tX: number, tY: number }
+        type PointersLoc = { dist: number, centerX: number, centerY: number }
+        let currentZoomSession: { initialTransform: Transform, initialPointersLoc: PointersLoc } | undefined = undefined
+
+        const cancelZoomSession = () => {
+            if (currentZoomSession !== undefined) {
+                // round final translation offset to not be off-grid
+                const translationRoundTo = GRID_STEP / 2
+                const tX = Math.round(editor.translationX / translationRoundTo) * translationRoundTo
+                const tY = Math.round(editor.translationY / translationRoundTo) * translationRoundTo
+                editor.setTranslation(tX, tY)
+                currentZoomSession = undefined
             }
-        })
+        }
 
-        canvas.addEventListener("touchmove", e => {
-            if (this.editor.mode >= Mode.CONNECT) {
-                // prevent scrolling when we can connect
-                e.preventDefault()
+        const applyZoomAndTranslation = (zoom: number, startGestureX: number, startGestureY: number, endGestureX: number, endGestureY: number) => {
+            const effectiveZoom = editor.setZoom(zoom, true)
+            const effectiveScale = effectiveZoom / 100
+            const tX = endGestureX / effectiveScale - startGestureX
+            const tY = endGestureY / effectiveScale - startGestureY
+            editor.setTranslation(tX, tY)
+        }
+
+        const getTwoPointersLoc = (skipTransform: boolean): PointersLoc => {
+            if (downPointers.size !== 2) {
+                throw new Error("Pointer distance called with " + downPointers.size + " pointers instead of 2")
             }
-        })
+            const pointerEvents = downPointers.values()
+            const p1 = pointerEvents.next().value!
+            const p2 = pointerEvents.next().value!
+            const [p1X, p1Y] = editor.offsetXY(p1, skipTransform)
+            const [p2X, p2Y] = editor.offsetXY(p2, skipTransform)
+            const centerX = (p1X + p2X) / 2
+            const centerY = (p1Y + p2Y) / 2
+            const dx = p1X - p2X
+            const dy = p1Y - p2Y
+            const dist = Math.sqrt(dx * dx + dy * dy)
+            return { dist, centerX, centerY }
+        }
 
-        canvas.addEventListener("touchend", e => {
-            // touchend should always be prevented, otherwise it may
-            // generate mouse/click events
-            e.preventDefault()
-        })
+        canvas.onpointerdown = editor.wrapHandler(e => {
+            const pointerId = e.pointerId
+            canvas.setPointerCapture(pointerId)
+            downPointers.set(pointerId, e)
 
+            const numPointers = downPointers.size
+            if (numPointers === 2) {
+                // finish previous pointer session
+                this.doPointerUp(e)
+                trackedPointerId = undefined
 
-        canvas.addEventListener("pointerdown", editor.wrapHandler((e) => {
-            // console.log("pointerdown %o, composedPath = %o", e, e.composedPath())
-            this._pointerDown(e)
-        }))
-
-        canvas.addEventListener("pointermove", editor.wrapHandler((e) => {
-            // console.log("pointermove %o, composedPath = %o", e, e.composedPath())
-            this._pointerMove(e)
-            this.editor.updateCursor(e)
-        }))
-
-        canvas.addEventListener("mouseleave", editor.wrapHandler(() => {
-            this.clearPopperIfNecessary()
-        }))
-
-        document.addEventListener("pointerdown", e => this._currentHandlers.hideContextMenuIfNeeded(e))
-
-        canvas.addEventListener("pointerup", editor.wrapHandler((e) => {
-            // console.log("pointerup %o, composedPath = %o", e, e.composedPath())
-            this._pointerUp(e)
-            if (e.pointerType === "touch") {
-                this.setCurrentPointerOverComp(null)
+                // we'll start a zoom session
+                const initialTransform = {
+                    zoom: this.editor.userDrawingScale * 100,
+                    tX: this.editor.translationX,
+                    tY: this.editor.translationY,
+                }
+                currentZoomSession = {
+                    initialTransform,
+                    initialPointersLoc: getTwoPointersLoc(false),
+                }
             } else {
-                this.updatePointerOver(this.editor.offsetXY(e), false, false)
-                this.editor.updateCursor(e)
+                cancelZoomSession()
             }
-            this.editor.focus()
-        }))
 
-        // canvas.addEventListener("pointercancel", editor.wrapHandler((e) => {
-        //     // console.log("canvas touchcancel %o %o, composedPath = %o", offsetXY(e), e, e.composedPath())
-        // }))
+            if (numPointers === 1) {
+                // start handling these pointer's events
+                trackedPointerId = pointerId
+                this.doPointerDown(e)
+            }
+        })
+        canvas.onpointermove = editor.wrapHandler(e => {
+            const pointerId = e.pointerId
+            if (downPointers.has(pointerId)) {
+                // update it if it was down; otherwise, it's a mousemove without
+                // a pointerdown so we don't track it
+                downPointers.set(pointerId, e)
+            }
 
-        canvas.addEventListener("contextmenu", editor.wrapHandler((e) => {
-            // console.log("contextmenu %o, composedPath = %o", e, e.composedPath())
+            const numPointers = downPointers.size
+            let handle = false
+            if (numPointers === 2 && currentZoomSession !== undefined) {
+                const initLoc = currentZoomSession.initialPointersLoc
+                const newLoc = getTwoPointersLoc(true)
+                const factor = newLoc.dist / initLoc.dist * 100 / currentZoomSession.initialTransform.zoom
+                const targetZoom = currentZoomSession.initialTransform.zoom * factor
+                const stickyZoom = targetZoom > 95 && targetZoom < 105 ? 100 : targetZoom
+                applyZoomAndTranslation(stickyZoom, initLoc.centerX, initLoc.centerY, newLoc.centerX, newLoc.centerY)
+            } else {
+                handle = pointerId === trackedPointerId
+            }
+
+            if (e.pointerType !== "touch" || handle) {
+                this.doPointerMove(e)
+            }
+        })
+        // pointerleave: outside of canvas incl. descendants
+        canvas.onpointerleave = this.clearTooltipIfNeeded.bind(this)
+        // no need to handle pointerout because it also fires when entering a child element
+
+        const onpointerupcancel = editor.wrapHandler((e: PointerEvent) => {
+            const pointerId = e.pointerId
+            downPointers.delete(pointerId)
+
+            if (pointerId === trackedPointerId) {
+                this.doPointerUp(e)
+                trackedPointerId = undefined
+            }
+
+            cancelZoomSession()
+        })
+
+        canvas.onpointerup = onpointerupcancel
+        canvas.onpointercancel = onpointerupcancel
+
+        // Wheel events for zooming and panning
+        canvas.onwheel = editor.wrapHandler(e => {
             e.preventDefault()
-            if (this.editor.mode >= Mode.CONNECT && this._currentPointerOverComp !== null) {
-                this._currentHandlers.contextMenuOn(this._currentPointerOverComp, e)
+            const isZoomGesture = e.ctrlKey || e.metaKey
+            if (isZoomGesture) {
+                // Calculate zoom factor based on deltaY
+                const delta = -e.deltaY
+                const zoomFactor = 1 + delta * 0.005
+                const oldZoom = editor.userDrawingScale * 100
+                const [oldCenterX, oldCenterY] = editor.offsetXY(e, false)
+                const [newCenterX, newCenterY] = editor.offsetXY(e, true)
+                applyZoomAndTranslation(oldZoom * zoomFactor, oldCenterX, oldCenterY, newCenterX, newCenterY)
+            } else {
+                // Handle as a pan gesture if not a zoom
+                const panX = -e.deltaX
+                const panY = -e.deltaY
+                editor.setTranslation(editor.translationX + panX, editor.translationY + panY)
             }
-        }))
+        })
 
+        // Context menu
+        canvas.oncontextmenu = editor.wrapHandler((e) => {
+            e.preventDefault()
+            if (this.editor.mode >= Mode.CONNECT && this._currentComponentUnderPointer !== null) {
+                this._currentHandlers.contextMenuOn(this._currentComponentUnderPointer, e)
+            }
+        })
+        // there is a global 'pointerdown' listener that is used to hide the context menu
+
+        // Key events
         canvas.addEventListener("keyup", editor.wrapHandler(e => {
             if (targetIsFieldOrOtherInput(e)) {
                 return
@@ -480,8 +586,8 @@ export class UIEventManager {
                     e.preventDefault()
                     if (!editor.deleteSelection()) {
                         // if nothing was deleted, we try to delete the hovered component
-                        if (this.currentPointerOverComp !== null) {
-                            const result = editor.eventMgr.tryDeleteDrawable(this.currentPointerOverComp)
+                        if (this.currentComponentUnderPointer !== null) {
+                            const result = editor.eventMgr.tryDeleteDrawable(this.currentComponentUnderPointer)
                             if (result.isChange) {
                                 editor.editTools.undoMgr.takeSnapshot(result)
                             }
@@ -599,97 +705,61 @@ export class UIEventManager {
 
             // console.log("keydown %o %o, comp: %o", e, keyLower, this._currentPointerOverComp)
 
-            if (this._currentPointerOverComp !== null) {
-                this._currentPointerOverComp.keyDown(e)
+            if (this._currentComponentUnderPointer !== null) {
+                this._currentComponentUnderPointer.keyDown(e)
             }
         }))
-    }
 
-    private moveSelection(dx: number, dy: number, snapToGrid: boolean): boolean {
-        const sel = this.currentSelection
-        if (sel === undefined || sel.previouslySelectedElements.size === 0) {
+
+        // Drag and drop on canvas
+        canvas.ondragenter = returnFalse
+        canvas.ondragover = returnFalse
+        canvas.ondragend = returnFalse
+        canvas.ondrop = e => {
+            if (e.dataTransfer === null) {
+                return false
+            }
+
+            e.preventDefault()
+            const file = e.dataTransfer.files?.[0]
+            if (file !== undefined) {
+                editor.tryLoadFrom(file)
+            } else {
+                const dataItems = e.dataTransfer.items
+                if (dataItems !== undefined) {
+                    for (const dataItem of dataItems) {
+                        if (dataItem.kind === "string" && (dataItem.type === "application/json" || dataItem.type === "application/json5" || dataItem.type === "text/plain")) {
+                            dataItem.getAsString(content => {
+                                e.dataTransfer!.dropEffect = "copy"
+                                editor.loadCircuitOrLibrary(content)
+                            })
+                            break
+                        }
+                    }
+                }
+            }
             return false
         }
-        for (const comp of sel.previouslySelectedElements) {
-            if (comp instanceof DrawableWithDraggablePosition) {
-                comp.setPosition(comp.posX + dx, comp.posY + dy, snapToGrid)
-            }
-        }
-        return true
     }
 
-    public registerTitleDragListenersOn(title: HTMLDivElement, closeHandler?: () => unknown) {
-        let isDragging = false
-        let startX: number, startY: number, startTop: number, startRight: number
-
-        title.addEventListener('mousedown', (e) => {
-            isDragging = true
-
-            // Store the initial mouse position
-            startX = e.clientX
-            startY = e.clientY
-
-            // Get the current computed top and right values of the element
-            const parent = title.parentElement!
-            const computedStyle = window.getComputedStyle(parent)
-            startTop = parseInt(computedStyle.top, 10)
-            startRight = parseInt(computedStyle.right, 10)
-
-            // Change cursor to grabbing
-            title.style.cursor = 'grabbing'
-
-            // Prevent text selection while dragging
-            e.preventDefault()
-        })
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) { return }
-
-            // Calculate the movement
-            const deltaX = e.clientX - startX
-            const deltaY = e.clientY - startY
-
-            // Update top and right based on movement
-            const parent = title.parentElement!
-            parent.style.top = `${startTop + deltaY}px`
-            parent.style.right = `${startRight - deltaX}px`
-        })
-
-        document.addEventListener('mouseup', () => {
-            if (isDragging) {
-                isDragging = false
-
-                // Restore cursor
-                title.style.removeProperty("cursor")
-            }
-        })
-
-        if (closeHandler) {
-            const closeButton = makeIcon("close")
-            closeButton.classList.add("close-palette")
-            closeButton.addEventListener("click", closeHandler)
-            title.appendChild(closeButton)
-        }
-    }
-
-    private _pointerDown(e: PointerEvent) {
+    private doPointerDown(e: PointerEvent) {
         this.clearHoverTimeoutHandle()
-        this.clearPopperIfNecessary()
+        this.clearTooltipIfNeeded()
         if (this._currentPointerDownData === null) {
             const xy = this.editor.offsetXY(e)
-            this.updatePointerOver(xy, false, false)
-            if (this._currentPointerOverComp !== null) {
+            this.updateComponentUnderPointer(xy, false, false, e.pointerType === "touch")
+            if (this._currentComponentUnderPointer !== null) {
                 // pointer down on component
-                const { wantsDragEvents } = this._currentHandlers.pointerDownOn(this._currentPointerOverComp, e)
+                const { wantsDragEvents } = this._currentHandlers.pointerDownOn(this._currentComponentUnderPointer, e)
                 if (wantsDragEvents) {
                     const selectedComps = this.currentSelection === undefined ? [] : [...this.currentSelection.previouslySelectedElements]
                     for (const comp of selectedComps) {
-                        if (comp !== this._currentPointerOverComp) {
+                        if (comp !== this._currentComponentUnderPointer) {
                             this._currentHandlers.pointerDownOn(comp, e)
                         }
                     }
                     const pointerDownData: PointerDownData = {
-                        mainComp: this._currentPointerOverComp,
+                        mainComp: this._currentComponentUnderPointer,
                         selectionComps: selectedComps,
                         firedPointerDraggedAlready: false,
                         fireClickedOnFinish: true,
@@ -719,7 +789,7 @@ export class UIEventManager {
         }
     }
 
-    private _pointerMove(e: PointerEvent) {
+    private doPointerMove(e: PointerEvent) {
         if (this._currentPointerDownData !== null) {
             if (this._currentPointerDownData.triggeredContextMenu) {
                 // cancel it all
@@ -762,14 +832,15 @@ export class UIEventManager {
         } else {
             // moving pointer or dragging without a locked component
             const linkMgr = this.editor.editorRoot.linkMgr
-            this.updatePointerOver(this.editor.offsetXY(e), linkMgr.isAddingWire, linkMgr.isSettingAnchor)
+            this.updateComponentUnderPointer(this.editor.offsetXY(e), linkMgr.isAddingWire, linkMgr.isSettingAnchor, e.pointerType === "touch")
         }
+        this.editor.updateCursor(e)
     }
 
-    private _pointerUp(e: PointerEvent) {
+    private doPointerUp(e: PointerEvent) {
         // our target is either the locked component that
         // was clicked or the latest poin ter over component
-        const pointerUpTarget = this._currentPointerDownData?.mainComp ?? this._currentPointerOverComp
+        const pointerUpTarget = this._currentPointerDownData?.mainComp ?? this._currentComponentUnderPointer
         if (pointerUpTarget instanceof Drawable) {
             // pointerup on component
             this.clearLongPressTimeout()
@@ -806,16 +877,24 @@ export class UIEventManager {
             this._currentHandlers.pointerUpOnBackground(e)
         }
         this._currentPointerDownData = null
+
+        if (e.pointerType === "touch") {
+            this.setCurrentComponentUnderPointer(null)
+        } else {
+            this.updateComponentUnderPointer(this.editor.offsetXY(e), false, false, false)
+            this.editor.updateCursor(e)
+        }
         this.editor.editTools.redrawMgr.requestRedraw({ why: "pointerup" })
+        this.editor.focus()
     }
 
     private isDoubleClick(clickedComp: Drawable, e: PointerEvent) {
-        if ("offsetX" in e) {
+        if (e.pointerType === "mouse") {
             return e.detail === 2
         } else {
-            const oldLastTouchEnd = this._lastPointerEnd
+            const oldLastTouchEnd = this._lastTouchEnd
             const now = new Date().getTime()
-            this._lastPointerEnd = [clickedComp, now]
+            this._lastTouchEnd = [clickedComp, now]
             if (oldLastTouchEnd === undefined) {
                 return false
             }
@@ -823,7 +902,7 @@ export class UIEventManager {
             const elapsedTimeMillis = now - lastTime
             const isDoubleTouch = lastComp === clickedComp && elapsedTimeMillis > 0 && elapsedTimeMillis < 300
             if (isDoubleTouch) {
-                this._lastPointerEnd = undefined
+                this._lastTouchEnd = undefined
             }
             return isDoubleTouch
         }
@@ -831,25 +910,45 @@ export class UIEventManager {
 
     public registerButtonListenersOn(componentButtons: HTMLButtonElement[], isCustomElement: boolean) {
         const editor = this.editor
+
+        const pointermoveHandler = editor.wrapHandler((e: PointerEvent) => {
+            // e.preventDefault()
+            this.doPointerMove(e)
+            // this.setCurrentComponentUnderPointer(null)
+        })
+        const pointerupHandler = editor.wrapHandler((e: PointerEvent) => {
+            // e.preventDefault()
+            this.doPointerUp(e)
+            // this.setCurrentComponentUnderPointer(null)
+        })
+
         for (const compButton of componentButtons) {
 
-            compButton.addEventListener("touchstart", e => e.preventDefault())
-            compButton.addEventListener("touchmove", e => e.preventDefault())
-            compButton.addEventListener("touchend", e => e.preventDefault())
+            compButton.ontouchstart = preventDefaultAlways
+            compButton.ontouchmove = preventDefaultAlways
+            compButton.ontouchend = preventDefaultAlways
 
-            const buttonPointerDown = (e: PointerEvent) => {
+            compButton.onpointermove = pointermoveHandler
+            compButton.onpointerup = pointerupHandler
+            compButton.onpointerdown = editor.wrapHandler((e) => {
+                // console.log("button pointerdown %o %o", editor.offsetXY(e), e)
+                if (e.button === 2 || (e.button === 0 && e.ctrlKey)) {
+                    // will be handled by context menu
+                    return
+                }
                 this.editor.setCurrentPointerAction("edit")
                 e.preventDefault()
+                compButton.setPointerCapture(e.pointerId)
                 this.editor.eventMgr.currentSelection = undefined
                 const newComponent = editor.factory.makeFromButton(editor.editorRoot, compButton)
                 if (newComponent === undefined) {
                     return
                 }
-                this._currentPointerOverComp = newComponent
+                this._currentComponentUnderPointer = newComponent
                 const { wantsDragEvents } = this._currentHandlers.pointerDownOn(newComponent, e)
                 if (wantsDragEvents) {
                     this._currentPointerDownData = {
-                        mainComp: this._currentPointerOverComp,
+                        mainComp: this._currentComponentUnderPointer,
                         selectionComps: [], // ignore selection when dragging new component
                         firedPointerDraggedAlready: false,
                         fireClickedOnFinish: false,
@@ -860,27 +959,7 @@ export class UIEventManager {
                 const [x, y] = editor.offsetXY(e, true)
                 setDragStartOnEvent(e, x, y)
                 this._currentHandlers.pointerDraggedOn(newComponent, e)
-            }
-
-            compButton.addEventListener("pointerdown", editor.wrapHandler((e) => {
-                // console.log("button pointerdown %o %o", editor.offsetXY(e), e)
-                if (e.button === 2 || (e.button === 0 && e.ctrlKey)) {
-                    // will be handled by context menu
-                    return
-                }
-                buttonPointerDown(e as any)
-            }))
-            compButton.addEventListener("pointermove", editor.wrapHandler((e) => {
-                // console.log("button pointermove %o %o", editor.offsetXY(e), e)
-                e.preventDefault()
-                this._pointerMove(e as any)
-            }))
-            compButton.addEventListener("pointerup", editor.wrapHandler((e) => {
-                // console.log("button pointerup %o %o", editor.offsetXY(e), e)
-                e.preventDefault() // otherwise, may generate mouseclick, etc.
-                this._pointerUp(e as any)
-                this.setCurrentPointerOverComp(null)
-            }))
+            })
 
             compButton.addEventListener("contextmenu", editor.wrapHandler((e) => {
                 // console.log("button contextmenu %o %o", editor.offsetXY(e), e)
@@ -891,6 +970,63 @@ export class UIEventManager {
                     this._currentHandlers.contextMenuOnButton(compButton.dataset as ButtonDataset, e)
                 }
             }))
+        }
+    }
+
+    public registerTitleDragListenersOn(title: HTMLDivElement, closeHandler?: () => unknown) {
+        let isDragging = false
+        let startX: number, startY: number, startTop: number, startRight: number
+
+        title.addEventListener('pointerdown', (e) => {
+            if (isDragging) { return }
+
+            isDragging = true
+            title.setPointerCapture(e.pointerId)
+
+            // Store the initial mouse position
+            startX = e.clientX
+            startY = e.clientY
+
+            // Get the current computed top and right values of the element
+            const parent = title.parentElement!
+            const computedStyle = window.getComputedStyle(parent)
+            startTop = parseInt(computedStyle.top, 10)
+            startRight = parseInt(computedStyle.right, 10)
+
+            // Change cursor to grabbing
+            title.style.cursor = 'grabbing'
+
+            // Prevent text selection while dragging
+            e.preventDefault()
+        })
+
+        title.addEventListener('pointermove', (e) => {
+            if (!isDragging) { return }
+
+            // Calculate the movement
+            const deltaX = e.clientX - startX
+            const deltaY = e.clientY - startY
+
+            // Update top and right based on movement
+            const parent = title.parentElement!
+            parent.style.top = `${startTop + deltaY}px`
+            parent.style.right = `${startRight - deltaX}px`
+        })
+
+        title.addEventListener('pointerup', () => {
+            if (isDragging) {
+                isDragging = false
+
+                // Restore cursor
+                title.style.removeProperty("cursor")
+            }
+        })
+
+        if (closeHandler) {
+            const closeButton = makeIcon("close")
+            closeButton.classList.add("close-palette")
+            closeButton.addEventListener("click", closeHandler)
+            title.appendChild(closeButton)
         }
     }
 
@@ -916,7 +1052,7 @@ export class UIEventManager {
     public tryDeleteComponentsWhere(cond: (e: Component) => boolean, onlyOne: boolean) {
         const numDeleted = this.editor.editorRoot.components.tryDeleteWhere(cond, onlyOne).length
         if (numDeleted > 0) {
-            this.clearPopperIfNecessary()
+            this.clearTooltipIfNeeded()
             this.editor.editTools.redrawMgr.requestRedraw({ why: "component(s) deleted", invalidateMask: true, invalidateTests: true })
         }
         return numDeleted
@@ -983,7 +1119,7 @@ class EditHandlers extends ToolHandlers {
 
     public override pointerHoverOn(comp: Drawable) {
         const editor = this.editor
-        editor.eventMgr.clearPopperIfNecessary()
+        editor.eventMgr.clearTooltipIfNeeded()
         if (editor.options.hideTooltips) {
             return
         }
@@ -995,14 +1131,16 @@ class EditHandlers extends ToolHandlers {
         if (tooltip !== undefined) {
             const rect = () => {
                 const containerRect = editor.html.canvasContainer.getBoundingClientRect()
-                const f = editor.actualZoomFactor
+                const f = editor.userDrawingScale
+                const dx = editor.translationX
+                const dy = editor.translationY
                 const [cx, cy, w, h] =
                     comp instanceof DrawableWithPosition
-                        ? [comp.posX * f, comp.posY * f, comp.width * f, comp.height * f]
+                        ? [(comp.posX + dx) * f, (comp.posY + dy) * f, comp.width * f, comp.height * f]
                         : [editor.pointerX, editor.pointerY, 4, 4]
                 return new DOMRect(containerRect.x + cx - w / 2, containerRect.y + cy - h / 2, w, h)
             }
-            editor.eventMgr.makePopper(tooltip, rect)
+            editor.eventMgr.makeTooltip(tooltip, rect)
         }
     }
     public override pointerDownOn(comp: Drawable, e: PointerEvent) {

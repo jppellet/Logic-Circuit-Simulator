@@ -1,6 +1,6 @@
 import { Bezier, Offset } from "bezier-js"
 import * as t from "io-ts"
-import { BezierCoords, COLOR_ANCHOR_NEW, COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, LineCoords, NodeStyle, OPACITY_HIDDEN_ITEMS, WAYPOINT_DIAMETER, WIRE_WIDTH, colorForLogicValue, drawAnchorTo, drawStraightWireLine, drawWaypoint, isOverWaypoint, makeBezierCoords, strokeWireOutline, strokeWireOutlineAndSingleValue, strokeWireValue } from "../drawutils"
+import { BezierCoords, COLOR_ANCHOR_NEW, COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, LineCoords, NodeStyle, OPACITY_HIDDEN_ITEMS, WAYPOINT_DIAMETER, WIRE_WIDTH, colorForLogicValue, distSquaredToWaypointIfOver, drawAnchorTo, drawStraightWireLine, drawWaypoint, makeBezierCoords, strokeWireOutline, strokeWireOutlineAndSingleValue, strokeWireValue } from "../drawutils"
 import { span, style, title } from "../htmlgen"
 import { DrawParams } from "../LogicEditor"
 import { S } from "../strings"
@@ -86,7 +86,10 @@ export class Waypoint extends DrawableWithDraggablePosition {
     }
 
     public override isOver(x: number, y: number) {
-        return this.parent.mode >= Mode.CONNECT && isOverWaypoint(x, y, this.posX, this.posY)
+        if (!(this.parent.mode >= Mode.CONNECT)) {
+            return false
+        }
+        return distSquaredToWaypointIfOver(x, y, this.posX, this.posY, false) !== undefined
     }
 
     protected override positionChanged(__delta: [number, number]) {
@@ -970,9 +973,8 @@ export class LinkManager {
             const x1 = nodeFrom.posX
             const y1 = nodeFrom.posY
             const editor = this.parent.editor
-            const zoomFactor = editor.options.zoom / 100
-            const x2 = editor.pointerX / zoomFactor
-            const y2 = editor.pointerY / zoomFactor
+            const x2 = editor.pointerX
+            const y2 = editor.pointerY
             g.beginPath()
             g.moveTo(x1, y1)
             if (this.parent.editor.options.wireStyle === WireStyles.straight) {
@@ -1000,9 +1002,8 @@ export class LinkManager {
             const x1 = drawable.posX
             const y1 = drawable.posY
             const editor = this.parent.editor
-            const zoomFactor = editor.options.zoom / 100
-            const x2 = editor.pointerX / zoomFactor
-            const y2 = editor.pointerY / zoomFactor
+            const x2 = editor.pointerX
+            const y2 = editor.pointerY
             drawAnchorTo(g, x1, y1, x2, y2, 6, COLOR_ANCHOR_NEW, undefined)
         }
     }
@@ -1028,7 +1029,7 @@ export class LinkManager {
         this._wires.push(wire)
         if (tryOffset) {
             // done only when creating a new wire manually
-            this.offsetWireIfNecessary(wire)
+            this.offsetWireIfNeeded(wire)
         }
         this.tryMergeWire(wire)
         this.parent.ifEditing?.setToolCursor(null)
@@ -1162,7 +1163,7 @@ export class LinkManager {
         return false
     }
 
-    private offsetWireIfNecessary(wire: Wire) {
+    private offsetWireIfNeeded(wire: Wire) {
         const startNode = wire.startNode
         const endNode = wire.endNode
         const comp = startNode.component as Component

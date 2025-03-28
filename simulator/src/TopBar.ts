@@ -178,8 +178,6 @@ export class TopBar {
 
         this.setDirty(false)
 
-        window.addEventListener("resize", this.updateCompactMode.bind(this))
-
         this.setEditingCustomComponent(undefined)
         this.setCircuitName(editor.documentDisplayName)
         this.updateCompactMode()
@@ -236,13 +234,16 @@ export class TopBar {
 
     private zoomLevelHandler() {
         const zoom = this.zoomLevelInput.valueAsNumber
-        this.editor.setZoomLevel(zoom)
+        const validatedZoom = this.editor.setZoom(zoom, false)
+        if (validatedZoom !== zoom) {
+            this.setZoom(validatedZoom)
+        }
     }
 
 
     // Visibility methods
 
-    private updateCompactMode() {
+    public updateCompactMode() {
         const getSepWidth = () => this.flexibleSep.getBoundingClientRect().width
         const MinSepWidth = 5
         const sepWidth = getSepWidth()
@@ -315,7 +316,7 @@ export class TopBar {
         this.updateCompactMode()
     }
 
-    public setZoomLevel(zoom: number) {
+    public setZoom(zoom: number) {
         this.zoomLevelInput.value = String(zoom)
     }
 

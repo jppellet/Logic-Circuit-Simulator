@@ -183,14 +183,14 @@ export abstract class Drawable {
 
     public draw(g: GraphicsRendering, drawParams: DrawParams): void {
         const inSelectionRect = drawParams.currentSelection?.isSelected(this) ?? false
-        const isMouseOver = this === drawParams.currentMouseOverComp || inSelectionRect
-        const borderColor = !isMouseOver
+        const isPointerOver = this === drawParams.currentCompUnderPointer || inSelectionRect
+        const borderColor = !isPointerOver
             ? COLOR_COMPONENT_BORDER
             : drawParams.anythingMoving && this.lockPos
                 ? COLOR_MOUSE_OVER_DANGER
                 : COLOR_MOUSE_OVER
 
-        const ctx = new _DrawContextImpl(this, g, drawParams, isMouseOver, borderColor)
+        const ctx = new _DrawContextImpl(this, g, drawParams, isPointerOver, borderColor)
         try {
             this.doDraw(g, ctx)
         } finally {
@@ -741,7 +741,7 @@ export abstract class DrawableWithDraggablePosition extends DrawableWithPosition
         let clone
         if (e.altKey && this.parent.mode >= Mode.DESIGN && (clone = this.makeClone(true)) !== undefined) {
             this._isMovingWithContext.createdClone = clone
-            this.parent.editor.eventMgr.setCurrentPointerOverComp(clone)
+            this.parent.editor.eventMgr.setCurrentComponentUnderPointer(clone)
         } else {
             this.doSetPosition(...newPos)
         }

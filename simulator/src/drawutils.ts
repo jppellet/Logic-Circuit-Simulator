@@ -16,15 +16,12 @@ export const GRID_STEP = 10
 export const WIRE_WIDTH = 8
 export const WIRE_WIDTH_HALF_SQUARED = (WIRE_WIDTH / 2) ** 2
 export const WAYPOINT_DIAMETER = 8
-const WAYPOINT_HIT_RANGE = WAYPOINT_DIAMETER + 5
+const WAYPOINT_HIT_RADIUS_SQUARED = (WAYPOINT_DIAMETER / 2 + 6) ** 2
+const WAYPOINT_HIT_RADIUS_SQUARED_TOLERANT = (WAYPOINT_DIAMETER / 2 + 10) ** 2
 
 
 export function pxToGrid(x: number) {
     return Math.round(x / GRID_STEP)
-}
-
-export function clampZoom(zoom: number) {
-    return Math.max(0.1, Math.min(10, zoom / 100))
 }
 
 /**
@@ -644,8 +641,13 @@ export function strokeWireValue(g: GraphicsRendering, value: LogicValue, lengthT
     g.lineCap = oldLineCap
 }
 
-export function isOverWaypoint(x: number, y: number, waypointX: number, waypointY: number): boolean {
-    return distSquared(x, y, waypointX, waypointY) < (WAYPOINT_HIT_RANGE / 2) ** 2
+export function distSquaredToWaypointIfOver(x: number, y: number, waypointX: number, waypointY: number, moreTolerant: boolean): number | undefined {
+    const distSq = distSquared(x, y, waypointX, waypointY)
+    const hitRadiusSquared = moreTolerant ? WAYPOINT_HIT_RADIUS_SQUARED_TOLERANT : WAYPOINT_HIT_RADIUS_SQUARED
+    if (distSq < hitRadiusSquared) {
+        return distSq
+    }
+    return undefined
 }
 
 export enum NodeStyle {

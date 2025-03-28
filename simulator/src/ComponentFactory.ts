@@ -415,7 +415,7 @@ export class ComponentFactory {
         customComp.setSpawned()
         customComp.setPosition(editor.pointerX + customComp.unrotatedWidth / 2 - 5, editor.pointerY, true)
         editor.eventMgr.currentSelection = undefined
-        editor.eventMgr.setCurrentPointerOverComp(customComp)
+        editor.eventMgr.setCurrentComponentUnderPointer(customComp)
 
         for (const comp of componentsToInclude) {
             editor.components.tryDelete(comp)

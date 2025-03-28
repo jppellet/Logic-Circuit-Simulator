@@ -1498,7 +1498,7 @@ export abstract class ParametrizedComponentBase<
 
         const newComp = this.replaceWithNewParams({ [paramName]: newParamValue } as Partial<TParams>)
         if (newComp !== undefined) {
-            this.parent.editor.eventMgr.setCurrentPointerOverComp(newComp)
+            this.parent.editor.eventMgr.setCurrentComponentUnderPointer(newComp)
         }
     }
 

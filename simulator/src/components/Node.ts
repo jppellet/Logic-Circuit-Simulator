@@ -1,4 +1,4 @@
-import { drawWaypoint, GRID_STEP, isOverWaypoint, NodeStyle, WAYPOINT_DIAMETER } from "../drawutils"
+import { distSquaredToWaypointIfOver, drawWaypoint, GRID_STEP, NodeStyle, WAYPOINT_DIAMETER } from "../drawutils"
 import { HighImpedance, InteractionResult, isUnknown, LogicValue, Mode, RepeatFunction, toLogicValue, Unknown } from "../utils"
 import { Component, InputNodeRepr, NodeGroup, OutputNodeRepr } from "./Component"
 import { DrawableWithPosition, DrawContext, GraphicsRendering, Orientation } from "./Drawable"
@@ -156,9 +156,14 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
     }
 
     public override isOver(x: number, y: number) {
-        return this.parent.mode >= Mode.CONNECT
-            && isOverWaypoint(x, y, this.posX, this.posY)
-            && this.acceptsMoreConnections
+        return this.distSquaredIfOver(x, y, false) !== undefined
+    }
+
+    public distSquaredIfOver(x: number, y: number, moreTolerant: boolean): number | undefined {
+        if (!(this.parent.mode >= Mode.CONNECT && this.acceptsMoreConnections)) {
+            return undefined
+        }
+        return distSquaredToWaypointIfOver(x, y, this.posX, this.posY, moreTolerant)
     }
 
     public destroy() {
@@ -200,11 +205,11 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         const oldVisibleValue = this.value
         if (val !== this._value) {
             this._value = val
-            this.propagateNewValueIfNecessary(oldVisibleValue)
+            this.propagateNewValueIfNeeded(oldVisibleValue)
         }
     }
 
-    protected propagateNewValueIfNecessary(oldVisibleValue: LogicValue) {
+    protected propagateNewValueIfNeeded(oldVisibleValue: LogicValue) {
         const newVisibleValue = this.value
         if (newVisibleValue !== oldVisibleValue) {
             this.propagateNewValue(newVisibleValue)
@@ -439,7 +444,7 @@ export class NodeOut extends NodeBase<NodeOut> {
     public set forceValue(newForceValue: LogicValue | undefined) {
         const oldVisibleValue = this.value
         this._forceValue = newForceValue
-        this.propagateNewValueIfNecessary(oldVisibleValue)
+        this.propagateNewValueIfNeeded(oldVisibleValue)
         this.requestRedraw({ why: "changed forced output value", invalidateTests: true })
     }
 

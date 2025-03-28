@@ -38,7 +38,7 @@ import { Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPo
 import { type Input } from "./components/Input"
 import { Rectangle, RectangleDef } from "./components/Rectangle"
 import { LinkManager, Wire, WireStyle, WireStyles } from "./components/Wire"
-import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_COMPONENT_ID, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, DrawZIndex, GRID_STEP, TextVAlign, USER_COLORS, clampZoom, drawAnchorsAroundComponent as drawAnchorsForComponent, fillTextVAlign, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine, strokeTextVAlign } from "./drawutils"
+import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_COMPONENT_ID, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, DrawZIndex, GRID_STEP, TextVAlign, USER_COLORS, drawAnchorsAroundComponent as drawAnchorsForComponent, fillTextVAlign, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine, strokeTextVAlign } from "./drawutils"
 import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
 import { makeIcon } from "./images"
@@ -148,7 +148,7 @@ type HighlightedItems = { comps: Component[], wires: Wire[], start: number }
 export type DrawParams = {
     drawTime: number,
     drawTimeAnimationFraction: number | undefined,
-    currentMouseOverComp: Drawable | null,
+    currentCompUnderPointer: Drawable | null,
     currentSelection: EditorSelection | undefined,
     highlightedItems: HighlightedItems | undefined,
     highlightColor: string | undefined,
@@ -208,6 +208,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     private _isEmbedded = false
     private _isSingleton = false
+    public get isSingleton() { return this._isSingleton }
     /** Mirrors the id HTML attribute, is used to preserve the state across a simple reload with sessionStorage */
     private _instanceId: string | undefined = undefined
     public get instanceId() { return this._instanceId }
@@ -223,6 +224,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     private _isRunningOrCreatingTests = false // when inputs are being set programmatically over a longer period
     private _dontHogFocus = false
     private _mode: Mode = DEFAULT_MODE
+    public get mode() { return this._mode }
     private _initialData: InitialData | undefined = undefined
     private _options: EditorOptions = { ...DEFAULT_EDITOR_OPTIONS }
     private _hideResetButton = false
@@ -282,8 +284,13 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     } | undefined = undefined
     public userdata: string | Record<string, unknown> | undefined = undefined
 
-    private _baseDrawingScale = 1
-    private _actualZoomFactor = 1
+    private _baseUIDrawingScale = 1
+    private _userDrawingScale = 1
+    public get userDrawingScale() { return this._userDrawingScale }
+    private _translationX = 0
+    public get translationX() { return this._translationX }
+    private _translationY = 0
+    public get translationY() { return this._translationY }
     public pointerX = -1000 // offscreen at start
     public pointerY = -1000
 
@@ -337,19 +344,6 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         return []
     }
 
-
-    public get mode() {
-        return this._mode
-    }
-
-    public get actualZoomFactor() {
-        return this._actualZoomFactor
-    }
-
-    public get isSingleton() {
-        return this._isSingleton
-    }
-
     public get options(): Readonly<EditorOptions> {
         return this._options
     }
@@ -385,12 +379,12 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
             this.setWindowTitleFrom(newOptions.name)
             this._topBar?.setCircuitName(this.editor.options.name)
-            this._topBar?.setZoomLevel(newOptions.zoom)
+            this._topBar?.setZoom(newOptions.zoom)
 
             optionsHtml.showUserDataLinkContainer.style.display = this.userdata !== undefined ? "initial" : "none"
         }
 
-        this._actualZoomFactor = clampZoom(newOptions.zoom)
+        this._userDrawingScale = newOptions.zoom / 100
 
         this.editTools.redrawMgr.requestRedraw({ why: "options changed", invalidateMask: true, invalidateTests: true })
     }
@@ -447,7 +441,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         mainCanvas.setAttribute("height", String(h * f))
         mainCanvas.style.setProperty("width", w + "px")
         mainCanvas.style.setProperty("height", h + "px")
-        this._baseDrawingScale = f
+        this._baseUIDrawingScale = f
     }
 
     public connectedCallback() {
@@ -986,19 +980,31 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         // make gallery available globally
         window.gallery = gallery
 
-        window.addEventListener("pointermove", e => {
-            // console.log(`pointermove (type '${e.pointerType}') with x=${e.clientX}, y=${e.clientY}`)
+        const makeUpdatePointerPositionHandler = (closingContextMenus: boolean) => (e: PointerEvent) => {
             for (const editor of LogicEditor._allConnectedEditors) {
+
+                // Update X and Y coordinates of the pointer
                 const canvasContainer = editor.html.canvasContainer
                 if (canvasContainer !== undefined) {
                     const canvasPos = canvasContainer.getBoundingClientRect()
-                    // console.log(canvasContainer.getBoundingClientRect(), { x: e.clientX - canvasPos.left, y: e.clientY - canvasPos.top })
-                    editor.pointerX = e.clientX - canvasPos.left
-                    editor.pointerY = e.clientY - canvasPos.top
+                    // first, compute the coordinates ignoring the zoom and translation
+                    const x = e.clientX - canvasPos.left
+                    const y = e.clientY - canvasPos.top
+                    // then, apply the zoom and translation
+                    editor.pointerX = x / editor._userDrawingScale - editor._translationX
+                    editor.pointerY = y / editor._userDrawingScale - editor._translationY
+                    // console.log(`Pointer position: ${editor.pointerX}, ${editor.pointerY}`)
+                }
+
+                // If needed, hide the context menu
+                if (closingContextMenus) {
+                    editor.eventMgr.hideContextMenuIfNeeded(e)
                 }
             }
-            // console.log("--")
-        }, true)
+        }
+
+        window.addEventListener("pointerdown", makeUpdatePointerPositionHandler(true), true)
+        window.addEventListener("pointermove", makeUpdatePointerPositionHandler(false), true)
 
         window.addEventListener("resize", () => {
             for (const editor of LogicEditor._allConnectedEditors) {
@@ -1009,6 +1015,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                         editor.editTools.redrawMgr.requestRedraw({ why: "window resized", invalidateMask: true })
                     })()
                 }
+                editor._topBar?.updateCompactMode()
             }
             registerPixelRatioListener()
         })
@@ -1140,10 +1147,22 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.setWindowTitleFrom(this._options.name)
     }
 
-    public setZoomLevel(zoom: number) {
-        this._options.zoom = zoom
-        this._actualZoomFactor = clampZoom(zoom)
+    public setZoom(zoom: number, updateTopBar: boolean): number {
+        zoom = Math.max(10, Math.min(1000, zoom))
+        const roundedZoomForUI = Math.round(zoom)
+        this._options.zoom = roundedZoomForUI
+        this._userDrawingScale = zoom / 100
+        if (updateTopBar) {
+            this._topBar?.setZoom(roundedZoomForUI)
+        }
         this.editTools.redrawMgr.requestRedraw({ why: "zoom level changed", invalidateMask: true })
+        return zoom
+    }
+
+    public setTranslation(tX: number, tY: number) {
+        this._translationX = tX
+        this._translationY = tY
+        this.editTools.redrawMgr.requestRedraw({ why: "translation changed", invalidateMask: true })
     }
 
     public updateCustomComponentButtons() {
@@ -1523,8 +1542,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         this._highlightedItems = undefined
         this.eventMgr.currentSelection = undefined
-        this.eventMgr.clearPopperIfNecessary()
-        this.eventMgr.updatePointerOver([this.pointerX, this.pointerY], false, false)
+        this.eventMgr.clearTooltipIfNeeded()
+        this.eventMgr.updateComponentUnderPointer([this.pointerX, this.pointerY], false, false, false)
         this.editTools.testsPalette.update()
         this.editTools.moveMgr.clear()
         this.editTools.redrawMgr.requestRedraw({ why: "editor root changed", invalidateMask: true, invalidateTests: true })
@@ -1548,7 +1567,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             this.editTools.moveMgr.areDrawablesMoving()
                 ? "grabbing"
                 : this._toolCursor
-                ?? this.eventMgr.currentPointerOverComp?.cursorWhenMouseover(e)
+                ?? this.eventMgr.currentComponentUnderPointer?.cursorWhenMouseover(e)
                 ?? "default"
         this.html.canvasContainer.style.cursor = cursor
     }
@@ -1578,7 +1597,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         return [x, y]
     }
 
-    public offsetXY(e: MouseEvent, skipScaling: boolean = false): [number, number] {
+    public offsetXY(e: MouseEvent, skipTransform: boolean = false): [number, number] {
         const [unscaledX, unscaledY] = (() => {
             const mainCanvas = this.html.mainCanvas
             let target = e.target
@@ -1631,8 +1650,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 // }
             }
         })()
-        const currentScale = skipScaling ? 1 : this._actualZoomFactor
-        return [unscaledX / currentScale, unscaledY / currentScale]
+        const [f, tX, tY] = skipTransform ? [1, 0, 0] : [this._userDrawingScale, this._translationX, this._translationY]
+        return [unscaledX / f - tX, unscaledY / f - tY]
     }
 
     public offsetXYForComponent(e: PointerEvent, comp: Component): [number, number] {
@@ -1691,7 +1710,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         if (isNaN(h)) {
             h = 150
         }
-        const f = applyZoom ? this._actualZoomFactor : 1
+        const f = applyZoom ? this._userDrawingScale : 1
         return [f * w, f * h]
     }
 
@@ -1828,7 +1847,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             width *= drawingScale
             height *= drawingScale
 
-            const transform = new DOMMatrix(`scale(${drawingScale})`)
+            const transform = new DOMMatrix().scale(drawingScale)
 
             const tmpCanvas = document.createElement('canvas')
             tmpCanvas.width = width
@@ -2217,12 +2236,15 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this._topBar?.updateTimeLabelIfNeeded()
         const g = LogicEditor.getGraphics(this.html.mainCanvas)
         const mainCanvas = this.html.mainCanvas
-        const baseDrawingScale = this._baseDrawingScale
+        const baseDrawingScale = this._baseUIDrawingScale
 
         const width = mainCanvas.width / baseDrawingScale
         const height = mainCanvas.height / baseDrawingScale
-        const baseTransform = new DOMMatrix(`scale(${this._baseDrawingScale})`)
-        const contentTransform = baseTransform.scale(this._actualZoomFactor)
+        // Recall that the matrices premultiply the coordinates, which means
+        // that the first transform is applied last and the last one first
+        const baseTransform = new DOMMatrix().scale(this._baseUIDrawingScale)
+        const contentTransform = baseTransform.scale(this._userDrawingScale).translate(this._translationX, this._translationY)
+        // console.log(`Drawing with zoom factor ${this._actualZoomFactor} and translation (${this._translationX}, ${this._translationY})`)
         this.doDrawWithContext(g, width, height, baseTransform, contentTransform, false, false, redrawMask)
         // const timeAfter = performance.now()
         // console.log(`Drawing took ${timeAfter - timeBefore}ms`)
@@ -2319,23 +2341,27 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         // moveMgr.dump()
         const isMovingComponent = moveMgr.areDrawablesMoving()
         if (isMovingComponent) {
+            // set the transform to the base one but still apply the zoom factor
+            g.setTransform(baseTransform)
+            g.scale(this._userDrawingScale, this._userDrawingScale)
             g.beginGroup("grid")
-            const widthAdjusted = width / this._actualZoomFactor
-            const heightAdjusted = height / this._actualZoomFactor
+            const widthAdjusted = width / this._userDrawingScale
+            const heightAdjusted = height / this._userDrawingScale
             const step = GRID_STEP //* 2
             g.strokeStyle = COLOR_GRID_LINES
             g.lineWidth = 1
             g.beginPath()
             for (let x = step; x < widthAdjusted; x += step) {
                 g.moveTo(x, 0)
-                g.lineTo(x, height)
+                g.lineTo(x, heightAdjusted)
             }
             for (let y = step; y < heightAdjusted; y += step) {
                 g.moveTo(0, y)
-                g.lineTo(width, y)
+                g.lineTo(widthAdjusted, y)
             }
             g.stroke()
             g.endGroup()
+            g.setTransform(contentTransform)
         }
 
         // draw guidelines when moving waypoint
@@ -2392,11 +2418,11 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const drawTime = this.timeline.logicalTime()
         const drawTimeAnimationFraction = !this._options.animateWires ? undefined : (drawTime / 1000) % 1
         g.strokeStyle = COLOR_COMPONENT_BORDER
-        const currentMouseOverComp = this.eventMgr.currentPointerOverComp
+        const currentCompUnderPointer = this.eventMgr.currentComponentUnderPointer
         const drawParams: DrawParams = {
             drawTime,
             drawTimeAnimationFraction,
-            currentMouseOverComp,
+            currentCompUnderPointer,
             highlightedItems,
             highlightColor,
             currentSelection: undefined,
@@ -2489,6 +2515,32 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             g.endGroup()
         }
 
+        // this.drawDebugInfo(g)
+    }
+
+    private drawDebugInfo(g: GraphicsRendering) {
+        // debug draw origin
+        drawPoint(0, 0)
+        for (const d of [100, 200]) {
+            for (const [x, y] of [[-d, -d], [-d, 0], [-d, d], [0, -d], [0, d], [d, d], [d, 0], [d, -d]]) {
+                drawPoint(x, y)
+            }
+        }
+
+        function drawPoint(x: number, y: number) {
+            g.lineWidth = 2
+            g.strokeStyle = "red"
+            g.beginPath()
+            g.moveTo(x - 10, y)
+            g.lineTo(x + 10, y)
+            g.moveTo(x, y - 10)
+            g.lineTo(x, y + 10)
+            g.stroke()
+            g.fillStyle = "black"
+            g.font = 'bold 10px sans-serif'
+            g.textAlign = 'left'
+            fillTextVAlign(g, TextVAlign.top, `${x},${y}`, x + 4, y + 4)
+        }
     }
 
     public deleteSelection() {

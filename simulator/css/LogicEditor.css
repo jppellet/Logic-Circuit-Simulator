@@ -586,7 +586,8 @@ svg text {
   visibility: hidden;
   justify-content: center;
   align-items: center;
-  transition: all 0.15s ease-in-out
+  transition: all 0.15s ease-in-out;
+  pointer-events: none;
 }
 
 .msgZone.visible {
@@ -602,6 +603,7 @@ svg text {
   box-shadow: 0px 0px 5px 0px rgba(128, 128, 128, 0.5);
   font-size: 10pt;
   background-color: rgb(190, 190, 190, 0.2);
+  pointer-events: auto;
 }
 
 .dark .msgZone .msgBar {
