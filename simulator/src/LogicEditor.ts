@@ -158,6 +158,8 @@ export type DrawParams = {
 export class LogicEditor extends HTMLElement implements DrawableParent {
 
     public static _globalListenersInstalled = false
+    private static _spaceDown = false
+    public static get spaceDown() { return LogicEditor._spaceDown }
 
     public static _allConnectedEditors: Array<LogicEditor> = []
     public static get allConnectedEditors(): ReadonlyArray<LogicEditor> {
@@ -1006,6 +1008,24 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         window.addEventListener("pointerdown", makeUpdatePointerPositionHandler(true), true)
         window.addEventListener("pointermove", makeUpdatePointerPositionHandler(false), true)
 
+        const updateCursors = () => {
+            for (const editor of LogicEditor._allConnectedEditors) {
+                editor.updateCursor()
+            }
+        }
+        window.addEventListener("keydown", e => {
+            if (e.key === " ") {
+                LogicEditor._spaceDown = true
+                updateCursors()
+            }
+        })
+        window.addEventListener("keyup", e => {
+            if (e.key === " ") {
+                LogicEditor._spaceDown = false
+                updateCursors()
+            }
+        })
+
         window.addEventListener("resize", () => {
             for (const editor of LogicEditor._allConnectedEditors) {
                 const canvasContainer = editor.html.canvasContainer
@@ -1568,7 +1588,9 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 ? "grabbing"
                 : this._toolCursor
                 ?? this.eventMgr.currentComponentUnderPointer?.cursorWhenMouseover(e)
-                ?? "default"
+                ?? (LogicEditor._spaceDown && this._mode >= Mode.CONNECT
+                    ? "grab"
+                    : "default")
         this.html.canvasContainer.style.cursor = cursor
     }
 

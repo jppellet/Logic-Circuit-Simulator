@@ -35,6 +35,7 @@ See <https://jp.pellet.name/hep/logiga/>
  * Mouseover tooltips have been added
  * Components can be edited to be faulty, for educational exercises
  * Editor can be in several modes with different capabilities
+ * Editor can zoom and pan with standard controls (touch, trackpad, mouse wheel, etc.)
  * Component buttons can be hidden or shown for educational purposes with URL parameters
  * Loading and saving using JSON is much cleaner and does not include unnecessary properties
  * Demo circuits are predefined and can be loaded from the JavaScript console

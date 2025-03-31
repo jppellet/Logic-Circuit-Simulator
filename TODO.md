@@ -1,10 +1,5 @@
 # TODO List for Logic System Simulator
 
-Au niveau pratique, c’est l’alternance entre les modes création/modification et déplacement/zoom dans le simulateur qui est ennuyeuse, ainsi que l’ajout des points/broches intermédiaires qui se fait parfois à l’opposé de l’endroit souhaité. Il y a aussi le fait que les broches ne sont pas adaptées aux signaux d’horloge.
-
-Dans les petits plus, mettre en couleur les composants pourrait être intéressant pour illustrer un groupe logique.
-
-
 ## High priority
 
  * Take undo snapshot after key events too
@@ -16,10 +11,12 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
 
 ## Medium priority
 
+ * Assign colors to components
  * Handle multiple test suites
  * High-Z bus logic
  * Allow to swap RAM width/height (for Christophe Declercq)
  * Add tootips to components, e.g., describe what happens on the next state transition, etc.
+ * Passthroughs shouldn't delay clock signals
 
 
 ## Low priority
@@ -33,6 +30,7 @@ Dans les petits plus, mettre en couleur les composants pourrait être intéressa
 
 ### DONE
  
+ * Zoom and pan with touch event, trackpad, mousewheel, Space-drag
  * Save/restore using browser's storage
  * New custom components should show up in library even with showonly
  * Way to test a circuit according to inputs/outputs

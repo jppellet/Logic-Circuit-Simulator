@@ -463,15 +463,17 @@ export class UIEventManager {
                 this.doPointerUp(e)
                 trackedPointerId = undefined
 
-                // we'll start a zoom session
-                const initialTransform = {
-                    zoom: this.editor.userDrawingScale * 100,
-                    tX: this.editor.translationX,
-                    tY: this.editor.translationY,
-                }
-                currentZoomSession = {
-                    initialTransform,
-                    initialPointersLoc: getTwoPointersLoc(false),
+                if (editor.mode >= Mode.CONNECT) {
+                    // we'll start a zoom session
+                    const initialTransform = {
+                        zoom: this.editor.userDrawingScale * 100,
+                        tX: this.editor.translationX,
+                        tY: this.editor.translationY,
+                    }
+                    currentZoomSession = {
+                        initialTransform,
+                        initialPointersLoc: getTwoPointersLoc(false),
+                    }
                 }
             } else {
                 cancelZoomSession()
@@ -529,21 +531,23 @@ export class UIEventManager {
 
         // Wheel events for zooming and panning
         canvas.onwheel = editor.wrapHandler(e => {
-            e.preventDefault()
-            const isZoomGesture = e.ctrlKey || e.metaKey
-            if (isZoomGesture) {
-                // Calculate zoom factor based on deltaY
-                const delta = -e.deltaY
-                const zoomFactor = 1 + delta * 0.005
-                const oldZoom = editor.userDrawingScale * 100
-                const [oldCenterX, oldCenterY] = editor.offsetXY(e, false)
-                const [newCenterX, newCenterY] = editor.offsetXY(e, true)
-                applyZoomAndTranslation(oldZoom * zoomFactor, oldCenterX, oldCenterY, newCenterX, newCenterY)
-            } else {
-                // Handle as a pan gesture if not a zoom
-                const panX = -e.deltaX
-                const panY = -e.deltaY
-                editor.setTranslation(editor.translationX + panX, editor.translationY + panY)
+            if (editor.mode >= Mode.CONNECT) {
+                e.preventDefault()
+                const isZoomGesture = e.ctrlKey || e.metaKey
+                if (isZoomGesture) {
+                    // Calculate zoom factor based on deltaY
+                    const delta = -e.deltaY
+                    const zoomFactor = 1 + delta * 0.005
+                    const oldZoom = editor.userDrawingScale * 100
+                    const [oldCenterX, oldCenterY] = editor.offsetXY(e, false)
+                    const [newCenterX, newCenterY] = editor.offsetXY(e, true)
+                    applyZoomAndTranslation(oldZoom * zoomFactor, oldCenterX, oldCenterY, newCenterX, newCenterY)
+                } else {
+                    // Handle as a pan gesture if not a zoom
+                    const panX = -e.deltaX
+                    const panY = -e.deltaY
+                    editor.setTranslation(editor.translationX + panX, editor.translationY + panY)
+                }
             }
         })
 
@@ -561,8 +565,10 @@ export class UIEventManager {
             if (targetIsFieldOrOtherInput(e)) {
                 return
             }
-            switch (e.key) {
-                case "Escape": {
+
+            const keyLower = e.key.toLowerCase()
+            switch (keyLower) {
+                case "escape": {
                     let handled: boolean
                     handled = editor.eventMgr.tryDeleteComponentsWhere(comp => comp.state === ComponentState.SPAWNING, false) > 0
                     if (!handled) {
@@ -581,8 +587,8 @@ export class UIEventManager {
                     return
                 }
 
-                case "Backspace":
-                case "Delete": {
+                case "backspace":
+                case "delete": {
                     e.preventDefault()
                     if (!editor.deleteSelection()) {
                         // if nothing was deleted, we try to delete the hovered component
@@ -1109,9 +1115,17 @@ abstract class ToolHandlers {
     }
 }
 
+type PanningSession = {
+    startX: number,
+    startY: number,
+    initialTranslationX: number,
+    initialTranslationY: number,
+}
+
 class EditHandlers extends ToolHandlers {
 
     private _openedContextMenu: HTMLElement | null = null
+    private _currentPanningSession: PanningSession | undefined = undefined
 
     public constructor(editor: LogicEditor) {
         super(editor)
@@ -1171,43 +1185,58 @@ class EditHandlers extends ToolHandlers {
 
     public override pointerDownOnBackground(e: PointerEvent) {
         const editor = this.editor
-        const eventMgr = editor.eventMgr
-        const currentSelection = eventMgr.currentSelection
-        if (currentSelection !== undefined) {
-            const allowSelection = editor.mode >= Mode.CONNECT
-            if (e.shiftKey && allowSelection) {
-                if (currentSelection.currentlyDrawnRect !== undefined) {
-                    console.log("unexpected defined current rect when about to begin a new one")
+        if (LogicEditor.spaceDown && editor.mode >= Mode.CONNECT) {
+            editor.setToolCursor("grabbing")
+            const [startX, startY] = editor.offsetXY(e, true)
+            this._currentPanningSession = { startX, startY, initialTranslationX: editor.translationX, initialTranslationY: editor.translationY }
+        } else {
+            const eventMgr = editor.eventMgr
+            const currentSelection = eventMgr.currentSelection
+            if (currentSelection !== undefined) {
+                const allowSelection = editor.mode >= Mode.CONNECT
+                if (e.shiftKey && allowSelection) {
+                    if (currentSelection.currentlyDrawnRect !== undefined) {
+                        console.log("unexpected defined current rect when about to begin a new one")
+                    }
+                    // augment selection
+                    const [left, top] = editor.offsetXY(e)
+                    const rect = new DOMRect(left, top, 1, 1)
+                    currentSelection.currentlyDrawnRect = rect
+                } else {
+                    // clear selection
+                    eventMgr.currentSelection = undefined
                 }
-                // augment selection
-                const [left, top] = editor.offsetXY(e)
-                const rect = new DOMRect(left, top, 1, 1)
-                currentSelection.currentlyDrawnRect = rect
-            } else {
-                // clear selection
-                eventMgr.currentSelection = undefined
+                editor.editTools.redrawMgr.requestRedraw({ why: "selection rect changed" })
             }
-            editor.editTools.redrawMgr.requestRedraw({ why: "selection rect changed" })
         }
     }
     public override pointerDraggedOnBackground(e: PointerDragEvent) {
         const editor = this.editor
-        const allowSelection = editor.mode >= Mode.CONNECT
-        if (allowSelection) {
-            const eventMgr = editor.eventMgr
-            const currentSelection = eventMgr.currentSelection
-            const [x, y] = editor.offsetXY(e)
-            if (currentSelection === undefined) {
-                const rect = new DOMRect(x, y, 1, 1)
-                eventMgr.currentSelection = new EditorSelection(rect)
-            } else {
-                const rect = currentSelection.currentlyDrawnRect
-                if (rect === undefined) {
-                    console.log("trying to update a selection rect that is not defined")
+        if (this._currentPanningSession !== undefined) {
+            const { startX, startY, initialTranslationX, initialTranslationY } = this._currentPanningSession
+            const [x, y] = editor.offsetXY(e, true)
+            const dx = x - startX
+            const dy = y - startY
+            const scaleFactor = editor.userDrawingScale
+            editor.setTranslation(initialTranslationX + dx / scaleFactor, initialTranslationY + dy / scaleFactor)
+        } else {
+            const allowSelection = editor.mode >= Mode.CONNECT
+            if (allowSelection) {
+                const eventMgr = editor.eventMgr
+                const currentSelection = eventMgr.currentSelection
+                const [x, y] = editor.offsetXY(e)
+                if (currentSelection === undefined) {
+                    const rect = new DOMRect(x, y, 1, 1)
+                    eventMgr.currentSelection = new EditorSelection(rect)
                 } else {
-                    rect.width = x - rect.x
-                    rect.height = y - rect.y
-                    editor.editTools.redrawMgr.requestRedraw({ why: "selection rect changed" })
+                    const rect = currentSelection.currentlyDrawnRect
+                    if (rect === undefined) {
+                        console.log("trying to update a selection rect that is not defined")
+                    } else {
+                        rect.width = x - rect.x
+                        rect.height = y - rect.y
+                        editor.editTools.redrawMgr.requestRedraw({ why: "selection rect changed" })
+                    }
                 }
             }
         }
@@ -1223,6 +1252,8 @@ class EditHandlers extends ToolHandlers {
             currentSelection.finishCurrentRect(this.editor)
             editor.editTools.redrawMgr.requestRedraw({ why: "selection rect changed" })
         }
+        editor.setToolCursor(null)
+        this._currentPanningSession = undefined
     }
 
     public override hideContextMenuIfNeeded(e?: PointerEvent) {
