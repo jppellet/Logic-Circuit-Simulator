@@ -43,7 +43,7 @@ import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
 import { makeIcon } from "./images"
 import { DefaultLang, S, getLang, isLang, setLang } from "./strings"
-import { Any, InBrowser, KeysOfByType, LogicValue, UIDisplay, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toggleVisible, valuesFromReprForInput } from "./utils"
+import { Any, InBrowser, KeysOfByType, LogicValue, UIDisplay, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
 
 
 
@@ -1995,28 +1995,38 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     }
 
-    public async runTestSuite(testSuite: TestSuite, options?: { doLog?: boolean, fast?: boolean }): Promise<TestSuiteResults | undefined> {
+    public async runTestSuite(testSuite: TestSuite | Record<string, unknown>, options?: { doLog?: boolean, fast?: boolean, noUI?: boolean }): Promise<TestSuiteResults | undefined> {
 
         const palette = this.editTools.testsPalette
         if (palette === undefined) {
             return undefined
         }
 
-        const fast = options?.fast ?? false
+        const noUI = options?.noUI ?? false
+        const fast = noUI || (options?.fast ?? false)
         const doLog = options?.doLog ?? false
+
+        // do we need to load it from JSON?
+        if (!(testSuite instanceof TestSuite)) {
+            const testSuiteRepr = validateJson(testSuite, TestSuite.Repr, "test suite")
+            if (testSuiteRepr === undefined) {
+                return undefined
+            }
+            testSuite = new TestSuite([testSuiteRepr, this.editor.components])
+        }
 
         return this.disableUIWhile(S.Messages.RunningTests, async restoreAfter => {
 
             this.setTestsPaletteVisible(true) // after setMode, which may hide it
 
             const results = new TestSuiteResults(testSuite)
-            const ui = palette.getOrMakeUIFor(testSuite)
+            const ui = noUI ? undefined : palette.getOrMakeUIFor(testSuite)
 
             let isFirst = true
             let skip = false
             for (let i = 0; i < testSuite.testCases.length; i++) {
                 const testCase = testSuite.testCases[i]
-                ui.setRunning(i)
+                ui?.setRunning(i)
 
                 if (isFirst) {
                     isFirst = false
@@ -2037,7 +2047,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                     }
                 }
                 results.addTestCaseResult(testCase, testCaseResult)
-                ui.setResult(i, testCaseResult)
+                ui?.setResult(i, testCaseResult)
                 if (testCase.stopOnFail && testCaseResult._tag === "fail") {
                     skip = true
                 }
