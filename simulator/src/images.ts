@@ -89,6 +89,7 @@ import Output4 from '../img/Output4.svg'; // @ts-ignore
 import Output8 from '../img/Output8.svg'; // @ts-ignore
 import Passthrough1 from '../img/Passthrough1.svg'; // @ts-ignore
 import PassthroughN from '../img/PassthroughN.svg'; // @ts-ignore
+import Pixel from '../img/Pixel.svg'; // @ts-ignore
 import RAM from '../img/RAM.svg'; // @ts-ignore
 import ROM from '../img/ROM.svg'; // @ts-ignore
 import Random from '../img/Random.svg'; // @ts-ignore
@@ -229,6 +230,7 @@ const images = {
     ShiftDisplay,
     Passthrough1,
     PassthroughN,
+    Pixel,
     RAM,
     ROM,
     Register,

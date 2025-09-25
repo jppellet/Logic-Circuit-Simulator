@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 1792 1792">
+  <!-- Generator: Adobe Illustrator 29.8.1, SVG Export Plug-In . SVG Version: 2.1.1 Build 2)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: lime;
+        fill-opacity: .65;
+      }
+
+      .st1 {
+        fill: blue;
+        fill-opacity: .65;
+      }
+
+      .st2 {
+        fill: red;
+        fill-opacity: .65;
+      }
+    </style>
+  </defs>
+  <path d="M3.3,848.3h429.1v173.3H3.3v-173.3Z"/>
+  <path d="M1084.89,0v429.1h-173.3V0h173.3Z"/>
+  <path d="M1084.89,1362.9v429.1h-173.3v-429.1h173.3Z"/>
+  <path d="M435.7,1024.9H0v-179.9h435.8v179.9h-.1ZM6.6,1018.3h422.4v-166.7H6.6v166.7Z"/>
+  <path class="st0" d="M548.71,1461.56V485.13h885.24v976.44h-885.24Z"/>
+  <polyline class="st2" points="1125.19 498.13 548.71 1095.16 548.71 498.13"/>
+  <polyline class="st1" points="784 1456.35 1431.08 796.65 1431.08 1456.35"/>
+  <path d="M1563.38,1571.62H433.1V362.84h1130.28v1208.78ZM563.1,1436.33h856.17V498.13h-856.17v938.2Z"/>
+</svg>

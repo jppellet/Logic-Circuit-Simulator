@@ -36,6 +36,7 @@ import { LatchSRDef } from "./components/LatchSR"
 import { MuxDef } from "./components/Mux"
 import { Output, OutputDef } from "./components/Output"
 import { PassthroughDef } from "./components/Passthrough"
+import { PixelDef } from "./components/Pixel"
 import { RAMDef } from "./components/RAM"
 import { ROMDef } from "./components/ROM"
 import { RandomDef } from "./components/Random"
@@ -71,6 +72,7 @@ const AllComponentDefs: ComponentMaker<any>[] = [
     Display16SegDef,
     DisplayAsciiDef,
     DisplayBarDef,
+    PixelDef,
     ShiftDisplayDef,
 
     // gates

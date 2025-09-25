@@ -213,7 +213,7 @@ export type NodeDesc = NodeOutDesc | NodeInDesc
 export type NodeDescInGroup = readonly [x: number, y: number, shortNameOverride?: string, opts?: NodeInDescOptions]
 export type NodeGroupDesc<D extends NodeDesc> = ReadonlyArray<D>
 export type NodeGroupMultiDesc<D extends NodeDesc> = ReadonlyArray<NodeGroupDesc<D>>
-export type NodeRec<D extends NodeDesc> = Record<string, D | NodeGroupDesc<D> | NodeGroupMultiDesc<D>>
+export type NodeRec<D extends NodeDesc> = Record<string, undefined | D | NodeGroupDesc<D> | NodeGroupMultiDesc<D>>
 
 function isNodeDesc<D extends NodeDesc>(desc: D | NodeGroupDesc<D> | NodeGroupMultiDesc<D>): desc is D {
     return isNumber(desc[0])
@@ -307,6 +307,9 @@ export abstract class ComponentBase<
             }
             let count = 0
             for (const desc of Object.values(rec)) {
+                if (desc === undefined) {
+                    continue
+                }
                 if (isNodeDesc(desc)) {
                     count++
                 } else {
@@ -486,6 +489,9 @@ export abstract class ComponentBase<
             }
             let nextSpecIndex = 0
             for (const [fieldName, desc] of Object.entries(nodeRec)) {
+                if (desc === undefined) {
+                    continue
+                }
                 if (isNodeDesc(desc)) {
                     // single
                     nodes[fieldName] = makeNode(undefined, fieldName, desc)

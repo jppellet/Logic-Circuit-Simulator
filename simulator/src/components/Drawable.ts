@@ -511,7 +511,12 @@ export abstract class DrawableWithPosition extends Drawable implements HasPositi
     }
 
     public isOver(x: number, y: number) {
-        return this.parent.mode >= Mode.CONNECT && inRect(this._posX, this._posY, this.width, this.height, x, y)
+        // TODO this mode check should not actually be done here
+        return this.parent.mode >= Mode.CONNECT && this._isOverThisRect(x, y)
+    }
+
+    protected _isOverThisRect(x: number, y: number): boolean {
+        return inRect(this._posX, this._posY, this.width, this.height, x, y)
     }
 
     protected trySetPosition(posX: number, posY: number, snapToGrid: boolean): undefined | [number, number] {

@@ -303,7 +303,8 @@ export class UIEventManager {
             return null
         }
 
-        this.setCurrentComponentUnderPointer(findComponenentUnderPointer())
+        const comp = findComponenentUnderPointer()
+        this.setCurrentComponentUnderPointer(comp)
     }
 
     public selectAll() {

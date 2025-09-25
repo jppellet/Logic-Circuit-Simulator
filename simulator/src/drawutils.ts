@@ -121,6 +121,7 @@ export let COLOR_DARK_RED: ColorString
 export let COLORCOMPS_EMPTY: ColorComponentsRGB
 export let COLOR_EMPTY: ColorString
 export let COLOR_EMPTY_ALT: ColorString
+export let COLORCOMPS_UNKNOWN: ColorComponentsRGB
 export let COLOR_UNKNOWN: ColorString
 export let COLOR_UNKNOWN_ALT: ColorString
 export let COLOR_HIGH_IMPEDANCE: ColorString
@@ -178,7 +179,7 @@ function doSetColors(darkMode: boolean) {
         COLORCOMPS_FULL = [255, 193, 7]
         COLOR_DARK_RED = ColorString([180, 0, 0])
         COLORCOMPS_EMPTY = [52, 58, 64]
-        COLOR_UNKNOWN = ColorString([152, 158, 164])
+        COLORCOMPS_UNKNOWN = [152, 158, 164]
         COLOR_HIGH_IMPEDANCE = ColorString([137, 114, 35])
         COLOR_GATE_NAMES = ColorString([190, 190, 190])
         COLOR_LED_ON = {
@@ -218,7 +219,7 @@ function doSetColors(darkMode: boolean) {
         COLORCOMPS_FULL = [255, 193, 7]
         COLOR_DARK_RED = ColorString([180, 0, 0])
         COLORCOMPS_EMPTY = [80, 89, 99]
-        COLOR_UNKNOWN = ColorString([108, 106, 98])
+        COLORCOMPS_UNKNOWN = [108, 106, 98]
         COLOR_HIGH_IMPEDANCE = ColorString([103, 84, 23])
         COLOR_GATE_NAMES = ColorString([95, 95, 95])
         COLOR_LED_ON = {
@@ -257,6 +258,7 @@ function doSetColors(darkMode: boolean) {
         turquoise: ColorString([0, 162, 162, 0.5]),
     }
     COLOR_COMPONENT_BORDER = ColorString(COLORCOMP_COMPONENT_BORDER)
+    COLOR_UNKNOWN = ColorString(COLORCOMPS_UNKNOWN)
     setColorPointerOverIsDanger(false)
     COLOR_FULL = ColorString(COLORCOMPS_FULL)
     COLOR_EMPTY = ColorString(COLORCOMPS_EMPTY)

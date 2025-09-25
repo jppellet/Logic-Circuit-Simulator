@@ -33,6 +33,7 @@ import { LatchSRDef } from "./components/LatchSR"
 import { MuxDef } from "./components/Mux"
 import { OutputDef } from "./components/Output"
 import { PassthroughDef } from "./components/Passthrough"
+import { PixelDef } from "./components/Pixel"
 import { RAMDef } from "./components/RAM"
 import { ROMDef } from "./components/ROM"
 import { RandomDef } from "./components/Random"
@@ -86,6 +87,7 @@ const componentsMenu: Array<Section> = [{
         InputDef.button({ bits: 1 }, "Input1"),
         OutputDef.button({ bits: 1 }, "Output1"),
         DisplayBarDef.button("DisplayBar", { compat: "out.bar", visible: withButton }),
+        PixelDef.button({ bits: 2, touch: false }, "Pixel", { visible: withButton }),
         ClockDef.button("Clock"),
 
         InputDef.button({ bits: 4 }, ["InputN", "Input4"], { compat: "in.nibble" }),

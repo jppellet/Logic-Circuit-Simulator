@@ -63,6 +63,7 @@ const Strings_fr = {
             Display16Seg: ["Afficheur à 16 segments", "16 segments"],
             DisplayAscii: ["Affichage d’un caractère ASCII (sur 7 bits)", "Caractère"],
             DisplayBar: ["Affichage d’un bit sous forme de segment lumineux", "Segment"],
+            Pixel: ["Affichage d’un pixel avec couleur réglable", "Pixel"],
             ShiftDisplay: ["Affichage avec buffer à décalage", "Affichage à décalage"],
 
             Passthrough1: ["Broche", "Broche"],
@@ -721,6 +722,14 @@ const Strings_fr = {
                 SlantLeft: "De 45° vers la gauche",
             },
         },
+        Pixel: {
+            tooltip: "Pixel. Affiche une couleur réglable selon les entrées.",
+            contextMenu: {
+                Full: "Remplir le carré entier",
+                ParamNumBits: tuple("Nombre de bits par composant", template("${val} bit$s{val}")),
+                ParamTouch: "Avec sortie tactile",
+            },
+        },
         GateArray: {
             tooltip: {
                 title: "Porte multiple",
@@ -856,6 +865,7 @@ const Strings_en: Strings = {
             Display16Seg: ["16-Segment Display", "16-Segment"],
             DisplayAscii: ["ASCII Character (7-Bit) Display", "Character"],
             DisplayBar: ["Bit Display as a Light Bar", "Bar"],
+            Pixel: ["Pixel with adjustable color", "Pixel"],
             ShiftDisplay: ["Display with Shift Buffer", "Shift Displ."],
 
             Passthrough1: ["Passthrough", "Passthrough"],
@@ -1512,6 +1522,14 @@ const Strings_en: Strings = {
                 SlantNone: "None",
                 SlantRight: "Rightward By 45°",
                 SlantLeft: "Leftward By 45°",
+            },
+        },
+        Pixel: {
+            tooltip: "Pixel. Displays a color that can be set with the inputs.",
+            contextMenu: {
+                Full: "Fill Full Square",
+                ParamNumBits: tuple("Number of Bits per Component", template("${val} Bit$s{val}")),
+                ParamTouch: "With Touch Output",
             },
         },
         GateArray: {
