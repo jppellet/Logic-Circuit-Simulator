@@ -9,11 +9,10 @@ import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } f
 
 export const PixelDef =
     defineParametrizedComponent("pixel", true, true, {
-        variantName: ({ bits, touch }) => `pixel${touch ? "-touch" : ""}-${bits}`,
+        variantName: ({ bits, gray, touch }) => `pixel${gray ? "-gray" : ""}${touch ? "-touch" : ""}-${bits}`,
         idPrefix: "pixel",
         button: { imgWidth: 32 },
         repr: {
-            bits: typeOrUndefined(t.number),
             full: typeOrUndefined(t.boolean),
         },
         valueDefaults: {
@@ -22,10 +21,12 @@ export const PixelDef =
         params: {
             bits: param(2, [1, 2, 4, 8]),
             touch: paramBool(),
+            gray: paramBool(),
         },
-        validateParams: ({ bits, touch }) => ({
+        validateParams: ({ bits, touch, gray }) => ({
             numBits: bits,
             isTouch: touch,
+            isGray: gray,
         }),
         size: ({ numBits }) => {
             const size = useCompact(numBits) ? numBits : 2 * numBits
@@ -34,13 +35,13 @@ export const PixelDef =
                 gridHeight: size,
             }
         },
-        makeNodes: ({ numBits, isTouch, gridWidth }) => {
+        makeNodes: ({ numBits, isGray, isTouch, gridWidth }) => {
             const offset = gridWidth / 2 + 1
             return {
                 ins: {
-                    R: groupHorizontal("n", 0, -offset, numBits),
+                    R: isGray ? undefined : groupHorizontal("n", 0, -offset, numBits),
                     G: groupVertical("w", -offset, 0, numBits),
-                    B: groupHorizontal("s", 0, offset, numBits),
+                    B: isGray ? undefined : groupHorizontal("s", 0, offset, numBits),
                 },
                 outs: {
                     T: !isTouch ? undefined : [offset, 0, "e"],
@@ -58,6 +59,7 @@ export type PixelParams = ResolvedParams<typeof PixelDef>
 export class Pixel extends ParametrizedComponentBase<PixelRepr> {
 
     public readonly numBits: number
+    public readonly isGray: boolean
     public readonly isTouch: boolean
     private _full: boolean
 
@@ -65,6 +67,7 @@ export class Pixel extends ParametrizedComponentBase<PixelRepr> {
         super(parent, PixelDef.with(params), saved)
 
         this.numBits = params.numBits
+        this.isGray = params.isGray
         this.isTouch = params.isTouch
 
         this._full = params.numBits === 1 ? true : (saved?.full ?? PixelDef.aults.full)
@@ -74,6 +77,7 @@ export class Pixel extends ParametrizedComponentBase<PixelRepr> {
         return {
             ...this.toJSONBase(),
             bits: this.numBits === PixelDef.aults.bits ? undefined : this.numBits,
+            gray: this.isGray === PixelDef.aults.gray ? undefined : this.isGray,
             touch: this.isTouch === PixelDef.aults.touch ? undefined : this.isTouch,
             full: this._full === PixelDef.aults.full ? undefined : this._full,
         }
@@ -94,13 +98,24 @@ export class Pixel extends ParametrizedComponentBase<PixelRepr> {
 
     protected doRecalcValue(): PixelValue {
         const { pressed } = this.value
-        const [__, r_] = displayValuesFromArray(this.inputValues(this.inputs.R), false)
-        const [___, g_] = displayValuesFromArray(this.inputValues(this.inputs.G), false)
-        const [____, b_] = displayValuesFromArray(this.inputValues(this.inputs.B), true)
-        if (isUnknown(r_) || isUnknown(g_) || isUnknown(b_)) {
-            return { color: COLORCOMPS_UNKNOWN, pressed }
+        const [___, grayOrGreen] = displayValuesFromArray(this.inputValues(this.inputs.G), false)
+        let color: [number, number, number]
+        if (isUnknown(grayOrGreen)) {
+            color = COLORCOMPS_UNKNOWN
+        } else {
+            if (this.isGray) {
+                color = [grayOrGreen, grayOrGreen, grayOrGreen]
+            } else {
+                const [__, red] = displayValuesFromArray(this.inputValues(this.inputs.R), false)
+                const [____, blue] = displayValuesFromArray(this.inputValues(this.inputs.B), true)
+                if (isUnknown(red) || isUnknown(blue)) {
+                    color = COLORCOMPS_UNKNOWN
+                } else {
+                    color = [red, grayOrGreen, blue]
+                }
+            }
         }
-        return { color: [r_, g_, b_], pressed }
+        return { color, pressed }
     }
 
 
@@ -150,15 +165,14 @@ export class Pixel extends ParametrizedComponentBase<PixelRepr> {
 
         const toggleFullItems: MenuItems = this.numBits === 1 ? [] : [
             ["mid", MenuData.item(this._full ? "check" : "none", s.Full, () => this.doSetFull(!this._full))],
-            ["mid", MenuData.sep()],
         ]
 
-
         return [
-            ...toggleFullItems,
-            this.makeChangeBooleanParamsContextMenuItem(s.ParamTouch, this.isTouch, "touch"),
-            ["mid", MenuData.sep()],
+            this.makeChangeBooleanParamsContextMenuItem(s.ParamGrayscale, this.isGray, "gray"),
             this.makeChangeParamsContextMenuItem("inputs", s.ParamNumBits, this.numBits, "bits"),
+            ["mid", MenuData.sep()],
+            this.makeChangeBooleanParamsContextMenuItem(s.ParamTouch, this.isTouch, "touch"),
+            ...toggleFullItems,
         ]
     }
 

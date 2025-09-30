@@ -727,6 +727,7 @@ const Strings_fr = {
             contextMenu: {
                 Full: "Remplir le carré entier",
                 ParamNumBits: tuple("Nombre de bits par composant", template("${val} bit$s{val}")),
+                ParamGrayscale: "Niveaux de gris",
                 ParamTouch: "Avec sortie tactile",
             },
         },
@@ -1529,6 +1530,7 @@ const Strings_en: Strings = {
             contextMenu: {
                 Full: "Fill Full Square",
                 ParamNumBits: tuple("Number of Bits per Component", template("${val} Bit$s{val}")),
+                ParamGrayscale: "Grayscale Only",
                 ParamTouch: "With Touch Output",
             },
         },
