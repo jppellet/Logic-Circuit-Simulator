@@ -744,6 +744,10 @@ svg text {
   display: none;
 }
 
+#logicEditorRoot[nomodes~=full] .hidden-test-suite {
+  display: none;
+}
+
 .testcase-table {
   width: 100%;
   font-size: 90%;

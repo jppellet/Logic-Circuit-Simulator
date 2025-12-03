@@ -18,6 +18,7 @@ import direction from '../img/icons/direction.icon.svg'; // @ts-ignore
 import download from '../img/icons/download.icon.svg'; // @ts-ignore
 import edit from '../img/icons/edit.icon.svg'; // @ts-ignore
 import eye from '../img/icons/eye.icon.svg'; // @ts-ignore
+import eyecrossed from '../img/icons/eyecrossed.icon.svg'; // @ts-ignore
 import font from '../img/icons/font.icon.svg'; // @ts-ignore
 import force from '../img/icons/force.icon.svg'; // @ts-ignore
 import inputs from '../img/icons/inputs.icon.svg'; // @ts-ignore
@@ -140,6 +141,7 @@ const icons = {
     download,
     edit,
     eye,
+    eyecrossed,
     font,
     force,
     inputs,

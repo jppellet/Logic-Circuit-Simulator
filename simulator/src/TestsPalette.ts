@@ -2,11 +2,12 @@ import { type Input } from "./components/Input"
 import { type Output } from "./components/Output"
 import { a, cls, data, div, href, Modifier, mods, span, style, table, tbody, td, th, thead, title, tr } from "./htmlgen"
 import { makeIcon } from "./images"
-import { LogicEditor } from "./LogicEditor"
+import { LogicEditor, TestSuiteRunOptions } from "./LogicEditor"
+import { Serialization } from "./Serialization"
 import { S } from "./strings"
-import { TestCaseCombinational, TestCaseResult, TestCaseResultFail, TestSuite } from "./TestSuite"
+import { TestCaseCombinational, TestCaseResult, TestCaseResultFail, TestSuite, TestSuiteResults } from "./TestSuite"
 import { UIPermissions } from "./UIPermissions"
-import { isString, reprForLogicValues, setHidden, setVisible } from "./utils"
+import { isString, reprForLogicValues, setDisplay, setHidden, setVisible } from "./utils"
 
 
 export class TestsPalette {
@@ -84,7 +85,7 @@ export class TestsPalette {
 
     public clearDisplayedResults() {
         if (this._isDisplayingResults && !this._skipUpdates) {
-            console.log("Clearing displayed results")
+            // console.log("Clearing displayed results")
             this.update()
             this._isDisplayingResults = false
         }
@@ -99,10 +100,23 @@ export class TestsPalette {
         }
     }
 
-    public async runAllTestSuites() {
+    public async runAllTestSuites(options?: TestSuiteRunOptions): Promise<TestSuiteResults[]> {
+        const results: TestSuiteResults[] = []
         for (const testSuiteUI of this.testSuites.values()) {
-            await testSuiteUI.runTestCases()
+            const result = await testSuiteUI.runTestCases(options)
+            if (result !== undefined) {
+                results.push(result)
+            }
         }
+
+        // circuit built for event detail, to save it from e.g. Moodle
+        const circuit = this.editor.save()
+        const jsonStr = Serialization.stringifyObject(circuit, true)
+        this.editor.dispatchEvent(new CustomEvent("testsexecuted", {
+            detail: { results, circuit: jsonStr },
+        }))
+
+        return results
     }
 
 }
@@ -114,6 +128,8 @@ export class TestSuiteUI {
 
     public readonly rootElem: HTMLDivElement
     private readonly header: HTMLDivElement
+    private readonly setHiddenTrueButton: HTMLSpanElement
+    private readonly setHiddenFalseButton: HTMLSpanElement
     private readonly runTestCasesButton: HTMLSpanElement
     private readonly content: HTMLDivElement
     private _expanded = false
@@ -129,6 +145,17 @@ export class TestSuiteUI {
 
         this.htmlResults = testSuite.testCases.map(tc => this.makeTestCaseUI(tc))
 
+        const makeVisibilityButton = (elem: HTMLElement, titleStr: string) => {
+            return span(cls("testcase-change-button"), style("cursor: pointer; margin-left: 10px;"),
+                title(titleStr), elem
+            ).render()
+        }
+
+        this.setHiddenTrueButton = makeVisibilityButton(makeIcon("eye"), s.TestSuiteShownClickToHide)
+        this.setHiddenFalseButton = makeVisibilityButton(makeIcon("eyecrossed"), s.TestSuiteHiddenClickToShow)
+        this.setHiddenTrueButton.addEventListener("click", this.toggleHidden.bind(this))
+        this.setHiddenFalseButton.addEventListener("click", this.toggleHidden.bind(this))
+
         const runAllIcon = makeIcon("play")
         style("position: relative; top: -2px;").applyTo(runAllIcon)
         this.runTestCasesButton = span(cls("sim-mode-link"), style("flex: none; font-size: 85%; opacity: 0.9; margin: -2px 0 -2px 4px; padding: 2px 4px 0 0;"),
@@ -140,6 +167,7 @@ export class TestSuiteUI {
         this.header =
             div(cls("test-suite test-disclosable expanded"), style("display: flex"),
                 span(style("flex: auto"), testSuite.name ?? s.DefaultTestSuiteName),
+                this.setHiddenTrueButton, this.setHiddenFalseButton,
                 this.runTestCasesButton
             ).render()
         this.content =
@@ -152,6 +180,20 @@ export class TestSuiteUI {
         })
 
         this.rootElem = div(this.header, this.content).render()
+
+        this.updateHiddenButtons(testSuite.isHidden)
+    }
+
+    private toggleHidden() {
+        const newHidden = !this.testSuite.isHidden
+        this.testSuite.isHidden = newHidden
+        this.updateHiddenButtons(newHidden)
+    }
+
+    private updateHiddenButtons(isHidden: boolean) {
+        this.rootElem.classList.toggle("hidden-test-suite", isHidden)
+        setDisplay(this.setHiddenTrueButton, isHidden ? "hide" : "show")
+        setDisplay(this.setHiddenFalseButton, isHidden ? "show" : "hide")
     }
 
     private makeTestCaseUI(testCase: TestCaseCombinational): TestCaseHTML {
@@ -219,17 +261,19 @@ export class TestSuiteUI {
         this.palette.updateMaxHeight()
     }
 
-    public async runTestCases() {
+    public async runTestCases(options?: TestSuiteRunOptions): Promise<TestSuiteResults | undefined> {
         const oldExpanded = this.expanded
         setHidden(this.runTestCasesButton, true)
+        let testResult: TestSuiteResults | undefined
         try {
-            const testResult = await this.editor.runTestSuite(this.testSuite, { fast: true })
+            testResult = await this.editor.runTestSuite(this.testSuite, options ?? { fast: true })
             if (testResult !== undefined && testResult.isAllPass()) {
                 this.expanded = oldExpanded
             }
         } finally {
             setHidden(this.runTestCasesButton, false)
         }
+        return testResult
     }
 
     public setRunning(i: number) {

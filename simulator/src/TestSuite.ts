@@ -114,6 +114,7 @@ export class TestSuite {
             t.partial({
                 name: t.string,
                 hidden: t.boolean,
+                weight: t.number,
             }),
         ], "TestSuite")
     }
@@ -123,6 +124,7 @@ export class TestSuite {
     }
 
     public name: string | undefined
+    public weight: number
     public isHidden: boolean
     public testCases: TestCaseCombinational[]
 
@@ -131,10 +133,12 @@ export class TestSuite {
             const [repr, compList] = reprAndComps
             this.name = repr.name
             this.isHidden = repr.hidden ?? false
+            this.weight = repr.weight ?? 1
             this.testCases = repr.cases.map(tc => new TestCaseCombinational(tc, compList))
         } else {
             this.name = undefined
             this.isHidden = false
+            this.weight = 1
             this.testCases = []
         }
     }
@@ -142,6 +146,7 @@ export class TestSuite {
     public toJSON(): TestSuiteRepr {
         return {
             name: this.name,
+            weight: this.weight !== 1 ? this.weight : undefined,
             hidden: this.isHidden === true ? true : undefined,
             cases: this.testCases.map(tc => tc.toJSON()),
         }

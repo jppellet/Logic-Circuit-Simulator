@@ -68,9 +68,11 @@ const ATTRIBUTE_NAMES = {
     singleton: "singleton", // whether this is the only editor in the page
     mode: "mode",
     id: "id",
-    autosave: "autosave",
+    autosave: "autosave", // whether to use localStorage to persist the circuit across page visits
+    norestore: "norestore", // to skip restoring from any browser storage
     hidereset: "hidereset",
     exportformat: "exportformat", // differences between MyST and pymarkdown
+    linkedto: "linkedto", // query of an element whose text content should be updated with the circuit state
 
     // these are mirrored in the display options
     name: "name",
@@ -155,6 +157,12 @@ export type DrawParams = {
     anythingMoving: boolean,
 }
 
+export type TestSuiteRunOptions = {
+    doLog?: boolean,
+    fast?: boolean,
+    noUI?: boolean,
+}
+
 export class LogicEditor extends HTMLElement implements DrawableParent {
 
     public static _globalListenersInstalled = false
@@ -221,6 +229,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     /** Whether localStorage should be used in addition to sessionStorage, saving the state across page visits */
     private _autosave: boolean = false
     public get autosave() { return this._autosave }
+    private _norestore: boolean = false
+    private _linkedField: HTMLElement | undefined = undefined
     private _maxInstanceMode: Mode = MAX_MODE_WHEN_EMBEDDED // can be set later
     private _isDirty = false
     private _isRunningOrCreatingTests = false // when inputs are being set programmatically over a longer period
@@ -625,11 +635,11 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
 
         const autosaveAttr = this.getAttribute(ATTRIBUTE_NAMES.autosave)
-        if (autosaveAttr !== null && !isFalsyString(autosaveAttr)) {
-            this._autosave = true
-        }
-
+        this._autosave = autosaveAttr !== null && !isFalsyString(autosaveAttr)
         const idAttr = this.getAttribute(ATTRIBUTE_NAMES.id)
+        const norestoreAttr = this.getAttribute(ATTRIBUTE_NAMES.norestore)
+        this._norestore = norestoreAttr !== null && !isFalsyString(norestoreAttr)
+
         if (idAttr !== null || this._isSingleton) {
             if (idAttr !== null) {
                 this._instanceId = idAttr
@@ -639,10 +649,36 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             } else {
                 this._instanceId = SINGLETON_INSTANCE_ID // default id for singleton
             }
-        } else {
+        } else if (!this._norestore) {
             const fct = this._autosave ? "error" : "warn"
-            console[fct]("No id attribute on logic-editor, undownloaded state will be lost", this)
+            console[fct]("No id attribute set on logic-editor, undownloaded state will be lost", this)
             this._autosave = false
+        }
+
+        if (this._norestore && this._autosave) {
+            console.warn("norestore is set, but autosave is also set; disabling autosave")
+            this._autosave = false
+        }
+
+        const linkedtoAttr = this.getAttribute(ATTRIBUTE_NAMES.linkedto)
+        if (linkedtoAttr !== null) {
+            console.log("Looking for linkedto element with selector", linkedtoAttr)
+            const elem = document.querySelector(linkedtoAttr)
+            console.log("  found", elem)
+            if (elem === null) {
+                console.error(`Could not find element matching selector '${linkedtoAttr}' to link to`)
+            } else {
+                this._linkedField = elem as HTMLElement
+                console.log(`Linking logic-editor to element '${linkedtoAttr}'`, this._linkedField)
+                if (this._norestore) {
+                    console.warn("  Ignoring norestore because linkedto is set")
+                    this._norestore = false
+                }
+                if (this._autosave) {
+                    console.warn("  Ignoring autosave because linkedto is set")
+                    this._autosave = false
+                }
+            }
         }
 
         const showonlyAttr = this.getAttribute(ATTRIBUTE_NAMES.showonly)
@@ -681,7 +717,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                     this._initialData = { _type: "json", json: innerScriptElem.innerHTML }
                     innerScriptElem.remove() // remove the data element to hide the raw data
                     // do this manually
-                    this.tryLoadCircuitFromData(true, false)
+                    const tryLoadStorage = !this._norestore
+                    this.tryLoadCircuitFromData(tryLoadStorage, false)
                     this.doRedraw(true)
                     return true
                 } else {
@@ -1207,6 +1244,14 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
      * and localStorage items can be proposed in the UI for reloading.
      */
     public trySaveInBrowserStorage(circuit: Circuit) {
+        if (this._linkedField !== undefined) {
+            this._linkedField.textContent = Serialization.stringifyObject(circuit, false)
+        }
+
+        if (this._norestore) {
+            return
+        }
+
         const key = this.persistenceKey
         if (key === undefined) {
             // console.log("No persistence ID set, not saving circuit")
@@ -1449,6 +1494,16 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
             if (error !== undefined) {
                 console.log("ERROR could not not load initial data: " + error)
+            }
+        }
+
+        let contentFromLinkedField
+        if (this._linkedField !== undefined &&
+            (contentFromLinkedField = this._linkedField.textContent) !== null &&
+            (contentFromLinkedField = contentFromLinkedField.trim()).length > 0) {
+            const error = Serialization.loadCircuitOrLibrary(this, contentFromLinkedField, takeSnapshot)
+            if (error === undefined) {
+                this._initialData = { _type: "json", json: contentFromLinkedField }
             }
         }
 
@@ -1995,7 +2050,17 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     }
 
-    public async runTestSuite(testSuite: TestSuite | Record<string, unknown>, options?: { doLog?: boolean, fast?: boolean, noUI?: boolean }): Promise<TestSuiteResults | undefined> {
+    public async runAllCircuitTestSuites(options?: TestSuiteRunOptions): Promise<TestSuiteResults[] | undefined> {
+        const palette = this.editTools.testsPalette
+        if (palette === undefined) {
+            return undefined
+        }
+
+        return await palette.runAllTestSuites(options)
+    }
+
+
+    public async runTestSuite(testSuite: TestSuite | Record<string, unknown>, options?: TestSuiteRunOptions): Promise<TestSuiteResults | undefined> {
 
         const palette = this.editTools.testsPalette
         if (palette === undefined) {
@@ -2182,6 +2247,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const invalidateTests = redrawInfo?.invalidateTests ?? false
         if (invalidateTests && !this._isRunningOrCreatingTests) {
             this.editTools.testsPalette.clearDisplayedResults()
+            this.dispatchEvent(new CustomEvent("testsinvalidated"))
         }
 
         if (!redrawMgr.isAnyValuePropagating()) {
