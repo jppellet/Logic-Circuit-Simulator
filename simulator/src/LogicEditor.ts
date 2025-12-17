@@ -1,13 +1,7 @@
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import LogicEditorTemplate from "../html/LogicEditorTemplate.html"
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import LogicEditorCSS from "../css/LogicEditor.css"
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import DialogPolyfillCSS from "../../node_modules/dialog-polyfill/dist/dialog-polyfill.css"
 
@@ -230,7 +224,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     private _autosave: boolean = false
     public get autosave() { return this._autosave }
     private _norestore: boolean = false
-    private _linkedField: HTMLElement | undefined = undefined
+    private _linkedField: HTMLInputElement | HTMLTextAreaElement | undefined = undefined
     private _maxInstanceMode: Mode = MAX_MODE_WHEN_EMBEDDED // can be set later
     private _isDirty = false
     private _isRunningOrCreatingTests = false // when inputs are being set programmatically over a longer period
@@ -662,18 +656,33 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         const linkedtoAttr = this.getAttribute(ATTRIBUTE_NAMES.linkedto)
         if (linkedtoAttr !== null) {
-            console.log("Looking for linkedto element with selector", linkedtoAttr)
+            this._norestore = false
             const elem = document.querySelector(linkedtoAttr)
-            console.log("  found", elem)
-            if (elem === null) {
+            if (elem === null || !(elem instanceof HTMLInputElement || elem instanceof HTMLTextAreaElement)) {
                 console.error(`Could not find element matching selector '${linkedtoAttr}' to link to`)
             } else {
-                this._linkedField = elem as HTMLElement
-                console.log(`Linking logic-editor to element '${linkedtoAttr}'`, this._linkedField)
-                if (this._norestore) {
-                    console.warn("  Ignoring norestore because linkedto is set")
-                    this._norestore = false
-                }
+                console.log(`Linked logic-editor to element '${linkedtoAttr}'`, elem)
+                this._linkedField = elem
+
+                let throttleTimer: NodeJS.Timeout | undefined = undefined
+                elem.addEventListener('input', () => {
+                    if (throttleTimer !== undefined) {
+                        clearTimeout(throttleTimer)
+                    }
+                    throttleTimer = setTimeout(() => {
+                        const json = elem.value
+                        if (json !== null) {
+                            // console.log("Loading linkedto content into logic-editor", json)
+                            this._linkedField = undefined // prevent feedback loop
+                            try {
+                                this.loadCircuitOrLibrary(json)
+                            } finally {
+                                this._linkedField = elem
+                            }
+                        }
+                    }, 1000)
+                })
+
                 if (this._autosave) {
                     console.warn("  Ignoring autosave because linkedto is set")
                     this._autosave = false
@@ -1245,7 +1254,13 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
      */
     public trySaveInBrowserStorage(circuit: Circuit) {
         if (this._linkedField !== undefined) {
-            this._linkedField.textContent = Serialization.stringifyObject(circuit, false)
+            const selectionStart = this._linkedField.selectionStart
+            const selectionEnd = this._linkedField.selectionEnd
+            this._linkedField.value = Serialization.stringifyObject(circuit, false)
+            // Restore cursor position after value change
+            if (selectionStart !== null && selectionEnd !== null) {
+                this._linkedField.setSelectionRange(selectionStart, selectionEnd)
+            }
         }
 
         if (this._norestore) {
@@ -1499,7 +1514,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         let contentFromLinkedField
         if (this._linkedField !== undefined &&
-            (contentFromLinkedField = this._linkedField.textContent) !== null &&
+            (contentFromLinkedField = this._linkedField.value) !== null &&
             (contentFromLinkedField = contentFromLinkedField.trim()).length > 0) {
             const error = Serialization.loadCircuitOrLibrary(this, contentFromLinkedField, takeSnapshot)
             if (error === undefined) {
@@ -1999,7 +2014,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             testSuite = new TestSuite()
             this.testSuites.push(testSuite)
         }
-        if (!Array.isArray(result)) {
+        if (!isArray(result)) {
             testSuite.testCases.push(result)
         } else {
             testSuite.testCases.push(...result)

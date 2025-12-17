@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
 /* eslint-disable @typescript-eslint/semi */
 
 // 'ts-ignore' works on the next line, so we need the next line

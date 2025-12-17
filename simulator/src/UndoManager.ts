@@ -72,7 +72,7 @@ export class UndoManager {
 
         const circuit = this.editor.save()
         const jsonStr = Serialization.stringifyObject(circuit, true)
-        this.editor.trySaveInBrowserStorage(circuit)
+        this.editor.trySaveInBrowserStorage(circuit) // TODO not only here! also after redo/undo?
         this._undoSnapshots.push({ time: now, circuitStr: jsonStr, repeatAction })
         while (this._undoSnapshots.length > MAX_UNDO_SNAPSHOTS) {
             this._undoSnapshots.shift()

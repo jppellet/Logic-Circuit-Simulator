@@ -303,7 +303,8 @@ export class TestSuiteUI {
             : isString(elem.name) ? elem.name
                 : elem.ref ?? "?"
         const link = a(compStr, href("#")).render()
-        link.addEventListener("click", () => {
+        link.addEventListener("click", (e) => {
+            e.preventDefault()
             this.editor.highlight(elem)
         })
         return link

@@ -594,7 +594,7 @@ function stringifyComponentWiresTestsReprsTo(parts: string[], container: Compone
             subparts.push(`{${baseSuiteRepr}${sep}${casesRepr}}`)
         }
 
-        parts.push(`tests: [\n${innerIndent}` + subparts.join(`,\n${innerIndent}`) + `\n${outerIndent}]`)
+        parts.push(`tests: [\n${innerIndent}` + subparts.join(`,\n${innerIndent}`) + `,\n${outerIndent}]`)
     }
     delete container.tests
 }
@@ -670,7 +670,7 @@ export function stringifySmart(
 
             let start: string
             let end: string
-            if (Array.isArray(obj)) {
+            if (isArray(obj)) {
                 start = "["
                 end = "]"
                 length = obj.length
