@@ -995,11 +995,23 @@ export class UIEventManager {
         let isDragging = false
         let startX: number, startY: number, startTop: number, startRight: number
 
+        let closeButton: HTMLElement | undefined = undefined
+        if (closeHandler) {
+            closeButton = makeIcon("close")
+            closeButton.classList.add("close-palette")
+            closeButton.addEventListener("click", closeHandler)
+            closeButton.addEventListener("click", () => {
+                console.log("close palette")
+            })
+            title.appendChild(closeButton)
+        }
+
         title.addEventListener('pointerdown', (e) => {
             if (isDragging) { return }
+            if (e.composedPath().includes(closeButton as any)) { return } // don't start drag when clicking close button
 
-            isDragging = true
             title.setPointerCapture(e.pointerId)
+            isDragging = true
 
             // Store the initial mouse position
             startX = e.clientX
@@ -1039,13 +1051,6 @@ export class UIEventManager {
                 title.style.removeProperty("cursor")
             }
         })
-
-        if (closeHandler) {
-            const closeButton = makeIcon("close")
-            closeButton.classList.add("close-palette")
-            closeButton.addEventListener("click", closeHandler)
-            title.appendChild(closeButton)
-        }
     }
 
     public tryDeleteDrawable(comp: Drawable): InteractionResult {
