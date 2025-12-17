@@ -107,6 +107,7 @@ const DEFAULT_EDITOR_OPTIONS = {
     propagationDelay: 100,
     allowPausePropagation: false,
     zoom: 100,
+    origin: [0, 0] as [number, number],
 }
 
 export type EditorOptions = typeof DEFAULT_EDITOR_OPTIONS
@@ -391,6 +392,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
 
         this._userDrawingScale = newOptions.zoom / 100
+        this._translationX = -newOptions.origin[0]
+        this._translationY = -newOptions.origin[1]
 
         this.editTools.redrawMgr.requestRedraw({ why: "options changed", invalidateMask: true, invalidateTests: true })
     }
@@ -412,7 +415,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         let set = false
         for (const [_k, v] of Object.entries(this._options)) {
             const k = _k as keyof EditorOptions
-            if (v !== DEFAULT_EDITOR_OPTIONS[k]) {
+            if (!deepArrayEquals(v, DEFAULT_EDITOR_OPTIONS[k])) {
                 nonDefaultOpts[k] = v as any
                 set = true
             }
@@ -1228,6 +1231,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     public setTranslation(tX: number, tY: number) {
         this._translationX = tX
         this._translationY = tY
+        this._options.origin = [-Math.round(tX), -Math.round(tY)]
         this.editTools.redrawMgr.requestRedraw({ why: "translation changed", invalidateMask: true })
     }
 
