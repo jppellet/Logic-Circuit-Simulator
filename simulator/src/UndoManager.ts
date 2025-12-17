@@ -45,7 +45,7 @@ export class UndoManager {
     }
 
     public canUndo() {
-        return this._undoSnapshots.length > 1
+        return this._undoSnapshots.length > 1 // the first snapshot is the initial state which cannot be undone
     }
 
     public canRedoOrRepeat() {
@@ -72,7 +72,7 @@ export class UndoManager {
 
         const circuit = this.editor.save()
         const jsonStr = Serialization.stringifyObject(circuit, true)
-        this.editor.trySaveInBrowserStorage(circuit) // TODO not only here! also after redo/undo?
+        this.editor.trySaveInBrowserStorage(circuit)
         this._undoSnapshots.push({ time: now, circuitStr: jsonStr, repeatAction })
         while (this._undoSnapshots.length > MAX_UNDO_SNAPSHOTS) {
             this._undoSnapshots.shift()
@@ -93,6 +93,7 @@ export class UndoManager {
         const prevState = this._undoSnapshots[this._undoSnapshots.length - 1]
         this._redoSnapshots.push(stateNow)
         this.loadSnapshot(prevState)
+        this.editor.trySaveInBrowserStorage(Serialization.buildCircuitObject(this.editor))
         this.editor.showMessage(S.Messages.DidUndo)
         // this.dump()
         this.fireStateChangedIfNeeded()
@@ -107,6 +108,7 @@ export class UndoManager {
         if (snapshot !== undefined) {
             this._undoSnapshots.push(snapshot)
             this.loadSnapshot(snapshot)
+            this.editor.trySaveInBrowserStorage(Serialization.buildCircuitObject(this.editor))
             this.editor.showMessage(S.Messages.DidRedo)
         } else {
             const repeatAction = this._undoSnapshots[this._undoSnapshots.length - 1].repeatAction
@@ -143,6 +145,7 @@ export class UndoManager {
     private fireStateChangedIfNeeded() {
         const newState = this.state
         if (this._lastSentState === undefined || !areStatesEqual(this._lastSentState, newState)) {
+            // console.log("UndoManager state changed: ", newState)
             this.onStateChanged(newState)
             this._lastSentState = newState
         }

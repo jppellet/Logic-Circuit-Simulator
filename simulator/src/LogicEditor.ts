@@ -730,7 +730,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                     innerScriptElem.remove() // remove the data element to hide the raw data
                     // do this manually
                     const tryLoadStorage = !this._norestore
-                    this.tryLoadCircuitFromData(tryLoadStorage, false)
+                    this.tryLoadCircuitFromData(tryLoadStorage, true)
                     this.doRedraw(true)
                     return true
                 } else {
@@ -996,7 +996,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             this.redraw()
         })
 
-        this.tryLoadCircuitFromData(true, false)
+        this.tryLoadCircuitFromData(true, true)
         // also triggers redraw, should be last thing called here
 
         this.setModeFromString(this.getAttribute(ATTRIBUTE_NAMES.mode))
@@ -1235,6 +1235,11 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.editTools.redrawMgr.requestRedraw({ why: "translation changed", invalidateMask: true })
     }
 
+    public finishAutoZoomTranslationIfActive() {
+        this.setDirty("zoom/translation changed")
+        this.editTools.undoMgr.takeSnapshot()
+    }
+
     public updateCustomComponentButtons() {
         if (this._menu !== undefined) {
             this._menu.updateCustomComponentButtons(this.factory.customDefs())
@@ -1279,6 +1284,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         const now = Date.now()
         const saveStr = now + ";" + Serialization.stringifyObject(circuit, true)
+        // console.log("Saving circuit to browser storage with key '" + key + "' at " + new Date(now).toISOString())
         try {
             sessionStorage.setItem(key, saveStr)
             if (this._autosave) {

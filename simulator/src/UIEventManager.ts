@@ -531,6 +531,7 @@ export class UIEventManager {
         canvas.onpointercancel = onpointerupcancel
 
         // Wheel events for zooming and panning
+        let wheelEndTimer: TimeoutHandle | null = null
         canvas.onwheel = editor.wrapHandler(e => {
             if (editor.mode >= Mode.CONNECT) {
                 e.preventDefault()
@@ -545,10 +546,20 @@ export class UIEventManager {
                     applyZoomAndTranslation(oldZoom * zoomFactor, oldCenterX, oldCenterY, newCenterX, newCenterY)
                 } else {
                     // Handle as a pan gesture if not a zoom
-                    const panX = -e.deltaX
-                    const panY = -e.deltaY
+                    const speedFactor = 1 / editor.userDrawingScale // slower if zoomed in
+                    const panX = -e.deltaX * speedFactor
+                    const panY = -e.deltaY * speedFactor
                     editor.setTranslation(editor.translationX + panX, editor.translationY + panY)
                 }
+
+                // detect end of wheel interaction
+                if (wheelEndTimer !== null) {
+                    clearTimeout(wheelEndTimer)
+                }
+                wheelEndTimer = setTimeout(() => {
+                    wheelEndTimer = null
+                    editor.finishAutoZoomTranslationIfActive()
+                }, 200)
             }
         })
 
@@ -1254,7 +1265,10 @@ class EditHandlers extends ToolHandlers {
             editor.editTools.redrawMgr.requestRedraw({ why: "selection rect changed" })
         }
         editor.setToolCursor(null)
-        this._currentPanningSession = undefined
+        if (this._currentPanningSession !== undefined) {
+            editor.finishAutoZoomTranslationIfActive()
+            this._currentPanningSession = undefined
+        }
     }
 
     public override hideContextMenuIfNeeded(e?: PointerEvent) {
