@@ -1,5 +1,5 @@
 import { LogicEditor } from "./LogicEditor"
-import { Serialization } from "./Serialization"
+import { PostLoadActions_None, Serialization } from "./Serialization"
 import { S } from "./strings"
 import { InteractionResult, RepeatFunction } from "./utils"
 
@@ -54,7 +54,7 @@ export class UndoManager {
                 this._undoSnapshots[this._undoSnapshots.length - 1].repeatAction !== undefined)
     }
 
-    public takeSnapshot(interactionResult?: InteractionResult) {
+    public takeSnapshot(interactionResult?: InteractionResult, skipStorage?: boolean) {
         const isChange = interactionResult?.isChange ?? true
         if (!isChange) {
             return
@@ -62,17 +62,20 @@ export class UndoManager {
 
         const repeatAction = interactionResult === undefined ? undefined
             : interactionResult._tag === "RepeatableChange" ? interactionResult.repeat : undefined
-        this.doTakeSnapshot(repeatAction)
+        this.doTakeSnapshot(repeatAction, skipStorage)
     }
 
-    private doTakeSnapshot(repeatAction?: RepeatFunction) {
+    private doTakeSnapshot(repeatAction?: RepeatFunction, skipStorage?: boolean) {
         const now = Date.now()
+        const doStorage = !(skipStorage ?? false)
         // const nowStr = new Date(now).toISOString()
-        // console.log("Taking snapshot at " + nowStr + " (repeatAction=" + repeatAction + ")")
+        // console.log("Taking snapshot at " + nowStr + " (repeatAction=" + repeatAction + ", skipStorage=" + skipStorage + ", doStorage=" + doStorage + ")")
 
         const circuit = this.editor.save()
         const jsonStr = Serialization.stringifyObject(circuit, true)
-        this.editor.trySaveInBrowserStorage(circuit)
+        if (doStorage) {
+            this.editor.trySaveInBrowserStorage(circuit)
+        }
         this._undoSnapshots.push({ time: now, circuitStr: jsonStr, repeatAction })
         while (this._undoSnapshots.length > MAX_UNDO_SNAPSHOTS) {
             this._undoSnapshots.shift()
@@ -139,7 +142,7 @@ export class UndoManager {
     }
 
     private loadSnapshot(snapshot: Snapshot) {
-        Serialization.loadCircuitOrLibrary(this.editor, snapshot.circuitStr, false)
+        Serialization.loadCircuitOrLibrary(this.editor, snapshot.circuitStr, PostLoadActions_None)
     }
 
     private fireStateChangedIfNeeded() {

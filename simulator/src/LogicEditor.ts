@@ -18,7 +18,7 @@ import { MoveManager } from "./MoveManager"
 import { NodeManager } from "./NodeManager"
 import { RecalcManager, RedrawManager } from "./RedrawRecalcManager"
 import { SVGRenderingContext } from "./SVGRenderingContext"
-import { Circuit, Serialization } from "./Serialization"
+import { Circuit, PostLoadActions, PostLoadActions_None, PostLoadActions_SnapshotNoStorage, PostLoadActions_SnapshotStorage, Serialization } from "./Serialization"
 import { TestCaseCombinational, TestCaseResult, TestCaseResultMismatch, TestCaseValueMap, TestSuite, TestSuiteResults, TestSuites } from "./TestSuite"
 import { Tests } from "./Tests"
 import { TestsPalette } from "./TestsPalette"
@@ -232,6 +232,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     private _dontHogFocus = false
     private _mode: Mode = DEFAULT_MODE
     public get mode() { return this._mode }
+    private _loadedFromStorage: boolean = false
     private _initialData: InitialData | undefined = undefined
     private _options: EditorOptions = { ...DEFAULT_EDITOR_OPTIONS }
     private _hideResetButton = false
@@ -730,8 +731,10 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                     innerScriptElem.remove() // remove the data element to hide the raw data
                     // do this manually
                     const tryLoadStorage = !this._norestore
-                    this.tryLoadCircuitFromData(tryLoadStorage, true)
-                    this.doRedraw(true)
+                    if (!this._loadedFromStorage) {
+                        this.tryLoadCircuitFromData(tryLoadStorage, PostLoadActions_SnapshotNoStorage)
+                        this.doRedraw(true)
+                    }
                     return true
                 } else {
                     return false
@@ -996,7 +999,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             this.redraw()
         })
 
-        this.tryLoadCircuitFromData(true, true)
+        this.tryLoadCircuitFromData(!this._norestore, PostLoadActions_SnapshotNoStorage)
         // also triggers redraw, should be last thing called here
 
         this.setModeFromString(this.getAttribute(ATTRIBUTE_NAMES.mode))
@@ -1304,7 +1307,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
      * only upon user request).
      */
     public tryLoadFromSessionStorage(): boolean {
-        const savedTime = this.tryLoadFromStorage(sessionStorage, false)
+        const savedTime = this.tryLoadFromStorage(sessionStorage, PostLoadActions_None)
         if (savedTime === undefined) {
             return false
         }
@@ -1312,7 +1315,9 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             console.error("Failed to load circuit from session storage", savedTime)
             return false
         }
-        this.showLoadedMessage(savedTime, true)
+        this.showLoadedMessage(savedTime, false)
+        // console.log("Loaded circuit from session storage")
+        this._loadedFromStorage = true
         return true
     }
 
@@ -1321,7 +1326,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
      * by the user and should show errors
      */
     public tryLoadFromLocalStorage(): boolean {
-        const savedTime = this.tryLoadFromStorage(localStorage, true)
+        const savedTime = this.tryLoadFromStorage(localStorage, PostLoadActions_SnapshotNoStorage)
         if (savedTime === undefined) {
             window.alert(S.Messages.NoSavedData)
             return false
@@ -1354,7 +1359,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     /**
      * @returns undefined if no persistence id is set or nothing is saved; a string in case of an error to report; a Date if loaded successfully
      */
-    private tryLoadFromStorage(storage: Storage, takeSnapshot: boolean): undefined | Date | string {
+    private tryLoadFromStorage(storage: Storage, postLoadActions: PostLoadActions): undefined | Date | string {
         const key = this.persistenceKey
         if (key === undefined) {
             return undefined
@@ -1373,7 +1378,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
 
         const circuitStr = savedStr.substring(semicolIndex + 1)
-        const error = Serialization.loadCircuitOrLibrary(this, circuitStr, takeSnapshot)
+        const error = Serialization.loadCircuitOrLibrary(this, circuitStr, postLoadActions)
         if (error !== undefined) {
             return error
         }
@@ -1428,7 +1433,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                     if (isString(compressedJSON)) {
                         this._initialData = { _type: "compressed", str: compressedJSON }
                         this.wrapHandler(() => {
-                            this.tryLoadCircuitFromData(false, true)
+                            this.tryLoadCircuitFromData(false, PostLoadActions_SnapshotStorage)
                         })()
                     }
                 }
@@ -1459,7 +1464,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
     }
 
-    public tryLoadCircuitFromData(tryLoadStorage: boolean, takeSnapshot: boolean) {
+    public tryLoadCircuitFromData(tryLoadStorage: boolean, postLoadActions: PostLoadActions) {
         // console.log(`tryLoadCircuitFromData with tryLoadStorage=${tryLoadStorage}, takeSnapshot=${takeSnapshot}`)
         if (this._initialData !== undefined) {
 
@@ -1471,7 +1476,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 fetch(url, { mode: "cors" }).then(response => response.text()).then(json => {
                     console.log(`Loaded initial data from URL '${url}'`)
                     this._initialData = { _type: "json", json }
-                    this.tryLoadCircuitFromData(tryLoadStorage, takeSnapshot)
+                    this.tryLoadCircuitFromData(tryLoadStorage, postLoadActions)
                 })
 
                 // TODO try fetchJSONP if this fails?
@@ -1483,7 +1488,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             if (this._initialData._type === "json") {
                 // already decompressed
                 try {
-                    error = Serialization.loadCircuitOrLibrary(this, this._initialData.json, takeSnapshot)
+                    error = Serialization.loadCircuitOrLibrary(this, this._initialData.json, postLoadActions)
                 } catch (e) {
                     error = String(e) + " (JSON)"
                 }
@@ -1509,7 +1514,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
                 if (error === undefined && isString(decodedData)) {
                     // remember the decompressed/decoded value
-                    error = Serialization.loadCircuitOrLibrary(this, decodedData, takeSnapshot)
+                    error = Serialization.loadCircuitOrLibrary(this, decodedData, postLoadActions)
                     if (error === undefined) {
                         this._initialData = { _type: "json", json: decodedData }
                     }
@@ -1526,7 +1531,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         if (this._linkedField !== undefined &&
             (contentFromLinkedField = this._linkedField.value) !== null &&
             (contentFromLinkedField = contentFromLinkedField.trim()).length > 0) {
-            const error = Serialization.loadCircuitOrLibrary(this, contentFromLinkedField, takeSnapshot)
+            const error = Serialization.loadCircuitOrLibrary(this, contentFromLinkedField, postLoadActions)
             if (error === undefined) {
                 this._initialData = { _type: "json", json: contentFromLinkedField }
             }
@@ -1547,7 +1552,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     public resetCircuit() {
         this.tryClearBrowserStorage()
-        this.editor.tryLoadCircuitFromData(false, false)
+        this.editor.tryLoadCircuitFromData(false, PostLoadActions_None)
     }
 
     public tryCloseCustomComponentEditor() {
@@ -1575,7 +1580,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     public loadCircuitOrLibrary(jsonStringOrObject: string | Record<string, unknown>) {
         this.wrapHandler(
             (jsonStringOrObject: string | Record<string, unknown>) =>
-                Serialization.loadCircuitOrLibrary(this, jsonStringOrObject, true)
+                Serialization.loadCircuitOrLibrary(this, jsonStringOrObject, PostLoadActions_SnapshotStorage)
         )(jsonStringOrObject)
     }
 
@@ -2273,6 +2278,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         if (invalidateTests && !this._isRunningOrCreatingTests) {
             this.editTools.testsPalette.clearDisplayedResults()
             this.dispatchEvent(new CustomEvent("testsinvalidated"))
+            console.log("Dispatched testsinvalidated event")
         }
 
         if (!redrawMgr.isAnyValuePropagating()) {
@@ -2486,12 +2492,48 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             g.endGroup()
             g.setTransform(contentTransform)
         }
+        if (!skipBorder && this.translationX !== 0 || this.translationY !== 0) {
+            // draw axes when translated
+            g.beginGroup("axes")
+            g.strokeStyle = COLOR_GRID_LINES
+            g.fillStyle = COLOR_GRID_LINES
+            g.lineWidth = 1
+            g.beginPath()
+            g.moveTo(0, -10)
+            g.lineTo(0, 20)
+            g.moveTo(-10, 0)
+            g.lineTo(20, 0)
+            g.stroke()
+
+            // draw arrow head right
+            g.beginPath()
+            g.moveTo(22, 0)
+            g.lineTo(15, -3)
+            g.lineTo(15, 3)
+            g.closePath()
+            g.fill()
+
+            // draw arrow head down
+            g.beginPath()
+            g.moveTo(0, 22)
+            g.lineTo(-3, 15)
+            g.lineTo(3, 15)
+            g.closePath()
+            g.fill()
+
+            // draw "0" near origin
+            g.font = '10px sans-serif'
+            g.textAlign = 'right'
+            fillTextVAlign(g, TextVAlign.bottom, "0", -3, -3)
+
+            g.endGroup()
+        }
 
         // draw guidelines when moving waypoint
-        const singleMovingWayoint = moveMgr.getSingleMovingWaypoint()
-        if (singleMovingWayoint !== undefined) {
+        const singleMovingWaypoint = moveMgr.getSingleMovingWaypoint()
+        if (singleMovingWaypoint !== undefined) {
             g.beginGroup("guides")
-            const guides = singleMovingWayoint.getPrevAndNextAnchors()
+            const guides = singleMovingWaypoint.getPrevAndNextAnchors()
             g.strokeStyle = COLOR_GRID_LINES_GUIDES
             g.lineWidth = 1.5
             g.beginPath()

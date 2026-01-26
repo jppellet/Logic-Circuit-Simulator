@@ -60,6 +60,14 @@ export type ComponentAndWires = {
     tests?: TestSuiteRepr[],
 }
 
+export const PostLoadActions_None = "none"
+export const PostLoadActions_SnapshotStorage = "snapshot-storage"
+export const PostLoadActions_SnapshotNoStorage = "snapshot"
+export type PostLoadActions =
+    | typeof PostLoadActions_None
+    | typeof PostLoadActions_SnapshotStorage
+    | typeof PostLoadActions_SnapshotNoStorage
+
 type LoadOptions = {
     immediateWirePropagation?: boolean,
     skipMigration?: boolean
@@ -83,7 +91,7 @@ class _Serialization {
         saveAs(blob, filename)
     }
 
-    public loadCircuitOrLibrary(editor: LogicEditor, content: string | Record<string, unknown>, takeSnapshot: boolean, opts?: LoadOptions) {
+    public loadCircuitOrLibrary(editor: LogicEditor, content: string | Record<string, unknown>, postLoadActions: PostLoadActions, opts?: LoadOptions) {
         let parsed: Record<string, unknown>
         if (!isString(content)) {
             parsed = content
@@ -99,7 +107,7 @@ class _Serialization {
         if (isLib) {
             return this.doLoadLibrary(editor, parsed)
         } else {
-            return this.loadCircuit(editor, parsed, takeSnapshot, opts)
+            return this.loadCircuit(editor, parsed, postLoadActions, opts)
         }
     }
 
@@ -146,7 +154,7 @@ class _Serialization {
     public loadCircuit(
         parent: DrawableParent,
         parsed_: Record<string, unknown>,
-        takeSnapshot: boolean,
+        postLoadActions: PostLoadActions,
         opts?: LoadOptions,
     ): undefined | string { // string is an error
 
@@ -217,8 +225,10 @@ class _Serialization {
             parent.setPartialOptions(parsed.opts as any)
             delete parsed.opts
 
+            const takeSnapshot = postLoadActions.startsWith("snapshot")
             if (takeSnapshot) {
-                parent.editor.editTools.undoMgr.takeSnapshot()
+                const skipStorage = !postLoadActions.endsWith("storage")
+                parent.editor.editTools.undoMgr.takeSnapshot(undefined, skipStorage)
             }
 
             parent.updateCustomComponentButtons()
@@ -250,7 +260,7 @@ class _Serialization {
     }
 
     public loadCircuitForCustomComponent(customComp: CustomComponent, parsed: Record<string, unknown>): string | undefined {
-        const error = this.loadCircuit(customComp, parsed, false, { immediateWirePropagation: true, skipMigration: true })
+        const error = this.loadCircuit(customComp, parsed, PostLoadActions_None, { immediateWirePropagation: true, skipMigration: true })
         if (error !== undefined) {
             return error
         }

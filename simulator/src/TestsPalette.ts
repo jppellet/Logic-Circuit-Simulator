@@ -115,6 +115,7 @@ export class TestsPalette {
         this.editor.dispatchEvent(new CustomEvent("testsexecuted", {
             detail: { results, circuit: jsonStr },
         }))
+        // console.log("Dispatched 'testsexecuted' event with results for", results.length, "test suites.")
 
         return results
     }
