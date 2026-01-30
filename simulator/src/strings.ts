@@ -138,7 +138,7 @@ const Strings_fr = {
             Decoder: ["Décodeur binaire vers 1-sur-n", "Décodeur"],
             Decoder7Seg: ["Décodeur 7 segments", "Déc. 7 seg."],
             Decoder16Seg: ["Décodeur ASCII vers 16 segments", "Déc. 16 seg."],
-            DecoderBCD4: ["Décodeur 4 bits vers BCD sur 5 bits", "Déc. BCD"],
+            DecoderBCD: ["Décodeur BCD, binary-coded decimal", "Déc. BCD"],
 
             Comparator: ["Comparateur", "Compar."],
         }),
@@ -943,7 +943,7 @@ const Strings_en: Strings = {
             Decoder: ["Binary to One-of-N Decoder", "Decoder"],
             Decoder7Seg: ["7-Segment Decoder", "7-Seg. Dec."],
             Decoder16Seg: ["ASCII-to-16-Segment Decoder", "16-Seg. Dec."],
-            DecoderBCD4: ["4-Bit-to-BCD Decoder", "BCD Dec."],
+            DecoderBCD: ["BCD Decoder (Binary-Coded Decimal)", "BCD Dec."],
 
             Comparator: ["Comparator", "Compar."],
         }),

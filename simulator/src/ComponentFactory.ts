@@ -15,7 +15,7 @@ import { CustomComponent, CustomComponentDef, CustomComponentDefRepr, CustomComp
 import { DecoderDef } from "./components/Decoder"
 import { Decoder16SegDef } from "./components/Decoder16Seg"
 import { Decoder7SegDef } from "./components/Decoder7Seg"
-import { DecoderBCD4Def } from "./components/DecoderBCD4"
+import { DecoderBCDDef } from "./components/DecoderBCD"
 import { DemuxDef } from "./components/Demux"
 import { DisplayDef } from "./components/Display"
 import { Display16SegDef } from "./components/Display16Seg"
@@ -108,7 +108,7 @@ const AllComponentDefs: ComponentMaker<any>[] = [
     DecoderDef,
     Decoder7SegDef,
     Decoder16SegDef,
-    DecoderBCD4Def,
+    DecoderBCDDef,
 ]
 
 // Data present in the HTMLElement of a component button

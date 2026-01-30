@@ -1,7 +1,7 @@
 import { Serialization } from "./Serialization"
 import { binaryStringRepr, isAllZeros, isArray, isRecord, isString, toLogicValue } from "./utils"
 
-export const CurrentFormatVersion = 6
+export const CurrentFormatVersion = 7
 
 export function migrateData(data: Record<string, unknown>, editorId: string | undefined) {
 
@@ -42,6 +42,16 @@ export function migrateData(data: Record<string, unknown>, editorId: string | un
 // Migration functions
 
 const migrateTo: Record<number, (container: Record<string, unknown>) => void> = {
+
+    7: (container) => {
+        // dec-bcd4 is now dec-bcd with bits=4
+        migrateAllComponentListsOfV6Plus(container, comp => {
+            if (comp.type === "dec-bcd4") {
+                comp.type = "dec-bcd"
+                comp.bits = 4
+            }
+        })
+    },
 
     6: (container) => {
         // replace separate lists with a single list of components with better type fields
@@ -436,4 +446,31 @@ function findFirstFreeId(parsedContents: Record<string, unknown>): number {
     }
 
     return maxId + 1
+}
+
+
+
+function migrateAllComponentListsOfV6Plus(container: Record<string, unknown>, migrate: (comp: Record<string, unknown>) => void) {
+    const tryMigrateComponentRecord = (components: unknown) => {
+        if (isRecord(components)) {
+            for (const comp of Object.values(components)) {
+                if (isRecord(comp)) {
+                    migrate(comp)
+                }
+            }
+        }
+    }
+
+    // top-level components
+    tryMigrateComponentRecord(container.components)
+
+    // components inside custom component definitions
+    const defs = container.defs
+    if (isArray(defs)) {
+        for (const def of defs) {
+            if (isRecord(def)) {
+                tryMigrateComponentRecord(def.components)
+            }
+        }
+    }
 }

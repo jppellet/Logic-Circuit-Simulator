@@ -65,7 +65,7 @@ import Counter from '../img/Counter.svg'; // @ts-ignore
 import Decoder from '../img/Decoder.svg'; // @ts-ignore
 import Decoder16Seg from '../img/Decoder16Seg.svg'; // @ts-ignore
 import Decoder7Seg from '../img/Decoder7Seg.svg'; // @ts-ignore
-import DecoderBCD4 from '../img/DecoderBCD4.svg'; // @ts-ignore
+import DecoderBCD from '../img/DecoderBCD.svg'; // @ts-ignore
 import Demux from '../img/Demux.svg'; // @ts-ignore
 import Display16Seg from '../img/Display16Seg.svg'; // @ts-ignore
 import Display4 from '../img/Display4.svg'; // @ts-ignore
@@ -192,7 +192,7 @@ const images = {
     Decoder,
     Decoder7Seg,
     Decoder16Seg,
-    DecoderBCD4,
+    DecoderBCD,
     Demux,
     FlipflopD,
     FlipflopJK,

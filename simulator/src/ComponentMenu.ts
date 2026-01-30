@@ -14,7 +14,7 @@ import { CustomComponentDef, CustomComponentImageHeight, CustomComponentImageWid
 import { DecoderDef } from "./components/Decoder"
 import { Decoder16SegDef } from "./components/Decoder16Seg"
 import { Decoder7SegDef } from "./components/Decoder7Seg"
-import { DecoderBCD4Def } from "./components/DecoderBCD4"
+import { DecoderBCDDef } from "./components/DecoderBCD"
 import { DemuxDef } from "./components/Demux"
 import { DisplayDef } from "./components/Display"
 import { Display16SegDef } from "./components/Display16Seg"
@@ -180,7 +180,7 @@ const componentsMenu: Array<Section> = [{
         DecoderDef.button({ bits: 2 }, "Decoder", { compat: "decoder" }),
         Decoder7SegDef.button("Decoder7Seg", { compat: "decoder-7seg" }),
         Decoder16SegDef.button("Decoder16Seg", { compat: "decoder-16seg", visible: withButton }),
-        DecoderBCD4Def.button("DecoderBCD4", { compat: "decoder-bcd4", visible: withButton }),
+        DecoderBCDDef.button({bits: 4}, "DecoderBCD", { compat: "decoder-bcd4", visible: withButton }),
 
     ],
 }]
