@@ -277,9 +277,13 @@ export class UIEventManager {
                 }
             }
 
+            const showHiddenWires = this.editor.options.showHiddenWires
             if (!pullingWire && !settingAnchor) {
                 // wires
                 for (const wire of root.linkMgr.wires) {
+                    if (!showHiddenWires && wire.isHidden) {
+                        continue
+                    }
                     for (const waypoint of wire.waypoints) {
                         if (waypoint.isOver(x, y)) {
                             return waypoint
