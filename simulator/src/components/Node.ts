@@ -80,6 +80,8 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         return this._leadLength
     }
 
+    public abstract get isConnected(): boolean
+
     public abstract get connectedWires(): readonly Wire[]
 
     /**
@@ -343,6 +345,10 @@ export class NodeIn extends NodeBase<NodeIn> {
         }
     }
 
+    public get isConnected(): boolean {
+        return this._incomingWire !== null
+    }
+
     public get connectedWires() {
         return this._incomingWire === null ? [] : [this._incomingWire]
     }
@@ -408,6 +414,10 @@ export class NodeOut extends NodeBase<NodeOut> {
 
     public get outgoingWires(): readonly Wire[] {
         return this._outgoingWires
+    }
+
+    public get isConnected(): boolean {
+        return this._outgoingWires.length > 0
     }
 
     public get connectedWires() {

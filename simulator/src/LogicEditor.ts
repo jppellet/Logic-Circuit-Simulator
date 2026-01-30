@@ -2278,7 +2278,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         if (invalidateTests && !this._isRunningOrCreatingTests) {
             this.editTools.testsPalette.clearDisplayedResults()
             this.dispatchEvent(new CustomEvent("testsinvalidated"))
-            console.log("Dispatched testsinvalidated event")
+            // console.log("Dispatched testsinvalidated event")
         }
 
         if (!redrawMgr.isAnyValuePropagating()) {

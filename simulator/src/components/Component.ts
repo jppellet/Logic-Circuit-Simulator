@@ -4,7 +4,7 @@ import type { ComponentKey, DefAndParams, LibraryButtonOptions, LibraryButtonPro
 import { DrawParams, LogicEditor } from "../LogicEditor"
 import { PointerDragEvent } from "../UIEventManager"
 import { UIPermissions } from "../UIPermissions"
-import { COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, DrawingRect, GRID_STEP, drawClockInput, drawComponentName, drawLabel, drawWireLineToComponent, isTrivialNodeName, shouldDrawLeadsTo, useCompact } from "../drawutils"
+import { COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, DrawingRect, GRID_STEP, drawClockInput, drawComponentName, drawLabel, drawWireLineToComponent, isTrivialNodeName, shouldDrawNodeLabel, useCompact } from "../drawutils"
 import { IconName, ImageName } from "../images"
 import { S, Template } from "../strings"
 import { ArrayFillUsing, ArrayOrDirect, EdgeTrigger, Expand, FixedArrayMap, HasField, HighImpedance, InteractionResult, LogicValue, LogicValueRepr, Mode, Unknown, brand, deepArrayEquals, isArray, isBoolean, isNumber, isRecord, isString, mergeWhereDefined, toLogicValueRepr, typeOrUndefined, validateJson } from "../utils"
@@ -907,7 +907,7 @@ export abstract class ComponentBase<
     }
 
     protected drawGroupBox(g: GraphicsRendering, group: NodeGroup<Node>, bounds: DrawingRect) {
-        if (!shouldDrawLeadsTo(group.nodes)) {
+        if (!shouldDrawNodeLabel(group.nodes)) {
             return
         }
 

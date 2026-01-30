@@ -26,6 +26,8 @@
  * Disable/hide input of component (e.g., to make exercise to prevent alu from knowing how to do a subtraction)
  * Implement Quine–McCluskey algorithm for function normalization
  * X-ray mode
+ * Probes for wires
+ * name for wires
 
 
 ### DONE

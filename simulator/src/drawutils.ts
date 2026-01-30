@@ -463,13 +463,6 @@ export function strokeBezier(g: GraphicsRendering, x0: number, y0: number, ancho
     g.stroke()
 }
 
-export function shouldDrawLeadsTo(nodes: readonly Node[]): boolean {
-    return nodes.map(whatToDrawForNode).some(x => x.drawLead)
-}
-
-/**
- * @returns [showWire, showTriangle]
- */
 export function whatToDrawForNode(node: Node): { drawLabel: boolean, drawLead: boolean, drawTriangle: boolean, drawHiddenMark: boolean } {
     const editor = node.parent.editor
     const wires = node.connectedWires
