@@ -4,13 +4,14 @@ import { S } from "../strings"
 import { LogicValue, Unknown, isHighImpedance, isUnknown } from "../utils"
 import { ComponentBase, Repr, defineComponent } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
+import { GateN, GateNDef } from "./Gate"
 
 export const AdderDef =
-    defineComponent("adder", {
+    defineComponent("adder", true, true, {
         idPrefix: "adder",
         button: { imgWidth: 50 },
         valueDefaults: {},
-        size: { gridWidth: 7, gridHeight: 5 },
+        size: () => ({ gridWidth: 7, gridHeight: 5 }),
         makeNodes: () => {
             const s = S.Components.Generic
             return {
@@ -33,7 +34,7 @@ type AdderRepr = Repr<typeof AdderDef>
 export class Adder extends ComponentBase<AdderRepr> {
 
     public constructor(parent: DrawableParent, saved?: AdderRepr) {
-        super(parent, AdderDef, saved)
+        super(parent, AdderDef.from(parent), saved)
     }
 
     public toJSON() {
@@ -74,12 +75,40 @@ export class Adder extends ComponentBase<AdderRepr> {
     }
 
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
-        this.doDrawDefault(g, ctx, () => {
-            g.fillStyle = COLOR_COMPONENT_BORDER
-            g.font = "bold 30px sans-serif"
-            g.textAlign = "center"
-            fillTextVAlign(g, TextVAlign.middle, "+", this.posX, this.posY - 2)
+        this.doDrawDefault(g, ctx, {
+            drawLabels: () => {
+                g.fillStyle = COLOR_COMPONENT_BORDER
+                g.font = "bold 30px sans-serif"
+                g.textAlign = "center"
+                fillTextVAlign(g, TextVAlign.middle, "+", this.posX, this.posY - 2)
+            },
+            xrayScale: 0.25,
         })
+    }
+
+    protected override makeXRay(scale: number) {
+        const xray = this.parent.editor.newXRay(this)
+        const { inputs, outputs } = this.makeXRayNodes(xray, scale)
+
+        const and1 = GateNDef.makeSpawned<GateN>(xray, -60, -45, "s", { type: "and", bits: 2 })
+        const xor1 = GateNDef.makeSpawned<GateN>(xray, 60, -45, "s", { type: "xor", bits: 2 })
+        const and2 = GateNDef.makeSpawned<GateN>(xray, -40, 20, "w", { type: "and", bits: 2 })
+        const xor2 = GateNDef.makeSpawned<GateN>(xray, 40, 70, "s", { type: "xor", bits: 2 })
+        const or = GateNDef.makeSpawned<GateN>(xray, -115, 0, "w", { type: "or", bits: 2 })
+
+        xray.wire(inputs.A, xor1.inputs.In[1])
+        xray.wire(inputs.B, xor1.inputs.In[0])
+        xray.wire(inputs.A, and1.inputs.In[1])
+        xray.wire(inputs.B, and1.inputs.In[0], { via: [0, -86], style: "vh" })
+        xray.wire(or.outputs.Out, outputs.Cout)
+        xray.wire(inputs.Cin, xor2.inputs.In[0])
+        xray.wire(inputs.Cin, and2.inputs.In[0])
+        xray.wire(and1.outputs.Out, or.inputs.In[1])
+        xray.wire(and2.outputs.Out, or.inputs.In[0])
+        xray.wire(xor1.outputs.Out, xor2.inputs.In[1])
+        xray.wire(xor1.outputs.Out, and2.inputs.In[1])
+        xray.wire(xor2.outputs.Out, outputs.S)
+        return xray
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

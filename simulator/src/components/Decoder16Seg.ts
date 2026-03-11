@@ -6,11 +6,11 @@ import { ComponentBase, Repr, defineComponent, group } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
 
 export const Decoder16SegDef =
-    defineComponent("dec-16seg", {
+    defineComponent("dec-16seg", true, true, {
         idPrefix: "dec",
         button: { imgWidth: 50 },
         valueDefaults: {},
-        size: { gridWidth: 4, gridHeight: 10 },
+        size: () => ({ gridWidth: 4, gridHeight: 10 }),
         makeNodes: () => ({
             ins: {
                 In: group("w", [
@@ -54,7 +54,7 @@ type Decoder16SegRepr = Repr<typeof Decoder16SegDef>
 export class Decoder16Seg extends ComponentBase<Decoder16SegRepr> {
 
     public constructor(parent: DrawableParent, saved?: Decoder16SegRepr) {
-        super(parent, Decoder16SegDef, saved)
+        super(parent, Decoder16SegDef.from(parent), saved)
     }
 
     public toJSON() {

@@ -7,7 +7,7 @@ import { Flipflop, FlipflopBaseDef } from "./FlipflopOrLatch"
 
 
 export const FlipflopDDef =
-    defineComponent("ff-d", {
+    defineComponent("ff-d", true, true, {
         idPrefix: "ff",
         ...FlipflopBaseDef,
         makeNodes: () => {
@@ -28,7 +28,7 @@ type FlipflopDRepr = Repr<typeof FlipflopDDef>
 export class FlipflopD extends Flipflop<FlipflopDRepr> {
 
     public constructor(parent: DrawableParent, saved?: FlipflopDRepr) {
-        super(parent, FlipflopDDef, saved)
+        super(parent, FlipflopDDef.from(parent), saved)
     }
 
     public toJSON() {

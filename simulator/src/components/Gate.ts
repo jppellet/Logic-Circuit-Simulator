@@ -3,7 +3,7 @@ import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, COLOR_DARK_RED, COLOR_GATE_NA
 import { Modifier, ModifierObject, asValue, b, cls, div, emptyMod, mods, table, tbody, td, th, thead, tooltipContent, tr } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillUsing, Expand, InteractionResult, LogicValue, Mode, RichStringEnum, Unknown, deepArrayEquals, isUnknown, typeOrUndefined } from "../utils"
-import { ExtractParamDefs, ExtractParams, InstantiatedComponentDef, NodesIn, NodesOut, ParametrizedComponentBase, Repr, ResolvedParams, SomeParamCompDef, defineParametrizedComponent, groupVertical, param } from "./Component"
+import { ExtractParamDefs, ExtractParams, InstantiatedComponentDef, NodesIn, NodesOut, ParametrizedComponentBase, Repr, ResolvedParams, SomeParametrizedComponentDef, defineParametrizedComponent, groupVertical, param } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItem, MenuItems } from "./Drawable"
 import { Gate1Type, Gate1TypeRepr, Gate1Types, Gate2OnlyTypes, Gate2toNTypes, GateNType, GateNTypeRepr, GateNTypes, GateTypes } from "./GateTypes"
 
@@ -31,7 +31,7 @@ export abstract class GateBase<
     private _poseAs: TGateType | undefined
     private _showAsUnknown: boolean
 
-    protected constructor(parent: DrawableParent, SubclassDef: [InstantiatedComponentDef<TRepr, LogicValue>, SomeParamCompDef<TParamDefs>], type: TGateType, saved?: TRepr) {
+    protected constructor(parent: DrawableParent, SubclassDef: [InstantiatedComponentDef<TRepr, LogicValue>, SomeParametrizedComponentDef<TParamDefs>], type: TGateType, saved?: TRepr) {
         super(parent, SubclassDef, saved)
 
         this._type = type
@@ -562,9 +562,9 @@ export const Gate1Def =
             gridWidth: 4,
             gridHeight: 4,
         }),
-        makeNodes: () => ({
-            ins: { In: [[-4, 0, "w", { leadLength: 20 }]] },
-            outs: { Out: [+4, 0, "e", { leadLength: 20 }] },
+        makeNodes: ({ isXRay }) => ({
+            ins: { In: [[isXRay ? -2.5 : -4, 0, "w", { leadLength: 20 }]] },
+            outs: { Out: [isXRay ? 2.5 : +4, 0, "e", { leadLength: 20 }] },
         }),
         initialValue: () => false as LogicValue,
     })
@@ -632,14 +632,14 @@ export const GateNDef =
                 gridHeight: tall ? 5 : 4,
             }
         },
-        makeNodes: ({ numBits }) => {
+        makeNodes: ({ isXRay, numBits }) => {
             const leadLength = 20
             return {
                 ins: {
-                    In: groupVertical("w", -4, 0, numBits, undefined, { leadLength }),
+                    In: groupVertical("w", isXRay ? -2.5 : -4, 0, numBits, undefined, { leadLength }),
                 },
                 outs: {
-                    Out: [4, 0, "e", { leadLength }],
+                    Out: [isXRay ? 2.5 : 4, 0, "e", { leadLength }],
                 },
             }
         },

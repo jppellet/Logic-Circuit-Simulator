@@ -12,7 +12,7 @@ import { COLOR_COMPONENT_BORDER, TextVAlign, fillTextVAlign } from "../drawutils
 import { b, div, mods, span, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillUsing, ArrayFillWith, InteractionResult, LogicValue, isArray, isString, typeOrUndefined, validateJson } from "../utils"
-import { Component, ComponentBase, ComponentRepr, NodeDesc, NodeGroupDesc, NodeInDesc, NodeOutDesc, NodeRec, defineComponent, groupHorizontal, groupVertical } from "./Component"
+import { Component, ComponentBase, ComponentRepr, InjectedParams, NodeDesc, NodeGroupDesc, NodeInDesc, NodeOutDesc, NodeRec, defineComponent, groupHorizontal, groupVertical } from "./Component"
 import { DrawContext, DrawableParent, EditTools, GraphicsRendering, MenuData, MenuItems, Orientation, Orientations } from "./Drawable"
 import { Input, InputRepr } from "./Input"
 import { Output, OutputRepr } from "./Output"
@@ -231,11 +231,11 @@ export class CustomComponentDef {
 
     // ComponentDef creation
     public toStandardDef() {
-        return defineComponent(CustomComponentPrefix + this.customId, {
+        return defineComponent(CustomComponentPrefix + this.customId, true, true, {
             idPrefix: this.customId,
             button: { imgWidth: 50 },
             valueDefaults: {},
-            size: { gridWidth: this.gridWidth, gridHeight: this.gridHeight },
+            size: () => ({ gridWidth: this.gridWidth, gridHeight: this.gridHeight }),
             makeNodes: ({ gridWidth, gridHeight }) => {
                 const right = gridWidth / 2 + 1
                 const left = -right
@@ -314,6 +314,7 @@ export class CustomComponent extends ComponentBase<CustomComponentRepr, LogicVal
     public stopEditingThis() { this._ifEditing = undefined }
     public startEditingThis(tools: EditTools) { this._ifEditing = tools }
 
+    public readonly componentCreationParams: InjectedParams = { isXRay: false }
 
     /// Other internals ///
 
@@ -321,7 +322,7 @@ export class CustomComponent extends ComponentBase<CustomComponentRepr, LogicVal
     private _subcircuitOutputs: Output[] = []
 
     public constructor(parent: DrawableParent, customDef: CustomComponentDef, saved?: CustomComponentRepr) {
-        super(parent, customDef.toStandardDef(), saved)
+        super(parent, customDef.toStandardDef().from(parent), saved)
         this._customDef = customDef
         this.numInputs = this.inputs._all.length
         this.numOutputs = this.outputs._all.length

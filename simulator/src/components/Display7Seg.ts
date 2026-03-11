@@ -9,7 +9,7 @@ import { DrawContext, DrawableParent, GraphicsRendering } from "./Drawable"
 
 
 export const Display7SegDef =
-    defineComponent("7seg", {
+    defineComponent("7seg", true, true, {
         idPrefix: "7seg",
         button: { imgWidth: 32 },
         repr: {
@@ -18,7 +18,7 @@ export const Display7SegDef =
             name: ComponentNameRepr,
         },
         valueDefaults: {},
-        size: { gridWidth: 8, gridHeight: 10 },
+        size: () => ({ gridWidth: 8, gridHeight: 10 }),
         makeNodes: () => ({
             ins: {
                 In: group("w", [
@@ -42,7 +42,7 @@ export type Display7SegRepr = Repr<typeof Display7SegDef>
 export class Display7Seg extends DisplayBarBase<Display7SegRepr, LogicValue[]> {
 
     public constructor(parent: DrawableParent, saved?: Display7SegRepr) {
-        super(parent, Display7SegDef, true, saved)
+        super(parent, Display7SegDef.from(parent), true, saved)
     }
 
     public toJSON() {

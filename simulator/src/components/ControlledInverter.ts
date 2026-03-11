@@ -25,7 +25,6 @@ export const ControlledInverterDef =
             numBits: bits,
             controlPinsAtBottom: bottom,
         }),
-
         size: ({ numBits }) => ({
             gridWidth: 4,
             gridHeight: 8 + Math.max(0, numBits - 8),
@@ -137,4 +136,5 @@ export class ControlledInverter extends ParametrizedComponentBase<ControlledInve
     }
 
 }
+
 ControlledInverterDef.impl = ControlledInverter

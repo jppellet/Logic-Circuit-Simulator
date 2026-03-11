@@ -4,7 +4,7 @@ import { mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, ComponentTypeInput, HighImpedance, InputOutputValueRepr, InteractionResult, LogicValue, Mode, Unknown, reprForLogicValues, toLogicValueRepr, typeOrUndefined, valuesFromReprForInput } from "../utils"
 import { ClockDef, ClockRepr } from "./Clock"
-import { Component, ComponentName, ComponentNameRepr, ExtractParamDefs, ExtractParams, InstantiatedComponentDef, NodesIn, NodesOut, ParametrizedComponentBase, Repr, ResolvedParams, SomeParamCompDef, defineParametrizedComponent, groupVertical, param } from "./Component"
+import { Component, ComponentName, ComponentNameRepr, ExtractParamDefs, ExtractParams, InstantiatedComponentDef, NodesIn, NodesOut, ParametrizedComponentBase, Repr, ResolvedParams, SomeParametrizedComponentDef, defineParametrizedComponent, groupVertical, param } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems, Orientation } from "./Drawable"
 import { Node, NodeIn, NodeOut } from "./Node"
 
@@ -28,7 +28,7 @@ export abstract class InputBase<
     public abstract get numBits(): number
     protected _name: ComponentName
 
-    protected constructor(parent: DrawableParent, SubclassDef: [InstantiatedComponentDef<TRepr, LogicValue[]>, SomeParamCompDef<TParamDefs>], saved?: TRepr) {
+    protected constructor(parent: DrawableParent, SubclassDef: [InstantiatedComponentDef<TRepr, LogicValue[]>, SomeParametrizedComponentDef<TParamDefs>], saved?: TRepr) {
         super(parent, SubclassDef, saved)
         this._name = saved?.name ?? undefined
     }

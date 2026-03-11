@@ -32,7 +32,7 @@ export const CaptionPosition = {
 export type CaptionPosition = keyof typeof CaptionPosition
 
 export const RectangleDef =
-    defineComponent("rect", {
+    defineComponent("rect", true, true, {
         idPrefix: "rect",
         button: { imgWidth: 32 },
         repr: {
@@ -59,7 +59,7 @@ export const RectangleDef =
             captionInside: false,
             font: FONT_LABEL_DEFAULT,
         },
-        size: { gridWidth: 10, gridHeight: 10 },
+        size: () => ({ gridWidth: 10, gridHeight: 10 }),
         makeNodes: () => ({}),
     })
 
@@ -79,7 +79,7 @@ export class Rectangle extends ComponentBase<RectangleRepr> {
     private _font: string
 
     public constructor(parent: DrawableParent, saved?: RectangleRepr) {
-        super(parent, RectangleDef, saved)
+        super(parent, RectangleDef.from(parent), saved)
         this._w = saved?.w ?? RectangleDef.aults.width
         this._h = saved?.h ?? RectangleDef.aults.height
         this._color = saved?.color ?? RectangleDef.aults.color

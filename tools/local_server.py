@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from http.server import HTTPServer, SimpleHTTPRequestHandler, test # type:ignore
 import sys
+from http.server import test  # type:ignore
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 
 
 class CORSRequestHandler(SimpleHTTPRequestHandler):
@@ -11,8 +12,11 @@ class CORSRequestHandler(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
+    print(f" -> http://localhost:{port}/")
+
     test(
         CORSRequestHandler,
         HTTPServer,
-        port=int(sys.argv[1]) if len(sys.argv) > 1 else 8000,
+        port=port,
     )

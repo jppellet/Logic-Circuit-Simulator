@@ -7,7 +7,7 @@ import { FlipflopOrLatch, FlipflopOrLatchDef } from "./FlipflopOrLatch"
 
 
 export const LatchSRDef =
-    defineComponent("latch-sr", {
+    defineComponent("latch-sr", true, true, {
         idPrefix: "latch",
         ...FlipflopOrLatchDef,
         makeNodes: () => {
@@ -28,7 +28,7 @@ type LatchSRRepr = Repr<typeof LatchSRDef>
 export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
 
     public constructor(parent: DrawableParent, saved?: LatchSRRepr) {
-        super(parent, LatchSRDef, saved)
+        super(parent, LatchSRDef.from(parent), saved)
     }
 
     public toJSON() {

@@ -8,7 +8,7 @@ import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } f
 import { InputBase, InputDef } from "./Input"
 
 export const ClockDef =
-    defineComponent("clock", {
+    defineComponent("clock", false, true, {
         idPrefix: "clock",
         button: { imgWidth: 50 },
         repr: {
@@ -24,7 +24,7 @@ export const ClockDef =
             phase: 0,
             showLabel: true,
         },
-        size: { gridWidth: 2, gridHeight: 2 }, // "overridden" by superclass
+        size: () => ({ gridWidth: 2, gridHeight: 2 }), // overridden by superclass
         makeNodes: () => ({
             outs: {
                 // we don't strictly need a group, but we use it
@@ -48,7 +48,7 @@ export class Clock extends InputBase<ClockRepr> {
     public constructor(parent: DrawableParent, saved?: ClockRepr) {
         // 'undefined as any' is a hack to get around the fact that InputBase is parametrized
         // and Clock is not. As long as we don't try to change nonexitent params, it's fine.
-        super(parent, [ClockDef, undefined as any], saved)
+        super(parent, [ClockDef.from(parent), undefined as any], saved)
 
         this._period = saved?.period ?? ClockDef.aults.period
         this._dutycycle = (saved?.dutycycle !== undefined) ? saved.dutycycle % 100 : ClockDef.aults.dutycycle

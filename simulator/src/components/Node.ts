@@ -1,7 +1,7 @@
 import { distSquaredToWaypointIfOver, drawWaypoint, GRID_STEP, NodeStyle, WAYPOINT_DIAMETER } from "../drawutils"
 import { HighImpedance, InteractionResult, isUnknown, LogicValue, Mode, RepeatFunction, toLogicValue, Unknown } from "../utils"
 import { Component, InputNodeRepr, NodeGroup, OutputNodeRepr } from "./Component"
-import { DrawableWithPosition, DrawContext, GraphicsRendering, Orientation } from "./Drawable"
+import { DrawableParent, DrawableWithPosition, DrawContext, GraphicsRendering, Orientation } from "./Drawable"
 import { Wire } from "./Wire"
 
 export type Node = NodeIn | NodeOut
@@ -31,6 +31,7 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
 
     public constructor(
         public readonly component: Component,
+        parent: DrawableParent,
         nodeSpec: InputNodeRepr | OutputNodeRepr,
         public readonly group: NodeGroup<N> | undefined,
         public readonly shortName: string,
@@ -41,7 +42,7 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         relativePosition: Orientation,
         private readonly _leadLengthOverride: number | undefined,
     ) {
-        super(component.parent)
+        super(parent)
         this.id = nodeSpec.id
         if ("force" in nodeSpec) {
             this._forceValue = toLogicValue(nodeSpec.force)
@@ -269,6 +270,11 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         ) ?? [this.posX, this.posY]
     }
 
+    public setPositionAsXRayFor(node: Node, xrayScale: number) {
+        const [x, y] = node.drawCoordsInParentTransform
+        super.trySetPosition((x - node.component.posX) / xrayScale, (y - node.component.posY) / xrayScale, false)
+    }
+
     /**
      * Points in the direction with which an outgoing wire from this node should start,
      * e.g. to draw a smooth curve
@@ -331,6 +337,7 @@ export class NodeIn extends NodeBase<NodeIn> {
     private _incomingWire: Wire | null = null
     public prefersSpike = false
     public isClock = false
+    public xrayNode: NodeOut | undefined = undefined
 
     public get incomingWire() {
         return this._incomingWire
@@ -375,8 +382,11 @@ export class NodeIn extends NodeBase<NodeIn> {
         return undefined
     }
 
-    protected propagateNewValue(__newValue: LogicValue) {
+    protected propagateNewValue(newValue: LogicValue) {
         this.component.setNeedsRecalc()
+        if (this.xrayNode !== undefined) {
+            this.xrayNode.value = newValue
+        }
     }
 
     protected get nodeDisplayStyle() {

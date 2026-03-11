@@ -23,9 +23,9 @@ export const AdderArrayDef =
         validateParams: ({ bits }) => ({
             numBits: bits,
         }),
-        size: ({ numBits }) => ({
+        size: (params) => ({
             gridWidth: 4, // constant
-            gridHeight: ALUDef.size({ numBits, usesExtendedOpcode: false }).gridHeight, // mimic ALU
+            gridHeight: ALUDef.size({ ...params, usesExtendedOpcode: false }).gridHeight, // mimic ALU
         }),
         makeNodes: ({ numBits, gridHeight }) => {
             const inputCenterY = 5 + Math.max(0, (numBits - 8) / 2)

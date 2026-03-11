@@ -17,7 +17,7 @@ export const FlipflopOrLatchDef =
             state: false,
             showContent: true,
         },
-        size: { gridWidth: 5, gridHeight: 7 },
+        size: () => ({ gridWidth: 5, gridHeight: 7 }),
         makeNodes: () => {
             const s = S.Components.Generic
             return {

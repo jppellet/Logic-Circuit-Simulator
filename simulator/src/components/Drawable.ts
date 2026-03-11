@@ -14,7 +14,7 @@ import { fixedWidthInContextMenu, Modifier, ModifierObject, span } from "../html
 import { IconName } from "../images"
 import { S } from "../strings"
 import { Expand, FixedArray, InteractionResult, Mode, PromiseOrValue, RichStringEnum, typeOrUndefined } from "../utils"
-import { Component, ComponentBase } from "./Component"
+import { Component, ComponentBase, InjectedParams } from "./Component"
 import { type LinkManager } from "./Wire"
 
 export type GraphicsRendering =
@@ -139,6 +139,9 @@ export interface DrawableParent {
 
     stopEditingThis(): void
     startEditingThis(tools: EditTools): void
+
+    // passed to components created in this parent
+    readonly componentCreationParams: InjectedParams
 }
 
 export type EditTools = {
@@ -375,12 +378,12 @@ export const Orientation = {
     isVertical(o: Orientation): o is "s" | "n" {
         return o === "s" || o === "n"
     },
-    add(compOrient: Orientation, nodeOrient: Orientation): Orientation {
-        switch (compOrient) {
-            case "e": return nodeOrient
-            case "w": return Orientation.invert(nodeOrient)
-            case "s": return Orientation.nextClockwise(nodeOrient)
-            case "n": return Orientation.nextCounterClockwise(nodeOrient)
+    add(o1: Orientation, o2: Orientation): Orientation {
+        switch (o2) {
+            case "e": return o1
+            case "w": return Orientation.invert(o1)
+            case "s": return Orientation.nextClockwise(o1)
+            case "n": return Orientation.nextCounterClockwise(o1)
         }
     },
 }
@@ -522,7 +525,7 @@ export abstract class DrawableWithPosition extends Drawable implements HasPositi
     protected trySetPosition(posX: number, posY: number, snapToGrid: boolean): undefined | [number, number] {
         const newPos = this.tryMakePosition(posX, posY, snapToGrid)
         if (newPos === undefined) {
-            return
+            return undefined
         }
         this.doSetPosition(newPos[0], newPos[1])
         return newPos

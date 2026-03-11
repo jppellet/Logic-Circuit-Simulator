@@ -6,11 +6,11 @@ import { ComponentBase, Repr, defineComponent, group } from "./Component"
 import { DrawableParent, MenuItems } from "./Drawable"
 
 export const Decoder7SegDef =
-    defineComponent("dec-7seg", {
+    defineComponent("dec-7seg", true, true, {
         idPrefix: "dec",
         button: { imgWidth: 50 },
         valueDefaults: {},
-        size: { gridWidth: 4, gridHeight: 8 },
+        size: () => ({ gridWidth: 4, gridHeight: 8 }),
         makeNodes: () => ({
             ins: {
                 In: group("w", [
@@ -40,7 +40,7 @@ type Decoder7SegRepr = Repr<typeof Decoder7SegDef>
 export class Decoder7Seg extends ComponentBase<Decoder7SegRepr> {
 
     public constructor(parent: DrawableParent, saved?: Decoder7SegRepr) {
-        super(parent, Decoder7SegDef, saved)
+        super(parent, Decoder7SegDef.from(parent), saved)
     }
 
     public toJSON() {

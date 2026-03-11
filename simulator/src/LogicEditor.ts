@@ -26,12 +26,13 @@ import { Timeline } from "./Timeline"
 import { TopBar } from "./TopBar"
 import { EditorSelection, PointerDragEvent, UIEventManager } from "./UIEventManager"
 import { UndoManager } from './UndoManager'
-import { Component, ComponentBase } from "./components/Component"
+import { Component, ComponentBase, InjectedParams } from "./components/Component"
 import { CustomComponent } from "./components/CustomComponent"
 import { Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, EditTools, GraphicsRendering, Orientation } from "./components/Drawable"
 import { type Input } from "./components/Input"
 import { Rectangle, RectangleDef } from "./components/Rectangle"
 import { LinkManager, Wire, WireStyle, WireStyles } from "./components/Wire"
+import { XRay } from "./components/XRay"
 import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_COMPONENT_ID, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, DrawZIndex, GRID_STEP, TextVAlign, USER_COLORS, drawAnchorsAroundComponent as drawAnchorsForComponent, fillTextVAlign, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine, strokeTextVAlign } from "./drawutils"
 import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
@@ -73,7 +74,8 @@ const ATTRIBUTE_NAMES = {
     showonly: "showonly",
     showgatetypes: "showgatetypes",
     showdisconnectedpins: "showdisconnectedpins",
-    showtooltips: "tooltips",
+    showtooltips: "showtooltips",
+    showxray: "showxray",
 
     src: "src",
     data: "data",
@@ -100,6 +102,7 @@ const DEFAULT_EDITOR_OPTIONS = {
     hideOutputColors: false,
     hideMemoryContent: false,
     hideTooltips: false,
+    hideXRay: false,
     groupParallelWires: false,
     showHiddenWires: false,
     showAnchors: false,
@@ -150,6 +153,7 @@ export type DrawParams = {
     highlightedItems: HighlightedItems | undefined,
     highlightColor: string | undefined,
     anythingMoving: boolean,
+    currentDrawingScale: number,
 }
 
 export type TestSuiteRunOptions = {
@@ -207,6 +211,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     public get ifEditing() { return this._ifEditing }
     public stopEditingThis() { this._ifEditing = undefined }
     public startEditingThis(tools: EditTools) { this._ifEditing = tools }
+
+    public readonly componentCreationParams: InjectedParams = { isXRay: false }
 
 
     /// Other internal state ///
@@ -283,6 +289,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         hideOutputColorsCheckbox: HTMLInputElement,
         hideMemoryContentCheckbox: HTMLInputElement,
         hideTooltipsCheckbox: HTMLInputElement,
+        hideXRayCheckbox: HTMLInputElement,
         groupParallelWiresCheckbox: HTMLInputElement,
         showHiddenWiresCheckbox: HTMLInputElement,
         showAnchorsCheckbox: HTMLInputElement,
@@ -379,6 +386,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             optionsHtml.wireStylePopup.value = newOptions.wireStyle
             optionsHtml.showDisconnectedPinsCheckbox.checked = newOptions.showDisconnectedPins
             optionsHtml.hideTooltipsCheckbox.checked = newOptions.hideTooltips
+            optionsHtml.hideXRayCheckbox.checked = newOptions.hideXRay
             optionsHtml.groupParallelWiresCheckbox.checked = newOptions.groupParallelWires
             optionsHtml.showHiddenWiresCheckbox.checked = newOptions.showHiddenWires
             optionsHtml.showAnchorsCheckbox.checked = newOptions.showAnchors
@@ -714,6 +722,11 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             this._options.hideTooltips = !isFalsyString(showtooltipsAttr)
         }
 
+        const showxrayAttr = this.getAttribute(ATTRIBUTE_NAMES.showxray)
+        if (showxrayAttr !== null) {
+            this._options.hideXRay = !isFalsyString(showxrayAttr)
+        }
+
         // TODO move this to options so that it is correctly persisted, too
         this._hideResetButton = this.getAttribute(ATTRIBUTE_NAMES.hidereset) !== null && !isFalsyString(this.getAttribute(ATTRIBUTE_NAMES.hidereset))
 
@@ -922,6 +935,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const showGateTypesCheckbox = makeCheckbox("showGateTypes", S.Settings.showGateTypes)
         const showDisconnectedPinsCheckbox = makeCheckbox("showDisconnectedPins", S.Settings.showDisconnectedPins)
         const hideTooltipsCheckbox = makeCheckbox("hideTooltips", S.Settings.hideTooltips)
+        const hideXRayCheckbox = makeCheckbox("hideXRay", S.Settings.hideXRay)
         const groupParallelWiresCheckbox = makeCheckbox("groupParallelWires", S.Settings.groupParallelWires, true)
         const showHiddenWiresCheckbox = makeCheckbox("showHiddenWires", S.Settings.showHiddenWires)
         const showAnchorsCheckbox = makeCheckbox("showAnchors", S.Settings.showAnchors)
@@ -983,6 +997,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             showGateTypesCheckbox,
             showDisconnectedPinsCheckbox,
             hideTooltipsCheckbox,
+            hideXRayCheckbox,
             groupParallelWiresCheckbox,
             showHiddenWiresCheckbox,
             showAnchorsCheckbox,
@@ -1220,7 +1235,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     }
 
     public setZoom(zoom: number, updateTopBar: boolean): number {
-        zoom = Math.max(10, Math.min(1000, zoom))
+        zoom = Math.max(10, Math.min(10000, zoom))
         const roundedZoomForUI = Math.round(zoom)
         this._options.zoom = roundedZoomForUI
         this._userDrawingScale = zoom / 100
@@ -2373,7 +2388,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         // that the first transform is applied last and the last one first
         const baseTransform = new DOMMatrix().scale(this._baseUIDrawingScale)
         const contentTransform = baseTransform.scale(this._userDrawingScale).translate(this._translationX, this._translationY)
-        // console.log(`Drawing with zoom factor ${this._actualZoomFactor} and translation (${this._translationX}, ${this._translationY})`)
+        // console.log(`Drawing with scale ${this._userDrawingScale} and translation (${this._translationX}, ${this._translationY})`)
         this.doDrawWithContext(g, width, height, baseTransform, contentTransform, false, false, redrawMask)
         // const timeAfter = performance.now()
         // console.log(`Drawing took ${timeAfter - timeBefore}ms`)
@@ -2592,6 +2607,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             highlightColor,
             currentSelection: undefined,
             anythingMoving: moveMgr.areDrawablesMoving(),
+            currentDrawingScale: this._userDrawingScale,
         }
         const currentSelection = this.eventMgr.currentSelection
         drawParams.currentSelection = currentSelection
@@ -2805,6 +2821,10 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
     }
 
+    public newXRay(comp: Component) {
+        return new XRay(comp)
+    }
+
     public static decodeFromURLOld(str: string) {
         return decodeURIComponent(atob(str.replace(/-/g, "+").replace(/_/g, "/").replace(/%3D/g, "=")))
     }
@@ -2816,6 +2836,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         g.endGroup = () => undefined
         return g
     }
+
 }
 
 export class LogicStatic {

@@ -4,14 +4,16 @@ import { S } from "../strings"
 import { LogicValue, Unknown, isHighImpedance, isUnknown } from "../utils"
 import { ComponentBase, Repr, defineComponent } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
+import { GateN, GateNDef } from "./Gate"
+import { type XRay } from "./XRay"
 
 
 export const HalfAdderDef =
-    defineComponent("halfadder", {
+    defineComponent("halfadder", true, true, {
         idPrefix: "hadder",
         button: { imgWidth: 50 },
         valueDefaults: {},
-        size: { gridWidth: 4, gridHeight: 6 },
+        size: () => ({ gridWidth: 4, gridHeight: 6 }),
         makeNodes: () => {
             const s = S.Components.Generic
             return {
@@ -33,7 +35,7 @@ type HalfAdderRepr = Repr<typeof HalfAdderDef>
 export class HalfAdder extends ComponentBase<HalfAdderRepr> {
 
     public constructor(parent: DrawableParent, saved?: HalfAdderRepr) {
-        super(parent, HalfAdderDef, saved)
+        super(parent, HalfAdderDef.from(parent), saved)
     }
 
     public toJSON() {
@@ -72,12 +74,32 @@ export class HalfAdder extends ComponentBase<HalfAdderRepr> {
     }
 
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
-        this.doDrawDefault(g, ctx, () => {
-            g.fillStyle = COLOR_COMPONENT_BORDER
-            g.font = "26px sans-serif"
-            g.textAlign = "center"
-            fillTextVAlign(g, TextVAlign.middle, "+", this.posX, this.posY - 2)
+        this.doDrawDefault(g, ctx, {
+            drawLabels: () => {
+                g.fillStyle = COLOR_COMPONENT_BORDER
+                g.font = "26px sans-serif"
+                g.textAlign = "center"
+                fillTextVAlign(g, TextVAlign.middle, "+", this.posX, this.posY - 2)
+            },
+            xrayScale: 0.40,
         })
+    }
+
+    protected override makeXRay(scale: number): XRay {
+        const xray = this.parent.editor.newXRay(this)
+        const { inputs, outputs } = this.makeXRayNodes(xray, scale)
+
+        const xor = GateNDef.makeSpawned<GateN>(xray, 15, -40, "e", { type: "xor", bits: 2 })
+        const and = GateNDef.makeSpawned<GateN>(xray, 15, 40, "e", { type: "and", bits: 2 })
+
+        xray.wire(inputs.B, and.inputs.In[1])
+        xray.wire(inputs.A, xor.inputs.In[0])
+        xray.wire(inputs.A, and.inputs.In[0], { via: [-35, -50, true], style: "vh" })
+        xray.wire(inputs.B, xor.inputs.In[1], { via: [-20, 50, true], style: "vh" })
+        xray.wire(and.outputs.Out, outputs.C, { style: "vh" })
+        xray.wire(xor.outputs.Out, outputs.S, { style: "vh" })
+
+        return xray
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

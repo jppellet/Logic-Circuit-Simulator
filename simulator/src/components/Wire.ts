@@ -23,6 +23,7 @@ export class Waypoint extends DrawableWithDraggablePosition {
             // alternatives with more fields first
             t.tuple([t.number, t.number, t.keyof(Orientations_), typeOrNull(t.string), t.partial({
                 lockPos: t.boolean,
+                showDot: t.boolean,
             })]),
             t.tuple([t.number, t.number, t.keyof(Orientations_), t.string]),
             t.tuple([t.number, t.number, t.keyof(Orientations_)]),
@@ -44,6 +45,8 @@ export class Waypoint extends DrawableWithDraggablePosition {
         }
     }
 
+    public showDot: boolean = false
+
     public constructor(
         public readonly wire: Wire,
         saved: WaypointRepr | undefined,
@@ -54,10 +57,11 @@ export class Waypoint extends DrawableWithDraggablePosition {
     public toJSON(): WaypointRepr {
         // check to determine representation (orientation, anchor, lockPos, etc.)
         const anchor = this.anchor?.ref
-        if (this.lockPos) {
+        if (this.lockPos || this.showDot) {
             // full representation with obj as last element
             return [this.posX, this.posY, this.orient, anchor ?? null, {
                 lockPos: this.lockPos,
+                showDot: this.showDot,
             }]
         }
         if (anchor !== undefined) {
@@ -120,7 +124,7 @@ export class Waypoint extends DrawableWithDraggablePosition {
     }
 
     protected doDraw(g: GraphicsRendering, ctx: DrawContext): void {
-        if (this.parent.mode < Mode.CONNECT) {
+        if (this.parent.mode < Mode.CONNECT && !this.showDot) {
             return
         }
 
@@ -128,10 +132,13 @@ export class Waypoint extends DrawableWithDraggablePosition {
             return
         }
 
-        g.globalAlpha = this.wire.isHidden ? OPACITY_HIDDEN_ITEMS : 1.0
+        const normalAlpha = g.globalAlpha
+        if (this.wire.isHidden) {
+            g.globalAlpha = OPACITY_HIDDEN_ITEMS * normalAlpha
+        }
         const neutral = this.parent.editor.options.hideWireColors
         drawWaypoint(g, ctx, this.posX, this.posY, NodeStyle.WAYPOINT, this.wire.startNode.value, ctx.isMouseOver, neutral, false, false, false)
-        g.globalAlpha = 1.0
+        g.globalAlpha = normalAlpha
     }
 
     public override makeContextMenu(): MenuData {
@@ -447,15 +454,21 @@ export class Wire extends Drawable {
         return this.addWaypointWith(x, y)
     }
 
-    public addWaypointWith(x: number, y: number): Waypoint {
+    public addWaypointWith(x: number, y: number, presetPartIndex?: number): Waypoint {
         const wirePath = this.wirePath
-        let partIndex = wirePath.partIndexIfMouseover(x, y)
+        let partIndex = presetPartIndex ?? wirePath.partIndexIfMouseover(x, y)
         if (partIndex === undefined) {
             // shouldn't happen since we're calling this form a context menu
             // which was invoked when we were in a mouseover state
             console.warn(`Couldn't find waypoint to insert at for (${x}, ${y})`)
             partIndex = 1
         }
+
+        // console.log("wirePath.parts")
+        // for (const part of wirePath.parts) {
+        //     console.log(part)
+        // }
+        // console.log("partIndex", partIndex, "x", x, "y", y)
 
         // determine initial direction
         const [startX, startY, endX, endY] = wirePath.parts[partIndex]
@@ -531,7 +544,10 @@ export class Wire extends Drawable {
             return
         }
 
-        g.globalAlpha = this._isHidden ? OPACITY_HIDDEN_ITEMS : 1.0
+        const normalAlpha = g.globalAlpha
+        if (this._isHidden) {
+            g.globalAlpha = OPACITY_HIDDEN_ITEMS * normalAlpha
+        }
 
         const wirePath = this.wirePath
         wirePath.draw(g)
@@ -574,7 +590,7 @@ export class Wire extends Drawable {
 
         // wirePath.drawBezierDebug(g)
 
-        g.globalAlpha = 1.0
+        g.globalAlpha = normalAlpha
 
         if (isAnimating && !this.parent.editor.timeline.isPaused) {
             this.requestRedraw({ why: "propagating value", isPropagation: true })

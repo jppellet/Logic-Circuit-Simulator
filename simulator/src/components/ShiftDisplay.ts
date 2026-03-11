@@ -37,7 +37,7 @@ export type ShiftBufferDecoder = keyof typeof ShiftDisplayDecoders_
 
 
 export const ShiftDisplayDef =
-    defineComponent("shift-display", {
+    defineComponent("shift-display", true, false, {
         idPrefix: "shiftdisp",
         button: { imgWidth: 50 },
         repr: {
@@ -51,7 +51,7 @@ export const ShiftDisplayDef =
             decodeAs: "raw" as ShiftBufferDecoder,
             trigger: EdgeTrigger.rising,
         },
-        size: { gridWidth: 25, gridHeight: 5 },
+        size: () => ({ gridWidth: 25, gridHeight: 5 }),
         makeNodes: () => {
             const s = S.Components.Generic
             return {
@@ -97,7 +97,7 @@ export class ShiftDisplay extends ComponentBase<ShiftDisplayRepr, ShiftDisplaySt
     protected _lastClock: LogicValue = Unknown
 
     public constructor(parent: DrawableParent, saved?: ShiftDisplayRepr) {
-        super(parent, ShiftDisplayDef, saved)
+        super(parent, ShiftDisplayDef.from(parent), saved)
 
         this._decodeAs = saved?.decodeAs ?? ShiftDisplayDef.aults.decodeAs
         this._groupEvery = saved?.groupEvery ?? undefined

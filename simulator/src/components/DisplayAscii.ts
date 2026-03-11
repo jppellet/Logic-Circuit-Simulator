@@ -8,7 +8,7 @@ import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems, Or
 
 
 export const DisplayAsciiDef =
-    defineComponent("ascii", {
+    defineComponent("ascii", true, true, {
         idPrefix: "disp",
         button: { imgWidth: 32 },
         repr: {
@@ -17,7 +17,7 @@ export const DisplayAsciiDef =
             showAsUnknown: typeOrUndefined(t.boolean),
         },
         valueDefaults: {},
-        size: { gridWidth: 4, gridHeight: 8 },
+        size: () => ({ gridWidth: 4, gridHeight: 8 }),
         makeNodes: () => ({
             ins: {
                 Z: groupVertical("w", -3, 0, 7),
@@ -35,7 +35,7 @@ export class DisplayAscii extends ComponentBase<DisplayAsciiRepr> {
     private _showAsUnknown: boolean
 
     public constructor(parent: DrawableParent, saved?: DisplayAsciiRepr) {
-        super(parent, DisplayAsciiDef, saved)
+        super(parent, DisplayAsciiDef.from(parent), saved)
         this._name = saved?.name ?? undefined
         this._additionalReprRadix = saved?.additionalReprRadix ?? undefined
         this._showAsUnknown = saved?.showAsUnknown ?? false

@@ -124,7 +124,7 @@ export abstract class DisplayBarBase<TRepr extends DisplayBarBaseRepr, TValue> e
 
 
 export const DisplayBarDef =
-    defineComponent("bar", {
+    defineComponent("bar", true, true, {
         idPrefix: "bar",
         button: { imgWidth: 32 },
         repr: {
@@ -138,7 +138,7 @@ export const DisplayBarDef =
             color: "green" as LedColor,
             transparent: true,
         },
-        size: { gridWidth: 1, gridHeight: 1 }, // overridden
+        size: () => ({ gridWidth: 1, gridHeight: 1 }), // overridden
         makeNodes: () => ({
             ins: {
                 I: [0, 0, "w"],
@@ -154,7 +154,7 @@ export class DisplayBar extends DisplayBarBase<DisplayBarRepr, LogicValue> {
     private _display!: DisplayBarType
 
     public constructor(parent: DrawableParent, saved?: DisplayBarRepr) {
-        super(parent, DisplayBarDef, false, saved)
+        super(parent, DisplayBarDef.from(parent), false, saved)
 
         this.doSetDisplay(saved?.display ?? DisplayBarDef.aults.display)
     }

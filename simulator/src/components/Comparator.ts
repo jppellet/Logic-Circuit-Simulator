@@ -6,11 +6,11 @@ import { ComponentBase, Repr, defineComponent } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
 
 export const ComparatorDef =
-    defineComponent("comp", {
+    defineComponent("comp", true, true, {
         idPrefix: "comp",
         button: { imgWidth: 50 },
         valueDefaults: {},
-        size: { gridWidth: 5, gridHeight: 7 },
+        size: () => ({ gridWidth: 5, gridHeight: 7 }),
         makeNodes: () => ({
             ins: {
                 A: [-4, 2, "w", "A", { hasTriangle: true }],
@@ -33,7 +33,7 @@ type ComparatorRepr = Repr<typeof ComparatorDef>
 export class Comparator extends ComponentBase<ComparatorRepr> {
 
     public constructor(parent: DrawableParent, saved?: ComparatorRepr) {
-        super(parent, ComparatorDef, saved)
+        super(parent, ComparatorDef.from(parent), saved)
     }
 
     public toJSON() {

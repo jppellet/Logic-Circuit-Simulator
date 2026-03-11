@@ -2,7 +2,7 @@ import * as t from "io-ts"
 import { COLORCOMPS_UNKNOWN, displayValuesFromArray, useCompact } from "../drawutils"
 import { mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
-import { Mode, isUnknown, typeOrUndefined } from "../utils"
+import { FixedArrayMap, Mode, isUnknown, typeOrUndefined } from "../utils"
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupHorizontal, groupVertical, param, paramBool } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
 
@@ -115,7 +115,10 @@ export class Pixel extends ParametrizedComponentBase<PixelRepr> {
                 }
             }
         }
-        return { color, pressed }
+
+        const maxVal = (1 << this.numBits) - 1
+        const normalizeComponent = (c: number) => Math.max(Math.min(Math.round(c / maxVal * 255), 255), 0)
+        return { color: FixedArrayMap(color, normalizeComponent), pressed }
     }
 
 
@@ -134,22 +137,25 @@ export class Pixel extends ParametrizedComponentBase<PixelRepr> {
         super.doDrawDefault(g, ctx)
 
         const [r_, g_, b_] = this.value.color
-        const maxVal = (1 << this.numBits) - 1
-        const colorComp = (c: number) => Math.round(c / maxVal * 255)
-        const outerColor = `rgba(${colorComp(r_)}, ${colorComp(g_)}, ${colorComp(b_)}, 0.5)`
-        const innerColor = `rgb(${colorComp(r_)}, ${colorComp(g_)}, ${colorComp(b_)})`
+        const { width, height } = this.bounds()
 
-        const bounds = this.bounds()
-        const { width, height } = bounds
-
-        let padding = 1
-        if (!this._full && this.numBits > 1) {
-            g.fillStyle = outerColor
-            g.fillRect(this.posX - width / 2 + padding, this.posY - height / 2 + padding, width - padding * 2, height - padding * 2)
-            padding = 10
+        const fillRect = (padding: number, color: string) => {
+            g.fillStyle = color
+            g.fillRect(
+                this.posX - width / 2 + padding,
+                this.posY - height / 2 + padding,
+                width - padding * 2,
+                height - padding * 2
+            )
         }
-        g.fillStyle = innerColor
-        g.fillRect(this.posX - width / 2 + padding, this.posY - height / 2 + padding, width - padding * 2, height - padding * 2)
+
+        const mainFillColor = `rgb(${r_},${g_},${b_})`
+        if (!this._full && this.numBits > 1) {
+            fillRect(1, `rgba(${r_},${g_},${b_},0.5)`)
+            fillRect(10, mainFillColor)
+        } else {
+            fillRect(1, mainFillColor)
+        }
     }
 
     private doSetFull(full: boolean) {

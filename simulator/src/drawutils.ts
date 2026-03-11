@@ -96,6 +96,7 @@ export const USER_COLORS = {
 }
 
 export let COLOR_BACKGROUND: ColorString
+export let COLORCOMP_BACKGROUND_TRANSLUCENT: number
 export let COLOR_OFF_BACKGROUND: ColorString
 export let COLOR_BACKGROUND_UNUSED_REGION: ColorString
 export let COLOR_BACKGROUND_INVALID: ColorString
@@ -161,6 +162,7 @@ function doSetColors(darkMode: boolean) {
         // Light Theme
         COLOR_BACKGROUND = ColorString(0xFF)
         COLOR_OFF_BACKGROUND = ColorString(0xDF)
+        COLORCOMP_BACKGROUND_TRANSLUCENT = 0xEF
         COLOR_BACKGROUND_INVALID = ColorString([0xFF, 0xBB, 0xBB])
         COLOR_BACKGROUND_UNUSED_REGION = ColorString(0xEE)
         COLOR_BORDER = ColorString(200)
@@ -201,6 +203,7 @@ function doSetColors(darkMode: boolean) {
         // Dark Theme
         COLOR_BACKGROUND = USER_COLORS.COLOR_BACKGROUND ?? ColorString(30)
         COLOR_OFF_BACKGROUND = ColorString(60)
+        COLORCOMP_BACKGROUND_TRANSLUCENT = 55, 55, 55
         COLOR_BACKGROUND_INVALID = ColorString([0xA8, 0x14, 0x14])
         COLOR_BACKGROUND_UNUSED_REGION = ColorString(55)
         COLOR_BORDER = ColorString(0x55)
