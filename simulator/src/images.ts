@@ -122,11 +122,10 @@ import xnor4 from '../img/xnor4.svg'; // @ts-ignore
 import xor from '../img/xor.svg'; // @ts-ignore
 import xor3 from '../img/xor3.svg'; // @ts-ignore
 import xor4 from '../img/xor4.svg'; // @ts-ignore
-import { Modifier, applyModifierTo, raw } from './htmlgen'
-
 
 void 0 // dummy line to consume the last 'ts-ignore'
 
+import { Modifier, applyModifierTo, raw } from './htmlgen'
 
 const icons = {
     add,

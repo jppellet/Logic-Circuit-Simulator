@@ -784,6 +784,7 @@ export function drawValueText(g: GraphicsRendering, value: LogicValue, x: number
     } else if (isHighImpedance(value)) {
         g.fillStyle = fillStyle ?? COLOR_LABEL_OFF
         spec = sizeStrSmall
+        y += small ? 0.5 : 0
         label = 'Z'
     } else if (value) {
         g.fillStyle = fillStyle ?? COLOR_LABEL_ON
