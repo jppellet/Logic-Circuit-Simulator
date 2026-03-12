@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_COMPONENT_BORDER, DrawZIndex, FONT_LABEL_DEFAULT, GRID_STEP, TextVAlign, fillTextVAlign } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, COMPONENT_OUTLINE_THICKNESS, DrawZIndex, FONT_LABEL_DEFAULT, GRID_STEP, TextVAlign, fillTextVAlign } from "../drawutils"
 import { S } from "../strings"
 import { InteractionResult, typeOrUndefined } from "../utils"
 import { ComponentBase, Repr, defineComponent } from "./Component"
@@ -74,7 +74,7 @@ export class Label extends ComponentBase<LabelRepr> {
 
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
         g.font = this._font
-        g.lineWidth = 3
+        g.lineWidth = COMPONENT_OUTLINE_THICKNESS
 
         if (ctx.isMouseOver) {
             if (this._cachedTextMetrics === undefined) {

@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, GRID_STEP, INPUT_OUTPUT_DIAMETER, circle, colorForLogicValue, distSquared, drawComponentName, drawValueText, drawValueTextCentered, drawWireLineToComponent, inRect, isTrivialNodeName, triangle, useCompact } from "../drawutils"
+import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, COMPONENT_OUTLINE_THICKNESS, GRID_STEP, INPUT_OUTPUT_DIAMETER, circle, colorForLogicValue, distSquared, drawComponentName, drawValueText, drawValueTextCentered, drawWireLineToComponent, inRect, isTrivialNodeName, triangle, useCompact } from "../drawutils"
 import { mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, ComponentTypeInput, HighImpedance, InputOutputValueRepr, InteractionResult, LogicValue, Mode, Unknown, reprForLogicValues, toLogicValueRepr, typeOrUndefined, valuesFromReprForInput } from "../utils"
@@ -93,7 +93,7 @@ export abstract class InputBase<
                 g.strokeStyle = COLOR_COMPONENT_BORDER
                 g.fillStyle = COLOR_COMPONENT_BORDER
             }
-            g.lineWidth = 3
+            g.lineWidth = COMPONENT_OUTLINE_THICKNESS
             g.beginPath()
             const triangleLeft = this.posX + INPUT_OUTPUT_DIAMETER / 2 - 1
             const triangleRight = this.posX + INPUT_OUTPUT_DIAMETER / 2 + 5
@@ -156,7 +156,7 @@ export abstract class InputBase<
         }
 
         // outline
-        g.lineWidth = 3
+        g.lineWidth = COMPONENT_OUTLINE_THICKNESS
         g.stroke(outline)
 
         // labels

@@ -33,7 +33,7 @@ import { type Input } from "./components/Input"
 import { Rectangle, RectangleDef } from "./components/Rectangle"
 import { LinkManager, Wire, WireStyle, WireStyles } from "./components/Wire"
 import { XRay } from "./components/XRay"
-import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_COMPONENT_ID, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, DrawZIndex, GRID_STEP, TextVAlign, USER_COLORS, drawAnchorsAroundComponent as drawAnchorsForComponent, fillTextVAlign, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine, strokeTextVAlign } from "./drawutils"
+import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, DrawZIndex, GRID_STEP, TextVAlign, USER_COLORS, drawAnchorsAroundComponent as drawAnchorsForComponent, drawComponentIDs, fillTextVAlign, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine } from "./drawutils"
 import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
 import { makeIcon } from "./images"
@@ -2667,19 +2667,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         // draw refs
         if (this._options.showIDs) {
-            g.beginGroup("refs")
-            g.font = 'bold 14px sans-serif'
-            g.strokeStyle = "white"
-            g.lineWidth = 3
-            g.fillStyle = COLOR_COMPONENT_ID
-            g.textAlign = 'center'
-            for (const comp of root.components.all()) {
-                if (comp.ref !== undefined) {
-                    strokeTextVAlign(g, TextVAlign.middle, comp.ref, comp.posX, comp.posY)
-                    fillTextVAlign(g, TextVAlign.middle, comp.ref, comp.posX, comp.posY)
-                }
-            }
-            g.endGroup()
+            drawComponentIDs(g, root.components.all())
         }
 
         // draw selection

@@ -272,7 +272,16 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
 
     public setPositionAsXRayFor(node: Node, xrayScale: number) {
         const [x, y] = node.drawCoordsInParentTransform
-        super.trySetPosition((x - node.component.posX) / xrayScale, (y - node.component.posY) / xrayScale, false)
+        const [dx, dy] = (() => {
+            const d = 2
+            switch (node.orient) {
+                case "e": return [-d, 0]
+                case "w": return [d, 0]
+                case "s": return [0, -d]
+                case "n": return [0, d]
+            }
+        })()
+        super.trySetPosition((x - node.component.posX + dx) / xrayScale, (y - node.component.posY + dy) / xrayScale, false)
     }
 
     /**

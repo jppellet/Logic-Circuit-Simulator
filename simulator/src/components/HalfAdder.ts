@@ -87,17 +87,17 @@ export class HalfAdder extends ComponentBase<HalfAdderRepr> {
 
     protected override makeXRay(scale: number): XRay {
         const xray = this.parent.editor.newXRay(this)
-        const { inputs, outputs } = this.makeXRayNodes(xray, scale)
+        const { inputs, outputs, x, y, later } = this.makeXRayNodes(xray, scale)
 
-        const xor = GateNDef.makeSpawned<GateN>(xray, 15, -40, "e", { type: "xor", bits: 2 })
-        const and = GateNDef.makeSpawned<GateN>(xray, 15, 40, "e", { type: "and", bits: 2 })
+        const xor = GateNDef.makeSpawned<GateN>(xray, "xor", x(0.3), later, "e", { type: "xor", bits: 2 })
+        const and = GateNDef.makeSpawned<GateN>(xray, "and", x(0.3), later, "e", { type: "and", bits: 2 })
 
-        xray.wire(inputs.B, and.inputs.In[1])
-        xray.wire(inputs.A, xor.inputs.In[0])
-        xray.wire(inputs.A, and.inputs.In[0], { via: [-35, -50, true], style: "vh" })
-        xray.wire(inputs.B, xor.inputs.In[1], { via: [-20, 50, true], style: "vh" })
-        xray.wire(and.outputs.Out, outputs.C, { style: "vh" })
-        xray.wire(xor.outputs.Out, outputs.S, { style: "vh" })
+        xray.wire(inputs.B, and.inputs.In[1], true)
+        xray.wire(inputs.A, xor.inputs.In[0], true)
+        xray.wire(inputs.A, and.inputs.In[0], "vh", [x(-0.7), inputs.A.posY, true])
+        xray.wire(inputs.B, xor.inputs.In[1], "vh", [x(-0.4), inputs.B.posY, true])
+        xray.wire(and.outputs.Out, outputs.C, "vh")
+        xray.wire(xor.outputs.Out, outputs.S, "vh")
 
         return xray
     }

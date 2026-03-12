@@ -4,7 +4,7 @@ import type { ComponentKey, DefAndParams, LibraryButtonOptions, LibraryButtonPro
 import { DrawParams, LogicEditor } from "../LogicEditor"
 import { PointerDragEvent } from "../UIEventManager"
 import { UIPermissions } from "../UIPermissions"
-import { COLORCOMP_BACKGROUND_TRANSLUCENT, COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, DrawZIndex, DrawingRect, GRID_STEP, drawClockInput, drawComponentName, drawLabel, drawWireLineToComponent, isTrivialNodeName, shouldDrawNodeLabel, useCompact } from "../drawutils"
+import { COLORCOMP_BACKGROUND_TRANSLUCENT, COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, COMPONENT_OUTLINE_THICKNESS, DrawingRect, GRID_STEP, drawClockInput, drawComponentName, drawLabel, drawWireLineToComponent, isTrivialNodeName, shouldDrawNodeLabel, useCompact } from "../drawutils"
 import { IconName, ImageName } from "../images"
 import { S, Template } from "../strings"
 import { ArrayFillUsing, ArrayOrDirect, EdgeTrigger, Expand, FixedArrayMap, HasField, HighImpedance, InteractionResult, LogicValue, LogicValueRepr, Mode, Unknown, brand, deepArrayEquals, isArray, isBoolean, isNumber, isRecord, isString, mergeWhereDefined, toLogicValueRepr, typeOrUndefined, validateJson } from "../utils"
@@ -896,31 +896,24 @@ export abstract class ComponentBase<
         })
 
         // xray
-        let xrayed = false
+        this._showingXRay = false
         if (opts?.xrayScale !== undefined && !this.parent.editor.options.hideXRay) {
             const scale = opts.xrayScale
             const limitFactor = 0.75 // draw components starting at this fraction of their normal size
             const myDrawParams = ctx.drawParams
             const zoomExcess = myDrawParams.currentDrawingScale - limitFactor / scale
             let xray = this._cachedXRay
-            if (zoomExcess <= 0) {
-                // don't draw anything x-ray
-                if (xray !== undefined) {
-                    xray.currentlyDrawn = false
-                }
-            } else {
+            if (zoomExcess > 0) {
                 if (xray === undefined) {
                     xray = this._cachedXRay = this.makeXRay(scale)
                 }
                 if (xray !== undefined) {
-                    xray.currentlyDrawn = true
                     const xrayDrawParams: DrawParams = {
                         ...myDrawParams,
                         currentCompUnderPointer: null,
                         highlightedItems: undefined,
                         currentDrawingScale: myDrawParams.currentDrawingScale * scale,
                     }
-
                     const fadeSpan = 0.3
                     const backgroundAlpha = 0.95 * Math.min(1, zoomExcess / fadeSpan)
                     const bk = COLORCOMP_BACKGROUND_TRANSLUCENT
@@ -928,50 +921,37 @@ export abstract class ComponentBase<
                     g.fill(outline)
                     const oldTransform = g.getTransform()
                     const oldAlpha = g.globalAlpha
+
                     try {
                         g.translate(this.posX, this.posY)
                         g.scale(scale, scale)
                         g.globalAlpha = oldAlpha * Math.min(1, zoomExcess / fadeSpan)
-                        const drawComp = (comp: Component) => {
-                            g.beginGroup(comp.constructor.name)
-                            try {
-                                comp.draw(g, xrayDrawParams)
-                                for (const node of comp.allNodes()) {
-                                    node.draw(g, xrayDrawParams)
-                                }
-                            } finally {
-                                g.endGroup()
-                            }
-                        }
-
-                        g.beginGroup("xray")
-                        for (const comp of xray.components.withZIndex(DrawZIndex.Background)) {
-                            drawComp(comp)
-                        }
-                        xray.linkMgr.draw(g, xrayDrawParams)
-                        g.endGroup()
-                        for (const comp of xray.components.withZIndex(DrawZIndex.Normal)) {
-                            drawComp(comp)
-                        }
+                        xray.doDraw(g, xrayDrawParams)
                     } finally {
                         g.setTransform(oldTransform)
                         g.globalAlpha = oldAlpha
                     }
-                    xrayed = true
+                    this._showingXRay = true
                 }
             }
         }
 
         // outline
         const oldAlpha = g.globalAlpha
-        g.globalAlpha = oldAlpha * (xrayed ? 0.2 : 1)
-        g.lineWidth = 3
+        g.globalAlpha = oldAlpha * (this._showingXRay ? 0.2 : 1)
+        g.lineWidth = COMPONENT_OUTLINE_THICKNESS
         g.strokeStyle = ctx.borderColor
         g.stroke(outline)
         g.globalAlpha = oldAlpha
     }
 
     private _cachedXRay: XRay | undefined = undefined
+    private _showingXRay = false
+
+    public get showingXRay() {
+        return this._showingXRay
+    }
+
     protected makeXRay(__scale: number): XRay | undefined {
         // override in subclasses
         return undefined
@@ -980,6 +960,9 @@ export abstract class ComponentBase<
     protected makeXRayNodes<C extends Component>(this: C, xray: XRay, scale: number): {
         inputs: { [K in Exclude<keyof C["inputs"], "_all">]: NodeOut },
         outputs: { [K in Exclude<keyof C["outputs"], "_all">]: NodeIn }
+        x: (f: number) => number,
+        y: (f: number) => number,
+        later: number
     } {
         const inputs: Record<string, NodeOut> = {}
         for (const input of this.inputs._all) {
@@ -1001,7 +984,14 @@ export abstract class ComponentBase<
             internalNode.setPositionAsXRayFor(output, scale)
             outputs[output.shortName] = internalNode
         }
-        return { inputs: inputs as any, outputs: outputs as any }
+
+        const { width, height } = this.bounds()
+        // compute client size so that a wire at fractional position 1 is roughly touching the edge
+        const scaledWidth = (width - COMPONENT_OUTLINE_THICKNESS - 1) / scale / 2
+        const scaledHeight = (height - COMPONENT_OUTLINE_THICKNESS - 1) / scale / 2
+        const makeX = (f: number) => f * scaledWidth
+        const makeY = (f: number) => f * scaledHeight
+        return { inputs: inputs as any, outputs: outputs as any, x: makeX, y: makeY, later: 0 }
     }
 
     protected drawWireLineTo(g: GraphicsRendering, node: Node, bounds: DrawingRect) {
@@ -2040,10 +2030,11 @@ export class ParametrizedComponentDef<
         return comp
     }
 
-    public makeSpawned<TComp extends Component>(parent: DrawableParent, x: number, y: number, orient?: Orientation, componentParams?: TParams): TComp {
+    public makeSpawned<TComp extends Component>(parent: DrawableParent, validatedId: string, x: number, y: number, orient?: Orientation, componentParams?: TParams): TComp {
         const comp = this.make<TComp>(parent, componentParams)
         comp.setPosition(x, y, false)
         comp.setSpawned()
+        comp.doSetValidatedId(validatedId)
         if (orient !== undefined) {
             comp.doSetOrient(orient)
         }

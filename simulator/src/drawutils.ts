@@ -436,6 +436,8 @@ export function isTrivialNodeName(name: string | undefined): boolean {
 // DRAWING
 //
 
+export const COMPONENT_OUTLINE_THICKNESS = 3
+
 // Adding to current path
 
 export function triangle(g: GraphicsRendering, x0: number, y0: number, x1: number, y1: number, x2: number, y2: number) {
@@ -637,6 +639,22 @@ export function strokeWireValue(g: GraphicsRendering, value: LogicValue, lengthT
     }
 
     g.lineCap = oldLineCap
+}
+
+export function drawComponentIDs(g: GraphicsRendering, components: Generator<Component>) {
+    g.beginGroup("refs")
+    g.font = 'bold 14px sans-serif'
+    g.strokeStyle = "white"
+    g.lineWidth = 3
+    g.fillStyle = COLOR_COMPONENT_ID
+    g.textAlign = 'center'
+    for (const comp of components) {
+        if (comp.ref !== undefined && !comp.showingXRay) {
+            strokeTextVAlign(g, TextVAlign.middle, comp.ref, comp.posX, comp.posY)
+            fillTextVAlign(g, TextVAlign.middle, comp.ref, comp.posX, comp.posY)
+        }
+    }
+    g.endGroup()
 }
 
 export function distSquaredToWaypointIfOver(x: number, y: number, waypointX: number, waypointY: number, moreTolerant: boolean): number | undefined {

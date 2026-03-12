@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_BACKGROUND, displayValuesFromArray, drawWireLineToComponent, strokeWireOutlineAndSingleValue, useCompact } from "../drawutils"
+import { COLOR_BACKGROUND, COMPONENT_OUTLINE_THICKNESS, displayValuesFromArray, drawWireLineToComponent, strokeWireOutlineAndSingleValue, useCompact } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { IconName } from "../images"
 import { S } from "../strings"
@@ -209,7 +209,7 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
         }
 
         // outline
-        g.lineWidth = 3
+        g.lineWidth = COMPONENT_OUTLINE_THICKNESS
         g.strokeStyle = ctx.borderColor
         g.stroke(outline)
 

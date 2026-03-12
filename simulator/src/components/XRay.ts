@@ -1,12 +1,13 @@
 import { ComponentList } from "../ComponentList"
-import { LogicEditor } from "../LogicEditor"
+import { drawComponentIDs, DrawZIndex } from "../drawutils"
+import { DrawParams, LogicEditor } from "../LogicEditor"
 import { NodeManager } from "../NodeManager"
 import { RecalcManager } from "../RedrawRecalcManager"
 import { TestSuites } from "../TestSuite"
 import { Mode } from "../utils"
 import { Component, InjectedParams } from "./Component"
-import { DrawableParent } from "./Drawable"
-import { NodeIn, NodeOut } from "./Node"
+import { DrawableParent, GraphicsRendering, Orientation } from "./Drawable"
+import { Node, NodeIn, NodeOut } from "./Node"
 import { LinkManager, WireStyle } from "./Wire"
 
 type WaypointSpecCompact = [x: number, y: number] | [x: number, y: number, showDot: boolean]
@@ -29,27 +30,45 @@ export class XRay implements DrawableParent {
 
     public readonly componentCreationParams: InjectedParams = { isXRay: true }
 
-    public currentlyDrawn: boolean = false
-
     public constructor(
         public readonly component: Component,
     ) {
     }
 
-    public wire(startNode: NodeOut, endNode: NodeIn, opts?: {
-        via?: WaypointSpecCompact | WaypointSpecCompact[],
-        style?: WireStyle
-    }) {
+    /**
+     * Draws a wire between the given nodes, optionally aligning the target
+     * component (when styleOrAlign is true) or source component (when styleOrAlign
+     * is false) so that it makes a straight line. If no straight line is wanted,
+     * then a WireStyle should be passed (usually "hv" or "vh") and optionally a
+     * sequence of waypoints, some of which can be determined to always show a
+     * dot (when we consider that a single wire splits, to make the branch
+     * visually different from just a wire crossing).
+     * 
+     * Components that should be auto-aligned on an X or Y axis must previously
+     * have been positioned at 0 for that axis (to get the correct relative position
+     * of the alignment nodes with respect to the component).
+     * 
+     * Be careful to make wire() calls in the right order: do not align components
+     * on other components that don't have their final position yet, and make the
+     * wires with visible intersection waypoints after the wire undernear without.
+     */
+    public wire(startNode: NodeOut, endNode: NodeIn, styleOrAlign?: WireStyle | boolean, via?: WaypointSpecCompact | WaypointSpecCompact[]) {
         const wire = this.linkMgr.addWire(startNode, endNode, false)
         if (wire === undefined) {
             return
         }
         wire.customPropagationDelay = 0
-        if (opts?.style !== undefined) {
-            wire.doSetStyle(opts.style)
+        if (styleOrAlign !== undefined) {
+            if (styleOrAlign === true) {
+                this.alignComponentOf(endNode, startNode)
+            } else if (styleOrAlign === false) {
+                this.alignComponentOf(startNode, endNode)
+            } else {
+                wire.doSetStyle(styleOrAlign)
+            }
         }
-        if (opts?.via !== undefined && opts.via.length > 0) {
-            const waypoints = (Array.isArray(opts.via[0]) ? opts.via : [opts.via]) as WaypointSpecCompact[]
+        if (via !== undefined && via.length > 0) {
+            const waypoints = (Array.isArray(via[0]) ? via : [via]) as WaypointSpecCompact[]
             let nb = 0
             for (const wpSpec of waypoints) {
                 const [x, y, showDot] = wpSpec
@@ -59,5 +78,60 @@ export class XRay implements DrawableParent {
                 }
             }
         }
+    }
+
+    private alignComponentOf(nodeToAlign: Node, referenceNode: Node) {
+        const comp = nodeToAlign.component
+        const alignX = Orientation.isVertical(referenceNode.orient)
+        let fail: [number, string] | undefined = undefined
+        if (alignX) {
+            if (comp.posX !== 0) {
+                fail = [comp.posX, "X"]
+            }
+            const compX = referenceNode.posX - nodeToAlign.posX
+            comp.setPosition(compX, comp.posY, false)
+        } else {
+            // alignY
+            if (comp.posY !== 0) {
+                fail = [comp.posY, "Y"]
+            }
+            const compY = referenceNode.posY - nodeToAlign.posY
+            comp.setPosition(comp.posX, compY, false)
+        }
+        if (fail) {
+            const [coord, axis] = fail
+            console.warn(`Autoalignement on ${axis} axis of component ${comp.ref} will fail because it should previously have an ${axis} position of 0 and it has ${coord}`)
+        }
+    }
+
+    public doDraw(g: GraphicsRendering, drawParams: DrawParams) {
+        this.recalcMgr.recalcAndPropagateIfNeeded()
+        const drawComp = (comp: Component) => {
+            g.beginGroup(comp.constructor.name)
+            try {
+                comp.draw(g, drawParams)
+                for (const node of comp.allNodes()) {
+                    node.draw(g, drawParams)
+                }
+            } finally {
+                g.endGroup()
+            }
+        }
+
+        g.beginGroup("xray")
+        for (const comp of this.components.withZIndex(DrawZIndex.Background)) {
+            drawComp(comp)
+        }
+        this.linkMgr.draw(g, drawParams)
+        for (const comp of this.components.withZIndex(DrawZIndex.Normal)) {
+            drawComp(comp)
+        }
+
+        // draw refs
+        if (this.editor.options.showIDs) {
+            drawComponentIDs(g, this.components.all())
+        }
+
+        g.endGroup()
     }
 }

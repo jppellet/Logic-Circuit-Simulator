@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, COLOR_DARK_RED, COLOR_GATE_NAMES, COLOR_MOUSE_OVER, COLOR_UNKNOWN, ColorString, GRID_STEP, PATTERN_STRIPED_GRAY, TextVAlign, circle, drawWireLineToComponent, fillTextVAlign, useCompact } from "../drawutils"
+import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, COLOR_DARK_RED, COLOR_GATE_NAMES, COLOR_MOUSE_OVER, COLOR_UNKNOWN, COMPONENT_OUTLINE_THICKNESS, ColorString, GRID_STEP, PATTERN_STRIPED_GRAY, TextVAlign, circle, drawWireLineToComponent, fillTextVAlign, useCompact } from "../drawutils"
 import { Modifier, ModifierObject, asValue, b, cls, div, emptyMod, mods, table, tbody, td, th, thead, tooltipContent, tr } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillUsing, Expand, InteractionResult, LogicValue, Mode, RichStringEnum, Unknown, deepArrayEquals, isUnknown, typeOrUndefined } from "../utils"
@@ -232,7 +232,7 @@ export abstract class GateBase<
         drawWireLineToComponent(g, output)
 
         // prepare main fill
-        g.lineWidth = 3
+        g.lineWidth = COMPONENT_OUTLINE_THICKNESS
         g.strokeStyle = gateBorderColor
         g.fillStyle = gateFill
 
@@ -269,7 +269,7 @@ export abstract class GateBase<
                 g.lineWidth = 1
                 g.stroke()
                 g.strokeStyle = gateBorderColor
-                g.lineWidth = 3
+                g.lineWidth = COMPONENT_OUTLINE_THICKNESS
                 g.stroke()
                 g.beginPath()
                 if (type.startsWith("nand")) {
@@ -327,7 +327,7 @@ export abstract class GateBase<
                     drawInversionCircle(left - 2, this.posY + GRID_STEP)
                 }
                 if (type.startsWith("x")) {
-                    g.lineWidth = 3
+                    g.lineWidth = COMPONENT_OUTLINE_THICKNESS
                     const leftXorCurve = (delta: number) => {
                         g.beginPath()
                         if (drawArms) {
