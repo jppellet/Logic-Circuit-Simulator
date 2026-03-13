@@ -4,7 +4,6 @@ import { S } from "../strings"
 import { LogicValue, Unknown, isHighImpedance, isUnknown } from "../utils"
 import { ComponentBase, Repr, defineComponent } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
-import { GateN, GateNDef } from "./Gate"
 import { type XRay } from "./XRay"
 
 
@@ -86,20 +85,20 @@ export class HalfAdder extends ComponentBase<HalfAdderRepr> {
     }
 
     protected override makeXRay(scale: number): XRay {
-        const xray = this.parent.editor.newXRay(this)
-        const { inputs, outputs, x, later } = this.makeXRayNodes(xray, scale)
+        const xr = this.parent.editor.newXRay(this)
+        const { inputs, outputs, x, later } = this.makeXRayNodes<HalfAdder>(xr, scale)
 
-        const xor = GateNDef.makeSpawned<GateN>(xray, "xor", x(0.3), later, "e", { type: "xor", bits: 2 })
-        const and = GateNDef.makeSpawned<GateN>(xray, "and", x(0.3), later, "e", { type: "and", bits: 2 })
+        const xor = xr.gate("xor", "xor", x(0.3), later)
+        const and = xr.gate("and", "and", x(0.3), later)
 
-        xray.wire(inputs.B, and.inputs.In[1], true)
-        xray.wire(inputs.A, xor.inputs.In[0], true)
-        xray.wire(inputs.A, and.inputs.In[0], "vh", [x(-0.7), inputs.A.posY, true])
-        xray.wire(inputs.B, xor.inputs.In[1], "vh", [x(-0.4), inputs.B.posY, true])
-        xray.wire(and.outputs.Out, outputs.C, "vh")
-        xray.wire(xor.outputs.Out, outputs.S, "vh")
+        xr.wire(inputs.B, and.inputs.In[1], true)
+        xr.wire(inputs.A, xor.inputs.In[0], true)
+        xr.wire(inputs.A, and.inputs.In[0], "vh", [x(-0.7), inputs.A.posY, true])
+        xr.wire(inputs.B, xor.inputs.In[1], "vh", [x(-0.4), inputs.B.posY, true])
+        xr.wire(and.outputs.Out, outputs.C, "vh")
+        xr.wire(xor.outputs.Out, outputs.S, "vh")
 
-        return xray
+        return xr
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

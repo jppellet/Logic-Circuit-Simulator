@@ -7,6 +7,8 @@ import { TestSuites } from "../TestSuite"
 import { Mode } from "../utils"
 import { Component, InjectedParams } from "./Component"
 import { DrawableParent, GraphicsRendering, Orientation } from "./Drawable"
+import { Gate1, Gate1Def, GateN, GateNDef } from "./Gate"
+import { Gate1Type, Gate1Types, GateNType } from "./GateTypes"
 import { Node, NodeIn, NodeOut } from "./Node"
 import { LinkManager, WireStyle } from "./Wire"
 
@@ -61,8 +63,10 @@ export class XRay implements DrawableParent {
         if (styleOrAlign !== undefined) {
             if (styleOrAlign === true) {
                 this.alignComponentOf(endNode, startNode)
+                wire.doSetStyle("hv")
             } else if (styleOrAlign === false) {
                 this.alignComponentOf(startNode, endNode)
+                wire.doSetStyle("hv")
             } else {
                 wire.doSetStyle(styleOrAlign)
             }
@@ -77,6 +81,16 @@ export class XRay implements DrawableParent {
                     wp.showDot = true
                 }
             }
+        }
+    }
+
+    public gate<G extends GateNType | Gate1Type>(validatedId: string, type: G, x: number, y: number, orient?: Orientation, bits?: G extends Gate1Type ? undefined : number): G extends Gate1Type ? Gate1 : GateN {
+        if (Gate1Types.includes(type)) {
+            const gate1 = Gate1Def.makeSpawned<Gate1>(this, validatedId, x, y, orient, { type })
+            return gate1 as any
+        } else {
+            const gateN = GateNDef.makeSpawned<GateN>(this, validatedId, x, y, orient, { type, bits: bits ?? 2 })
+            return gateN as any
         }
     }
 

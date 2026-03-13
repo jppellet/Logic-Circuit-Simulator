@@ -4,7 +4,6 @@ import { S } from "../strings"
 import { LogicValue, Unknown, isHighImpedance, isUnknown } from "../utils"
 import { ComponentBase, Repr, defineComponent } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
-import { GateN, GateNDef } from "./Gate"
 
 export const AdderDef =
     defineComponent("adder", true, true, {
@@ -87,29 +86,29 @@ export class Adder extends ComponentBase<AdderRepr> {
     }
 
     protected override makeXRay(scale: number) {
-        const xray = this.parent.editor.newXRay(this)
-        const { inputs, outputs, x, y, later } = this.makeXRayNodes(xray, scale)
+        const xr = this.parent.editor.newXRay(this)
+        const { inputs, outputs, x, y, later } = this.makeXRayNodes<Adder>(xr, scale)
 
-        const and1 = GateNDef.makeSpawned<GateN>(xray, "and1", later, y(-0.5), "s", { type: "and", bits: 2 })
-        const xor1 = GateNDef.makeSpawned<GateN>(xray, "xor1", later, y(-0.5), "s", { type: "xor", bits: 2 })
-        const and2 = GateNDef.makeSpawned<GateN>(xray, "and2", x(0), later, "w", { type: "and", bits: 2 })
-        const xor2 = GateNDef.makeSpawned<GateN>(xray, "xor2", x(0.2), y(0.7), "w", { type: "xor", bits: 2 })
-        const or = GateNDef.makeSpawned<GateN>(xray, "or", x(-.85), later, "w", { type: "or", bits: 2 })
+        const and1 = xr.gate("and1", "and", later, y(-0.5), "s")
+        const xor1 = xr.gate("xor1", "xor", later, y(-0.5), "s")
+        const and2 = xr.gate("and2", "and", x(0), later, "w")
+        const xor2 = xr.gate("xor2", "xor", x(0.2), y(0.7), "w")
+        const or = xr.gate("or", "or", x(-.85), later, "w")
 
-        xray.wire(inputs.B, xor1.inputs.In[0], true)
-        xray.wire(inputs.A, and1.inputs.In[1], true)
-        xray.wire(inputs.A, xor1.inputs.In[1], "hv", [inputs.A.posX, y(-0.85), true])
-        xray.wire(inputs.B, and1.inputs.In[0], "hv", [inputs.B.posX, y(-.95), true])
-        xray.wire(or.outputs.Out, outputs.Cout)
-        xray.wire(and1.outputs.Out, or.inputs.In[1], "vh")
-        xray.wire(and2.outputs.Out, or.inputs.In[0], false)
-        xray.wire(xor1.outputs.Out, and2.inputs.In[1], "vh")
-        xray.wire(xor1.outputs.Out, xor2.inputs.In[1], "vh", [xor1.outputs.Out.posX, and2.inputs.In[1].posY, true])
-        xray.wire(inputs.Cin, xor2.inputs.In[0], "vh", [x(0.9), inputs.Cin.posY])
-        xray.wire(inputs.Cin, and2.inputs.In[0], "hv", [x(0.9), and2.inputs.In[0].posY, true])
-        xray.wire(xor2.outputs.Out, outputs.S, "hv")
+        xr.wire(inputs.B, xor1.inputs.In[0], true)
+        xr.wire(inputs.A, and1.inputs.In[1], true)
+        xr.wire(inputs.A, xor1.inputs.In[1], "hv", [inputs.A.posX, y(-0.85), true])
+        xr.wire(inputs.B, and1.inputs.In[0], "hv", [inputs.B.posX, y(-.95), true])
+        xr.wire(or.outputs.Out, outputs.Cout)
+        xr.wire(and1.outputs.Out, or.inputs.In[1], "vh")
+        xr.wire(and2.outputs.Out, or.inputs.In[0], false)
+        xr.wire(xor1.outputs.Out, and2.inputs.In[1], "vh")
+        xr.wire(xor1.outputs.Out, xor2.inputs.In[1], "vh", [xor1.outputs.Out.posX, and2.inputs.In[1].posY, true])
+        xr.wire(inputs.Cin, xor2.inputs.In[0], "vh", [x(0.9), inputs.Cin.posY])
+        xr.wire(inputs.Cin, and2.inputs.In[0], "hv", [x(0.9), and2.inputs.In[0].posY, true])
+        xr.wire(xor2.outputs.Out, outputs.S, "hv")
 
-        return xray
+        return xr
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

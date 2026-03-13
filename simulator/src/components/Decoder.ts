@@ -1,10 +1,11 @@
 import * as t from "io-ts"
-import { COLOR_COMPONENT_BORDER, TextVAlign, displayValuesFromArray, fillTextVAlign } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, GRID_STEP, TextVAlign, displayValuesFromArray, fillTextVAlign } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, LogicValue, Unknown, isUnknown, typeOrUndefined } from "../utils"
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupVertical, param } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
+import { XRay } from "./XRay"
 
 
 export const DecoderDef =
@@ -91,7 +92,48 @@ export class Decoder extends ParametrizedComponentBase<DecoderRepr> {
                 g.textAlign = "center"
                 fillTextVAlign(g, TextVAlign.middle, "Dec.", this.posX, this.posY)
             },
+            xrayScale: [0.25, 0.18, 0.10, 0.10][this.numFrom - 2],
         })
+    }
+
+    protected override makeXRay(scale: number): XRay | undefined {
+        const numBits = this.numFrom
+        if (numBits > 5) {
+            return
+        }
+
+        const xr = this.parent.editor.newXRay(this)
+        const { inputs, outputs, x, later } = this.makeXRayNodes<Decoder>(xr, scale)
+
+        const addSpace = numBits > 3 ? 20 : 0
+        const xPosNot = x.left + 3 * GRID_STEP + addSpace
+        const xPosAnd = x.right - 2 * GRID_STEP - addSpace
+        const xPosWireBranchLeftmost = xPosNot + 3.5 * GRID_STEP + addSpace
+        const xPosWireBranchRightmost = xPosAnd - 3 * GRID_STEP - addSpace
+        const wireStep = (xPosWireBranchRightmost - xPosWireBranchLeftmost) / (2 * numBits - 1)
+
+        const inNots = inputs.In.map((in_, i) => {
+            const not = xr.gate(`not${i}`, "not", xPosNot, later)
+            xr.wire(in_, not.inputs.In[0], true)
+            not.setPosition(not.posX, not.posY - 3 * GRID_STEP, false)
+            return not
+        })
+
+        outputs.Out.forEach((out, i) => {
+            const and = xr.gate(`and${i}`, "and", xPosAnd, later, "e", numBits)
+            xr.wire(and.outputs.Out, out, false)
+
+            for (let j = 0; j < numBits; j++) {
+                const invert = (i & (1 << j)) === 0
+                const sourceNode = invert ? inNots[j].outputs.Out : inputs.In[j]
+                const targetNode = and.inputs.In[j]
+                const colIndex = (Number(!invert) * numBits + j) // first all 0s, then all 1s
+                const xPosBranch = xPosWireBranchLeftmost + colIndex * wireStep
+                xr.wire(sourceNode, targetNode, "hv", [xPosBranch, targetNode.posY])
+            }
+        })
+
+        return xr
     }
 
     protected override propagateValue(newValue: LogicValue[]) {

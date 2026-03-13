@@ -272,7 +272,7 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
 
     public setPositionAsXRayFor(node: Node, xrayScale: number) {
         const [x, y] = node.drawCoordsInParentTransform
-        const [dx, dy] = (() => {
+        const [dx, dy] = !node.hasTriangle ? [0, 0] : (() => {
             const d = 2
             switch (node.orient) {
                 case "e": return [-d, 0]
