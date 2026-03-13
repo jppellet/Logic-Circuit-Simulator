@@ -200,15 +200,7 @@ export class UIEventManager {
     public setCurrentComponentUnderPointer(comp: Drawable | null) {
         if (comp !== this._currentComponentUnderPointer) {
             this.clearTooltipIfNeeded()
-            this.clearHoverTimeoutHandle()
-
             this._currentComponentUnderPointer = comp
-            if (comp !== null) {
-                this._startHoverTimeoutHandle = setTimeout(() => {
-                    this._currentHandlers.pointerHoverOn(comp)
-                    this._startHoverTimeoutHandle = null
-                }, 1200)
-            }
             this.editor.editTools.redrawMgr.requestRedraw({ why: "pointerover changed" })
             // console.log("Over component: ", comp)
         }
@@ -218,7 +210,7 @@ export class UIEventManager {
         return this.currentSelection === undefined || this.currentSelection.previouslySelectedElements.size === 0
     }
 
-    public updateComponentUnderPointer([x, y]: [number, number], pullingWire: boolean, settingAnchor: boolean, isTouch: boolean) {
+    public updateComponentUnderPointer([x, y]: [number, number], pullingWire: boolean, settingAnchor: boolean, isTouch: boolean): Drawable | null {
 
         // Here is the pointerover search order:
         // * Components - overlays
@@ -309,6 +301,7 @@ export class UIEventManager {
 
         const comp = findComponenentUnderPointer()
         this.setCurrentComponentUnderPointer(comp)
+        return comp
     }
 
     public selectAll() {
@@ -854,7 +847,18 @@ export class UIEventManager {
         } else {
             // moving pointer or dragging without a locked component
             const linkMgr = this.editor.editorRoot.linkMgr
-            this.updateComponentUnderPointer(this.editor.offsetXY(e), linkMgr.isAddingWire, linkMgr.isSettingAnchor, e.pointerType === "touch")
+            const comp = this.updateComponentUnderPointer(this.editor.offsetXY(e), linkMgr.isAddingWire, linkMgr.isSettingAnchor, e.pointerType === "touch")
+
+            this.clearHoverTimeoutHandle()
+            if (comp !== null) {
+                this._startHoverTimeoutHandle = setTimeout(() => {
+                    this._startHoverTimeoutHandle = null
+                    if (this._currentComponentUnderPointer !== comp) {
+                        return
+                    }
+                    this._currentHandlers.pointerHoverOn(comp)
+                }, 1200)
+            }
         }
         this.editor.updateCursor(e)
     }
