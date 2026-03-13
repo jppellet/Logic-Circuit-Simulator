@@ -238,6 +238,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     private _dontHogFocus = false
     private _mode: Mode = DEFAULT_MODE
     public get mode() { return this._mode }
+    public get modeStr() { return Mode[this._mode].toLowerCase() }
     private _loadedFromStorage: boolean = false
     private _initialData: InitialData | undefined = undefined
     private _options: EditorOptions = { ...DEFAULT_EDITOR_OPTIONS }
@@ -704,7 +705,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         const showonlyAttr = this.getAttribute(ATTRIBUTE_NAMES.showonly)
         if (showonlyAttr !== null) {
-            this._options.showOnly = showonlyAttr.toLowerCase().split(/[, +]+/).filter(x => x.trim())
+            this._options.showOnly = this.splitShowOnlyParam(showonlyAttr)
         }
 
         const showgatetypesAttr = this.getAttribute(ATTRIBUTE_NAMES.showgatetypes)
@@ -792,26 +793,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const testResultsPalette = this.elemWithId("testResultsPalette")
         testResultsPalette.parentElement!.replaceChild(this.editTools.testsPalette.rootElem, testResultsPalette)
 
-        // TODO move this to the Def of LabelRect to be cleaner
-        const groupButton = this.html.leftToolbar.querySelector("button.sim-component-button[data-type=rect]")
-        if (groupButton === null) {
-            if (this._options.showOnly === undefined) {
-                // else, it was probably hidden on purpose
-                console.log("ERROR: Could not find group button")
-            }
-        } else {
-            groupButton.addEventListener("pointerdown", this.wrapHandler(e => {
-                const success = this.makeGroupWithSelection()
-                if (success) {
-                    e.preventDefault()
-                    e.stopImmediatePropagation()
-                }
-            }))
-        }
-
         this.eventMgr.registerCanvasListenersOn(this.html.mainCanvas)
-
-        this.eventMgr.registerButtonListenersOn(this._menu.allFixedButtons(), false)
 
         this.html.rightResetButton.addEventListener("click", this.wrapHandler(this.resetCircuit.bind(this)))
 
@@ -1017,7 +999,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.tryLoadCircuitFromData(!this._norestore, PostLoadActions_SnapshotNoStorage)
         // also triggers redraw, should be last thing called here
 
-        this.setModeFromString(this.getAttribute(ATTRIBUTE_NAMES.mode))
+        this.setMode(this.getAttribute(ATTRIBUTE_NAMES.mode))
 
         // this is called a second time here because the canvas width may have changed following the mode change
         this.setCanvasSize()
@@ -1147,7 +1129,20 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         LogicEditor._globalListenersInstalled = true
     }
 
-    public setMode(mode: Mode, doSetFocus: boolean) {
+    public setMode(modeParam: Mode | string | null | undefined, doSetFocus: boolean = false) {
+        let mode: Mode = this._maxInstanceMode
+        if (modeParam === null || modeParam === undefined) {
+            // keep default
+        } else if (isString(modeParam)) {
+            // try to apply it if recognized, otherwise keep default
+            if ((modeParam = modeParam.toUpperCase()) in Mode) {
+                mode = (Mode as any)[modeParam]
+            }
+        } else {
+            // it's the direct mode
+            mode = Math.max(MIN_MODE_INDEX, Math.min(modeParam, MAX_MODE_INDEX))
+        }
+
         this.wrapHandler(() => {
             let modeStr = Mode[mode].toLowerCase()
             if (mode > this._maxInstanceMode) {
@@ -1220,12 +1215,28 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         })()
     }
 
-    public setModeFromString(modeStr: string | null) {
-        let mode: Mode = this._maxInstanceMode
-        if (modeStr !== null && (modeStr = modeStr.toUpperCase()) in Mode) {
-            mode = (Mode as any)[modeStr]
-        }
-        this.setMode(mode, false)
+    /**
+     * Returns the showOnly types as a comma-separated string, or undefined if all
+     * gate types are shown. Meant as API for outside code.
+     */
+    public get showOnly(): string | undefined {
+        return this._options.showOnly === undefined ? undefined
+            : this._options.showOnly.join(",")
+    }
+
+    /**
+     * Sets the showOnly types from a comma-separated string, an array of strings,
+     * or undefined (to show all). Meant as API for outside code; not called during
+     * initialization.
+     */
+    public setShowOnly(showOnlyParam: string | string[] | null | undefined) {
+        const showOnly = showOnlyParam === null || showOnlyParam === undefined ? undefined : Array.isArray(showOnlyParam) ? showOnlyParam : this.splitShowOnlyParam(showOnlyParam)
+        this._options.showOnly = showOnly
+        this._menu?.rebuildMenu(showOnly)
+    }
+
+    private splitShowOnlyParam(showOnlyParam: string) {
+        return showOnlyParam.toLowerCase().split(/[, +]+/).filter(x => x.trim())
     }
 
     public setCircuitName(name: string | undefined) {
@@ -1259,10 +1270,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     }
 
     public updateCustomComponentButtons() {
-        if (this._menu !== undefined) {
-            this._menu.updateCustomComponentButtons(this.factory.customDefs())
-            this.eventMgr.registerButtonListenersOn(this._menu.allCustomButtons(), true)
-        }
+        this._menu?.updateCustomComponentButtons(this.factory.customDefs())
         this._topBar?.updateCustomComponentCaption()
     }
 

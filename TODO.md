@@ -20,19 +20,21 @@
  * Passthroughs shouldn't delay clock signals
 
 
-## Low priority
+## Low priority/Ideas
 
  * Add rich HTML annotations
  * Computation delay for components with inputs and outputs
  * Disable/hide input of component (e.g., to make exercise to prevent alu from knowing how to do a subtraction)
- * Implement Quine–McCluskey algorithm for function normalization
- * X-ray mode
+ * Algrebraic representation of outputs of a circuit given its inputs
+   * Implement Quine–McCluskey algorithm for function normalization
+ * X-ray mode as separate rectangular overlay
  * Probes for wires
  * name for wires
 
 
 ### DONE
  
+ * X-ray mode for some components
  * Zoom and pan with touch event, trackpad, mousewheel, Space-drag
  * Save/restore using browser's storage
  * New custom components should show up in library even with showonly

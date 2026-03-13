@@ -197,20 +197,23 @@ type HtmlSection = {
 
 export class ComponentMenu {
 
-    private readonly _htmlSections: HtmlSection[]
+    private readonly _htmlSections: HtmlSection[] = []
     private _customComponentSection?: HtmlSection
     private _restrictedToGateTypes: Set<string> | undefined
 
     public constructor(
         public readonly editor: LogicEditor,
-        public readonly parent: HTMLElement,
+        public readonly containerElem: HTMLElement,
     ) {
-        const showOnly = editor.options.showOnly
-        this._htmlSections = []
+        this.rebuildMenu(editor.options.showOnly)
+    }
+
+    public rebuildMenu(showOnly: readonly string[] | undefined) {
         this._restrictedToGateTypes = showOnly === undefined ? undefined : new Set()
         const showOnlyBuf = showOnly === undefined ? undefined : [...showOnly]
         let lastSectionNonEmpty = false
 
+        this.containerElem.innerHTML = ""
         for (const section of componentsMenu) {
             const { allButtons, buttonsShowWithMore, buttonsShowWithURLParam, accessibleGateTypes } =
                 makeButtons(section, showOnlyBuf)
@@ -227,6 +230,26 @@ export class ComponentMenu {
         if (showOnlyBuf !== undefined && showOnlyBuf.filter(s => !s.endsWith("*")).length > 0) {
             console.log(`ERROR Supposed to show unknown elems: ${showOnlyBuf.join("; ")}`)
         }
+
+        const groupButton = this.containerElem.querySelector("button.sim-component-button[data-type=rect]")
+        if (groupButton === null) {
+            if (showOnly === undefined) {
+                // else, it was probably hidden on purpose
+                console.log("ERROR: Could not find group button")
+            }
+        } else {
+            groupButton.addEventListener("pointerdown", this.editor.wrapHandler(e => {
+                const success = this.editor.makeGroupWithSelection()
+                if (success) {
+                    e.preventDefault()
+                    e.stopImmediatePropagation()
+                }
+            }))
+        }
+
+        this.editor.eventMgr.registerButtonListenersOn(this.allFixedButtons(), false)
+
+        this.updateCustomComponentButtons(this.editor.factory.customDefs())
     }
 
     public allFixedButtons() {
@@ -259,6 +282,8 @@ export class ComponentMenu {
             }
         }
         this._customComponentSection = defs === undefined ? undefined : this.makeCustomComponentSection(defs)
+
+        this.editor.eventMgr.registerButtonListenersOn(this.allCustomButtons(), true)
     }
 
     public setCustomComponentsHidden(ids: readonly string[]) {
@@ -322,7 +347,7 @@ export class ComponentMenu {
                 div(style("height: 20px"),
                     raw("&nbsp;")
                 ).render()
-            this.parent.appendChild(separator)
+            this.containerElem.appendChild(separator)
         }
 
         // section header
@@ -330,10 +355,10 @@ export class ComponentMenu {
             div(cls("leftToolbarHeader"),
                 S.ComponentBar.SectionNames[nameKey]
             ).render()
-        this.parent.appendChild(header)
+        this.containerElem.appendChild(header)
 
         for (const compButton of allButtons) {
-            this.parent.appendChild(compButton)
+            this.containerElem.appendChild(compButton)
         }
 
         // link to show more if needed
@@ -361,7 +386,7 @@ export class ComponentMenu {
                 }
                 showMoreLink!.innerHTML = names[Number(moreShown)]
             })
-            this.parent.appendChild(showMoreLink)
+            this.containerElem.appendChild(showMoreLink)
         }
 
         return { separator, header, buttons: allButtons, showMoreLink }
