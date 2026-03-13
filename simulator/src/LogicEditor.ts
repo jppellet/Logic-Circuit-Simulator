@@ -2716,8 +2716,23 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         if (this.eventMgr.currentSelectionEmpty()) {
             return false
         }
+
+        const selection = this.eventMgr.currentSelection?.previouslySelectedElements ?? []
+        let anyLocked = false
+        for (const elem of selection) {
+            if (elem instanceof ComponentBase && elem.lockPos) {
+                anyLocked = true
+                break
+            }
+        }
+        if (anyLocked) {
+            window.alert(S.Messages.CannotDeleteLockedComponent)
+            return false
+        }
+
+
         let anyDeleted = false
-        for (const elem of this.eventMgr.currentSelection?.previouslySelectedElements ?? []) {
+        for (const elem of selection) {
             anyDeleted = this.eventMgr.tryDeleteDrawable(elem).isChange || anyDeleted
         }
 

@@ -1347,12 +1347,7 @@ export abstract class ComponentBase<
             ]
 
         const deleteItem = MenuData.item("trash", s.Delete, () => {
-            const deleted = this.parent.components.tryDelete(this)
-            if (deleted) {
-                this.requestRedraw({ why: "deleted component", invalidateMask: true, invalidateTests: true })
-                return InteractionResult.SimpleChange
-            }
-            return InteractionResult.NoChange
+            return this.parent.editor.eventMgr.tryDeleteDrawable(this)
         }, "⌫", true)
 
         return [

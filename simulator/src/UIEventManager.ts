@@ -609,7 +609,7 @@ export class UIEventManager {
                     if (!editor.deleteSelection()) {
                         // if nothing was deleted, we try to delete the hovered component
                         if (this.currentComponentUnderPointer !== null) {
-                            const result = editor.eventMgr.tryDeleteDrawable(this.currentComponentUnderPointer)
+                            const result = this.tryDeleteDrawable(this.currentComponentUnderPointer)
                             if (result.isChange) {
                                 editor.editTools.undoMgr.takeSnapshot(result)
                             }
@@ -1059,6 +1059,10 @@ export class UIEventManager {
 
     public tryDeleteDrawable(comp: Drawable): InteractionResult {
         if (comp instanceof ComponentBase) {
+            if (comp.lockPos) {
+                window.alert(S.Messages.CannotDeleteLockedComponent)
+                return InteractionResult.NoChange
+            }
             const ref = comp.ref
             if (this.editor.editorRoot.testSuites.hasReferenceTo(ref)) {
                 if (!window.confirm(S.Tests.ComponentUsedInTestSuite.expand({ ref }))) {
@@ -1080,7 +1084,7 @@ export class UIEventManager {
         const numDeleted = this.editor.editorRoot.components.tryDeleteWhere(cond, onlyOne).length
         if (numDeleted > 0) {
             this.clearTooltipIfNeeded()
-            this.editor.editTools.redrawMgr.requestRedraw({ why: "component(s) deleted", invalidateMask: true, invalidateTests: true })
+            this.editor.editTools.redrawMgr.requestRedraw({ why: "component deletion", invalidateMask: true, invalidateTests: true })
         }
         return numDeleted
     }
