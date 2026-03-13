@@ -911,8 +911,8 @@ export class UIEventManager {
     }
 
     private isDoubleClick(clickedComp: Drawable, e: PointerEvent) {
-        if (e.pointerType === "mouse") {
-            return e.detail === 2
+        if (e.pointerType === "mouse" && e.detail === 2) {
+            return true
         } else {
             const oldLastTouchEnd = this._lastTouchEnd
             const now = new Date().getTime()
