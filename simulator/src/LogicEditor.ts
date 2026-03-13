@@ -12,7 +12,7 @@ import * as LZString from "lz-string"
 import * as pngMeta from 'png-metadata-writer'
 import { ComponentFactory } from "./ComponentFactory"
 import { ComponentList } from "./ComponentList"
-import { ComponentMenu } from "./ComponentMenu"
+import { ComponentMenu, getAllComponentTypes } from "./ComponentMenu"
 import { MessageBar } from "./MessageBar"
 import { MoveManager } from "./MoveManager"
 import { NodeManager } from "./NodeManager"
@@ -38,7 +38,7 @@ import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
 import { makeIcon } from "./images"
 import { DefaultLang, S, getLang, isLang, setLang } from "./strings"
-import { Any, InBrowser, KeysOfByType, LogicValue, UIDisplay, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
+import { Any, InBrowser, KeysOfByType, LogicValue, UIDisplay, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isString, isTruthyString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
 
 
 
@@ -2853,42 +2853,6 @@ export class LogicStatic {
         }
     }
 
-    public runSampleTestSuite(options: unknown): void {
-        const f = async () => {
-            if (this.singleton) {
-                const testSuite = new TestSuite([{
-                    name: "Simple XOR gate test suite",
-                    cases: [{
-                        name: "false false -> false",
-                        in: { in0: 0, in1: 0 },
-                        out: { out0: 0 },
-                        stopOnFail: true,
-                    }, {
-                        name: "false true -> true",
-                        in: { in0: 1, in1: 0 },
-                        out: { out0: 1 },
-                    }, {
-                        name: "true false -> true",
-                        in: { in0: 0, in1: 1 },
-                        out: { out0: 1 },
-                    }, {
-                        name: "true true -> false",
-                        in: { in0: 1, in1: 1 },
-                        out: { out0: 0 },
-                    }],
-                }, this.singleton.editorRoot.components])
-                const _opts = isRecord(options) ? options : {}
-                const results = await this.singleton.runTestSuite(testSuite, _opts)
-                if (results === undefined) {
-                    console.error("Could not run test suite")
-                } else {
-                    results.dump()
-                }
-            }
-        }
-        setTimeout(f, 0)
-    }
-
     public printUndoStack() {
         this.singleton?.editTools.undoMgr.dump()
     }
@@ -2913,6 +2877,11 @@ export class LogicStatic {
             }
         }
         setDarkMode(Boolean(mode), true)
+    }
+
+    public getAllComponentTypes(lang?: string) {
+        const l = lang !== undefined && isLang(lang) ? lang : DefaultLang
+        return getAllComponentTypes(l)
     }
 
 }

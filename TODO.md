@@ -2,6 +2,7 @@
 
 ## High priority
 
+ * auto-set wire waypoints to show if they are on top of another wire coming from the same output node
  * Take undo snapshot after key events too
  * Adder orientation
  * More consistently set things dirty

@@ -1647,20 +1647,20 @@ const Strings_en: Strings = {
 }
 
 
-const langs = {
+export const TranslationStrings = {
     fr: Strings_fr,
     en: Strings_en,
 }
 
-export type Lang = keyof typeof langs
+export type Lang = keyof typeof TranslationStrings
 
 export function isLang(lang: string): lang is Lang {
-    return lang in langs
+    return lang in TranslationStrings
 }
 
 export function setLang(l: Lang) {
     // console.log(`Setting language to '${l}'`)
-    S = langs[l]
+    S = TranslationStrings[l]
     _lang = l
 }
 
@@ -1671,5 +1671,5 @@ export function getLang(): Lang {
 export const DefaultLang: Lang = "en"
 
 /** The current language strings. */
-export let S: Strings = langs[DefaultLang]
+export let S: Strings = TranslationStrings[DefaultLang]
 let _lang: Lang = DefaultLang

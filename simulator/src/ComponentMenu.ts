@@ -44,8 +44,8 @@ import { ShiftRegisterDef } from "./components/ShiftRegister"
 import { TristateBufferDef } from "./components/TristateBuffer"
 import { TristateBufferArrayDef } from "./components/TristateBufferArray"
 import { a, button, cls, div, emptyMod, raw, span, style, title, type } from "./htmlgen"
-import { ImageName, makeImage, makeSvgHolder } from "./images"
-import { S, Strings } from "./strings"
+import { ImageName, inlineImageSvgFor, makeImage, makeSvgHolder } from "./images"
+import { Lang, S, Strings, TranslationStrings } from "./strings"
 import { deepObjectEquals, isArray, isString, setVisible } from "./utils"
 
 export type ComponentKey = Strings["ComponentBar"]["Components"]["type"]
@@ -59,6 +59,7 @@ export type DefAndParams<
 }
 
 export type LibraryItemVisibility = "always" | "withButton" | "ifShowOnly"
+const always = "always"
 const withButton = "withButton"
 const ifShowOnly = "ifShowOnly"
 
@@ -180,7 +181,7 @@ const componentsMenu: Array<Section> = [{
         DecoderDef.button({ bits: 2 }, "Decoder", { compat: "decoder" }),
         Decoder7SegDef.button("Decoder7Seg", { compat: "decoder-7seg" }),
         Decoder16SegDef.button("Decoder16Seg", { compat: "decoder-16seg", visible: withButton }),
-        DecoderBCDDef.button({bits: 4}, "DecoderBCD", { compat: "decoder-bcd4", visible: withButton }),
+        DecoderBCDDef.button({ bits: 4 }, "DecoderBCD", { compat: "decoder-bcd4", visible: withButton }),
 
     ],
 }]
@@ -428,6 +429,16 @@ function makeButton(typeStr: string, normallyHidden: boolean, componentIds: stri
 
 
 function shouldShow(componentIds: string[], showOnly: string[]) {
+    function matchesSpec(showOnlySpec: string, componentId: string) {
+        if (showOnlySpec === componentId) {
+            return [true, false]
+        }
+        if (showOnlySpec.endsWith("*") && componentId.startsWith(showOnlySpec.slice(0, -1))) {
+            return [true, true]
+        }
+        return [false, false]
+    }
+
     let visible = false
     for (const componentId of componentIds) {
         for (const showOnlySpec of showOnly) {
@@ -444,18 +455,7 @@ function shouldShow(componentIds: string[], showOnly: string[]) {
     }
 
     // console.log(`buttonId '${buttonId}' is visible: ${visible}`)
-
     return visible
-
-    function matchesSpec(showOnlySpec: string, componentId: string) {
-        if (showOnlySpec === componentId) {
-            return [true, false]
-        }
-        if (showOnlySpec.endsWith("*") && componentId.startsWith(showOnlySpec.slice(0, -1))) {
-            return [true, true]
-        }
-        return [false, false]
-    }
 }
 
 
@@ -496,4 +496,26 @@ function componentIdsFor(item: LibraryItem): string[] {
     }
 
     return ids
+}
+
+
+export function getAllComponentTypes(lang: Lang) {
+    const S = TranslationStrings[lang]
+    const sections = []
+    for (const section of componentsMenu) {
+        const id = section.nameKey
+        const name = S.ComponentBar.SectionNames[id]
+        const components = []
+        for (const item of section.items) {
+            const [stringsKey, iconKey] = isString(item.visual) ? [item.visual, item.visual] : item.visual
+            const compStrings = S.ComponentBar.Components.props[stringsKey]
+            const id = componentIdsFor(item)[0]
+            const name = isString(compStrings) ? compStrings : compStrings[0]
+            const initiallyFolded = item.visible !== undefined && item.visible !== always
+            const icon = inlineImageSvgFor(iconKey)
+            components.push({ id, name, initiallyFolded, icon })
+        }
+        sections.push({ id, name, components })
+    }
+    return sections
 }

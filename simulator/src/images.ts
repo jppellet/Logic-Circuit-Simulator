@@ -287,4 +287,8 @@ export function inlineIconSvgFor(name: IconName): string {
     return inlineSvgFor(icons, name)
 }
 
+export function inlineImageSvgFor(name: ImageName): string {
+    return inlineSvgFor(images, name)
+}
+
 
