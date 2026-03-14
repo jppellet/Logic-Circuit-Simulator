@@ -427,6 +427,7 @@ export abstract class ComponentBase<
             parent: DrawableParent,
             nodeSpec: InputNodeRepr | OutputNodeRepr,
             group: NodeGroup<TNode> | undefined,
+            idName: string,
             shortName: string,
             fullName: string,
             _gridOffsetX: number,
@@ -444,6 +445,7 @@ export abstract class ComponentBase<
             const makeNode = (group: NodeGroup<TNode> | undefined, shortName: string, desc: TDesc) => {
                 const spec = specs[nextSpecIndex++]
                 const [offsetX, offsetY, orient, nameOrOptions, options_] = desc
+                const idName = shortName
                 let nameOverride: string | undefined = undefined
                 let options: NodeInDescOptions | undefined = undefined
                 if (isString(nameOrOptions)) {
@@ -471,6 +473,7 @@ export abstract class ComponentBase<
                     this.parent,
                     spec,
                     group,
+                    idName,
                     shortName,
                     fullName,
                     offsetX,
@@ -897,9 +900,10 @@ export abstract class ComponentBase<
 
         // xray
         this._showingXRay = false
-        if (opts?.xrayScale !== undefined && !this.parent.editor.options.hideXRay) {
+        const options = this.parent.editor.options
+        if (opts?.xrayScale !== undefined && !options.hideXRay) {
             const scale = opts.xrayScale
-            const limitFactor = 0.75 // draw components starting at this fraction of their normal size
+            const limitFactor = 0.6 // draw components starting at this fraction of their normal size
             const myDrawParams = ctx.drawParams
             const zoomExcess = myDrawParams.currentDrawingScale - limitFactor / scale
             let xray = this._cachedXRay
@@ -973,7 +977,7 @@ export abstract class ComponentBase<
         const inputs: Record<string, NodeOut | NodeOut[]> = {}
         for (const input of this.inputs._all) {
             const id = xray.nodeMgr.getFreeId()
-            const internalNode = new NodeOut(this, xray, { id }, undefined, input.shortName, input.fullName, 0, 0, false, Orientation.invert(input.orient), 0)
+            const internalNode = new NodeOut(this, xray, { id }, undefined, input.idName, input.shortName, input.fullName, 0, 0, false, Orientation.invert(input.orient), 0)
             internalNode.setPositionAsXRayFor(input, scale)
             internalNode.value = input.value
             if (input.xrayNode !== undefined) {
@@ -981,7 +985,7 @@ export abstract class ComponentBase<
             }
             input.xrayNode = internalNode
             if (input.group === undefined) {
-                inputs[input.shortName] = internalNode
+                inputs[input.idName] = internalNode
             } else {
                 const groupName = input.group.name
                 const group = groupName in inputs && isArray(inputs[groupName]) ? inputs[groupName] : (inputs[groupName] = [])
@@ -992,10 +996,10 @@ export abstract class ComponentBase<
         const outputs: Record<string, NodeIn | NodeIn[]> = {}
         for (const output of this.outputs._all) {
             const id = xray.nodeMgr.getFreeId()
-            const internalNode = new NodeIn(this, xray, { id }, undefined, output.shortName, output.fullName, 0, 0, false, Orientation.invert(output.orient), 0)
+            const internalNode = new NodeIn(this, xray, { id }, undefined, output.idName, output.shortName, output.fullName, 0, 0, false, Orientation.invert(output.orient), 0)
             internalNode.setPositionAsXRayFor(output, scale)
             if (output.group === undefined) {
-                outputs[output.shortName] = internalNode
+                outputs[output.idName] = internalNode
             } else {
                 const groupName = output.group.name
                 const group = groupName in outputs && isArray(outputs[groupName]) ? outputs[groupName] : (outputs[groupName] = [])

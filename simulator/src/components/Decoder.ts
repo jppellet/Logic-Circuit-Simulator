@@ -114,14 +114,14 @@ export class Decoder extends ParametrizedComponentBase<DecoderRepr> {
 
         const inNots = inputs.In.map((in_, i) => {
             const not = xr.gate(`not${i}`, "not", xPosNot, later)
-            xr.wire(in_, not.inputs.In[0], true)
+            xr.wire(in_, not, true)
             not.setPosition(not.posX, not.posY - 3 * GRID_STEP, false)
             return not
         })
 
         outputs.Out.forEach((out, i) => {
             const and = xr.gate(`and${i}`, "and", xPosAnd, later, "e", numBits)
-            xr.wire(and.outputs.Out, out, false)
+            xr.wire(and, out, false)
 
             for (let j = 0; j < numBits; j++) {
                 const invert = (i & (1 << j)) === 0

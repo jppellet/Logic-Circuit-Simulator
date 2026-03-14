@@ -7,9 +7,9 @@ import { TestSuites } from "../TestSuite"
 import { Mode } from "../utils"
 import { Component, InjectedParams } from "./Component"
 import { DrawableParent, GraphicsRendering, Orientation } from "./Drawable"
-import { Gate1, Gate1Def, GateN, GateNDef } from "./Gate"
+import { Gate, Gate1, Gate1Def, GateN, GateNDef } from "./Gate"
 import { Gate1Type, Gate1Types, GateNType } from "./GateTypes"
-import { Node, NodeIn, NodeOut } from "./Node"
+import { Node, NodeBase, NodeIn, NodeOut } from "./Node"
 import { LinkManager, WireStyle } from "./Wire"
 
 type WaypointSpecCompact = [x: number, y: number] | [x: number, y: number, showDot: boolean]
@@ -54,7 +54,13 @@ export class XRay implements DrawableParent {
      * on other components that don't have their final position yet, and make the
      * wires with visible intersection waypoints after the wire undernear without.
      */
-    public wire(startNode: NodeOut, endNode: NodeIn, styleOrAlign?: WireStyle | boolean, via?: WaypointSpecCompact | WaypointSpecCompact[]) {
+    public wire(startNode: NodeOut | Gate, endNode: NodeIn | Gate1, styleOrAlign?: WireStyle | boolean, via?: WaypointSpecCompact | WaypointSpecCompact[]) {
+        if (!(startNode instanceof NodeBase)) {
+            startNode = startNode.outputs.Out
+        }
+        if (!(endNode instanceof NodeBase)) {
+            endNode = endNode.inputs.In[0]
+        }
         const wire = this.linkMgr.addWire(startNode, endNode, false)
         if (wire === undefined) {
             return

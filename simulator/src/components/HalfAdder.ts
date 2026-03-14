@@ -91,12 +91,12 @@ export class HalfAdder extends ComponentBase<HalfAdderRepr> {
         const xor = xr.gate("xor", "xor", x(0.3), later)
         const and = xr.gate("and", "and", x(0.3), later)
 
-        xr.wire(inputs.B, and.inputs.In[1], true)
-        xr.wire(inputs.A, xor.inputs.In[0], true)
-        xr.wire(inputs.A, and.inputs.In[0], "vh", [x(-0.7), inputs.A.posY, true])
-        xr.wire(inputs.B, xor.inputs.In[1], "vh", [x(-0.4), inputs.B.posY, true])
-        xr.wire(and.outputs.Out, outputs.C, "vh")
-        xr.wire(xor.outputs.Out, outputs.S, "vh")
+        xr.wire(inputs.B, and.in[1], true)
+        xr.wire(inputs.A, xor.in[0], true)
+        xr.wire(inputs.A, and.in[0], "vh", [x(-0.7), inputs.A.posY, true])
+        xr.wire(inputs.B, xor.in[1], "vh", [x(-0.4), inputs.B.posY, true])
+        xr.wire(and, outputs.C, "vh")
+        xr.wire(xor, outputs.S, "vh")
 
         return xr
     }

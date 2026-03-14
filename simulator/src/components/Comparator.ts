@@ -1,4 +1,4 @@
-import { COLOR_COMPONENT_BORDER, TextVAlign, fillTextVAlign } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, GRID_STEP, TextVAlign, fillTextVAlign } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { LogicValue, Unknown, isHighImpedance, isUnknown } from "../utils"
@@ -72,12 +72,42 @@ export class Comparator extends ComponentBase<ComparatorRepr> {
     }
 
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
-        this.doDrawDefault(g, ctx, () => {
-            g.fillStyle = COLOR_COMPONENT_BORDER
-            g.font = "bold 11px sans-serif"
-            g.textAlign = "center"
-            fillTextVAlign(g, TextVAlign.middle, "CMP", this.posX, this.posY)
+        this.doDrawDefault(g, ctx, {
+            drawLabels: () => {
+                g.fillStyle = COLOR_COMPONENT_BORDER
+                g.font = "bold 11px sans-serif"
+                g.textAlign = "center"
+                fillTextVAlign(g, TextVAlign.middle, "CMP", this.posX, this.posY)
+            },
+            xrayScale: 0.25,
         })
+    }
+
+    protected override makeXRay(scale: number) {
+        const xr = this.parent.editor.newXRay(this)
+        const { inputs, outputs, x, y, later } = this.makeXRayNodes<Comparator>(xr, scale)
+
+        const andEq = xr.gate("andEq", "and", later, y.top + 2.5 * GRID_STEP, "n")
+        const andG = xr.gate("andG", "and", x.right - 2.5 * GRID_STEP, later, "e", 3)
+
+        const xnor = xr.gate("xnor", "xnor", x.left + 4.5 * GRID_STEP, later)
+        const notB = xr.gate("notB", "not", x.left + 4.5 * GRID_STEP, later)
+
+        xr.wire(andEq, outputs.Eq, false)
+        xr.wire(andG, outputs.G, false)
+
+        xr.wire(notB, andG.in[0], false)
+
+        xr.wire(inputs.B, xnor.in[0], true)
+        xr.wire(inputs.A, andG.in[1], "vh", [-2 * GRID_STEP, inputs.A.posY])
+        xr.wire(inputs.A, xnor.in[1], "vh", [x.left + 1.25 * GRID_STEP, inputs.A.posY, true])
+        xr.wire(inputs.B, notB, "vh", [x.left + GRID_STEP / 2, inputs.B.posY, true])
+
+        xr.wire(xnor, andEq.in[0], "hv")
+        xr.wire(inputs.E, andG.in[2], "vh", [andEq.in[1].posX, andG.in[2].posY])
+        xr.wire(inputs.E, andEq.in[1], "vh", [andEq.in[1].posX, andG.in[2].posY, true])
+
+        return xr
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

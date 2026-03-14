@@ -670,6 +670,10 @@ export class GateN extends GateBase<GateNRepr> {
         }
     }
 
+    public get in() {
+        return this.inputs.In
+    }
+
     public override pointerDoubleClicked(e: PointerEvent) {
         const superChange = super.pointerDoubleClicked(e)
         if (superChange.isChange) {
@@ -750,3 +754,5 @@ function makeGateTooltip(numBits: number, title: Modifier, description: Modifier
     const maxWidth = 200 + (Math.max(0, numBitsDisplay - 2)) * 50
     return tooltipContent(title, mods(div(description), div(explanationAndTable)), maxWidth)
 }
+
+export type Gate = Gate1 | GateN

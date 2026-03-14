@@ -34,8 +34,9 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         parent: DrawableParent,
         nodeSpec: InputNodeRepr | OutputNodeRepr,
         public readonly group: NodeGroup<N> | undefined,
-        public readonly shortName: string,
-        public readonly fullName: string,
+        public readonly idName: string, // the one in comp.inputs[idName]
+        public readonly shortName: string, // the one drawn on the comp
+        public readonly fullName: string, // the one in the menu
         private _gridOffsetX: number,
         private _gridOffsetY: number,
         public readonly hasTriangle: boolean,
