@@ -102,8 +102,8 @@ export class Decoder extends ParametrizedComponentBase<DecoderRepr> {
             return
         }
 
-        const xr = this.parent.editor.newXRay(this)
-        const { inputs, outputs, x, later } = this.makeXRayNodes<Decoder>(xr, scale)
+        const { xray, wire, gate } = this.parent.editor.newXRay(this)
+        const { ins, outs, x, later } = this.makeXRayNodes<Decoder>(xray, scale)
 
         const addSpace = numBits > 3 ? 20 : 0
         const xPosNot = x.left + 3 * GRID_STEP + addSpace
@@ -112,28 +112,28 @@ export class Decoder extends ParametrizedComponentBase<DecoderRepr> {
         const xPosWireBranchRightmost = xPosAnd - 3 * GRID_STEP - addSpace
         const wireStep = (xPosWireBranchRightmost - xPosWireBranchLeftmost) / (2 * numBits - 1)
 
-        const inNots = inputs.In.map((in_, i) => {
-            const not = xr.gate(`not${i}`, "not", xPosNot, later)
-            xr.wire(in_, not, true)
+        const inNots = ins.In.map((in_, i) => {
+            const not = gate(`not${i}`, "not", xPosNot, later)
+            wire(in_, not, true)
             not.setPosition(not.posX, not.posY - 3 * GRID_STEP, false)
             return not
         })
 
-        outputs.Out.forEach((out, i) => {
-            const and = xr.gate(`and${i}`, "and", xPosAnd, later, "e", numBits)
-            xr.wire(and, out, false)
+        outs.Out.forEach((out, i) => {
+            const and = gate(`and${i}`, "and", xPosAnd, later, "e", numBits)
+            wire(and, out, false)
 
             for (let j = 0; j < numBits; j++) {
                 const invert = (i & (1 << j)) === 0
-                const sourceNode = invert ? inNots[j].outputs.Out : inputs.In[j]
+                const sourceNode = invert ? inNots[j].outputs.Out : ins.In[j]
                 const targetNode = and.inputs.In[j]
                 const colIndex = (Number(!invert) * numBits + j) // first all 0s, then all 1s
                 const xPosBranch = xPosWireBranchLeftmost + colIndex * wireStep
-                xr.wire(sourceNode, targetNode, "hv", [xPosBranch, targetNode.posY])
+                wire(sourceNode, targetNode, "hv", [xPosBranch, targetNode.posY])
             }
         })
 
-        return xr
+        return xray
     }
 
     protected override propagateValue(newValue: LogicValue[]) {

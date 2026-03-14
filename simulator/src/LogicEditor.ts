@@ -2833,7 +2833,10 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     }
 
     public newXRay(comp: Component) {
-        return new XRay(comp)
+        const xray = new XRay(comp)
+        const wire = xray.wire.bind(xray)
+        const gate = xray.gate.bind(xray)
+        return { xray, wire, gate }
     }
 
     public static decodeFromURLOld(str: string) {

@@ -85,20 +85,20 @@ export class HalfAdder extends ComponentBase<HalfAdderRepr> {
     }
 
     protected override makeXRay(scale: number): XRay {
-        const xr = this.parent.editor.newXRay(this)
-        const { inputs, outputs, x, later } = this.makeXRayNodes<HalfAdder>(xr, scale)
+        const { xray, wire, gate } = this.parent.editor.newXRay(this)
+        const { ins, outs, x, later } = this.makeXRayNodes<HalfAdder>(xray, scale)
 
-        const xor = xr.gate("xor", "xor", x(0.3), later)
-        const and = xr.gate("and", "and", x(0.3), later)
+        const xor = gate("xor", "xor", x(0.3), later)
+        const and = gate("and", "and", x(0.3), later)
 
-        xr.wire(inputs.B, and.in[1], true)
-        xr.wire(inputs.A, xor.in[0], true)
-        xr.wire(inputs.A, and.in[0], "vh", [x(-0.7), inputs.A.posY, true])
-        xr.wire(inputs.B, xor.in[1], "vh", [x(-0.4), inputs.B.posY, true])
-        xr.wire(and, outputs.C, "vh")
-        xr.wire(xor, outputs.S, "vh")
+        wire(ins.B, and.in[1], true)
+        wire(ins.A, xor.in[0], true)
+        wire(ins.A, and.in[0], "vh", [x(-0.7), ins.A.posY, true])
+        wire(ins.B, xor.in[1], "vh", [x(-0.4), ins.B.posY, true])
+        wire(and, outs.C, "vh")
+        wire(xor, outs.S, "vh")
 
-        return xr
+        return xray
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

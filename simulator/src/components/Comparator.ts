@@ -84,30 +84,29 @@ export class Comparator extends ComponentBase<ComparatorRepr> {
     }
 
     protected override makeXRay(scale: number) {
-        const xr = this.parent.editor.newXRay(this)
-        const { inputs, outputs, x, y, later } = this.makeXRayNodes<Comparator>(xr, scale)
+        const { xray, gate, wire } = this.parent.editor.newXRay(this)
+        const { ins, outs, x, y, later } = this.makeXRayNodes<Comparator>(xray, scale)
 
-        const andEq = xr.gate("andEq", "and", later, y.top + 2.5 * GRID_STEP, "n")
-        const andG = xr.gate("andG", "and", x.right - 2.5 * GRID_STEP, later, "e", 3)
+        const andEq = gate("andEq", "and", later, y.top + 2.5 * GRID_STEP, "n")
+        const andG = gate("andG", "and", x.right - 2.5 * GRID_STEP, later, "e", 3)
+        const xnor = gate("xnor", "xnor", x.left + 4.5 * GRID_STEP, later)
+        const notB = gate("notB", "not", x.left + 4.5 * GRID_STEP, later)
 
-        const xnor = xr.gate("xnor", "xnor", x.left + 4.5 * GRID_STEP, later)
-        const notB = xr.gate("notB", "not", x.left + 4.5 * GRID_STEP, later)
+        wire(andEq, outs.Eq, false)
+        wire(andG, outs.G, false)
 
-        xr.wire(andEq, outputs.Eq, false)
-        xr.wire(andG, outputs.G, false)
+        wire(notB, andG.in[0], false)
 
-        xr.wire(notB, andG.in[0], false)
+        wire(ins.B, xnor.in[0], true)
+        wire(ins.A, andG.in[1], "vh", [-2 * GRID_STEP, ins.A.posY])
+        wire(ins.A, xnor.in[1], "vh", [x.left + 1.25 * GRID_STEP, ins.A.posY, true])
+        wire(ins.B, notB, "vh", [x.left + GRID_STEP / 2, ins.B.posY, true])
 
-        xr.wire(inputs.B, xnor.in[0], true)
-        xr.wire(inputs.A, andG.in[1], "vh", [-2 * GRID_STEP, inputs.A.posY])
-        xr.wire(inputs.A, xnor.in[1], "vh", [x.left + 1.25 * GRID_STEP, inputs.A.posY, true])
-        xr.wire(inputs.B, notB, "vh", [x.left + GRID_STEP / 2, inputs.B.posY, true])
+        wire(xnor, andEq.in[0], "hv")
+        wire(ins.E, andG.in[2], "vh", [andEq.in[1].posX, andG.in[2].posY])
+        wire(ins.E, andEq.in[1], "vh", [andEq.in[1].posX, andG.in[2].posY, true])
 
-        xr.wire(xnor, andEq.in[0], "hv")
-        xr.wire(inputs.E, andG.in[2], "vh", [andEq.in[1].posX, andG.in[2].posY])
-        xr.wire(inputs.E, andEq.in[1], "vh", [andEq.in[1].posX, andG.in[2].posY, true])
-
-        return xr
+        return xray
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {
