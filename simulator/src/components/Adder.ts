@@ -1,4 +1,4 @@
-import { COLOR_COMPONENT_BORDER, TextVAlign, fillTextVAlign } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, GRID_STEP, TextVAlign, fillTextVAlign } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { LogicValue, Unknown, isHighImpedance, isUnknown } from "../utils"
@@ -10,18 +10,20 @@ export const AdderDef =
         idPrefix: "adder",
         button: { imgWidth: 50 },
         valueDefaults: {},
-        size: () => ({ gridWidth: 7, gridHeight: 5 }),
-        makeNodes: () => {
+        size: () => ({ gridWidth: 5, gridHeight: 7 }),
+        makeNodes: ({ isXRay }) => {
             const s = S.Components.Generic
+            const yDist = isXRay ? 4 : 5
+            const xDist = isXRay ? 3.5 : 4
             return {
                 ins: {
-                    A: [-2, -4, "n", "A", { hasTriangle: true }],
-                    B: [2, -4, "n", "B", { hasTriangle: true }],
-                    Cin: [5, 0, "e", s.InputCarryInDesc, { hasTriangle: true }],
+                    A: [-xDist, -2, "w", "A", { hasTriangle: true }],
+                    B: [-xDist, 2, "w", "B", { hasTriangle: true }],
+                    Cin: [0, -yDist, "n", s.InputCarryInDesc, { hasTriangle: true }],
                 },
                 outs: {
-                    S: [0, 4, "s", s.OutputSumDesc, { hasTriangle: true }],
-                    Cout: [-5, 0, "w", s.OutputCarryOutDesc, { hasTriangle: true }],
+                    S: [xDist, 0, "e", s.OutputSumDesc, { hasTriangle: true }],
+                    Cout: [0, yDist, "s", s.OutputCarryOutDesc, { hasTriangle: !isXRay }],
                 },
             }
         },
@@ -89,24 +91,24 @@ export class Adder extends ComponentBase<AdderRepr> {
         const { xray, wire, gate } = this.parent.editor.newXRay(this)
         const { ins, outs, x, y, later } = this.makeXRayNodes<Adder>(xray, scale)
 
-        const and1 = gate("and1", "and", later, y(-0.5), "s")
-        const xor1 = gate("xor1", "xor", later, y(-0.5), "s")
-        const and2 = gate("and2", "and", x(0), later, "w")
-        const xor2 = gate("xor2", "xor", x(0.2), y(0.7), "w")
-        const or = gate("or", "or", x(-.85), later, "w")
+        const and1 = gate("and1", "and", x(-0.5), later)
+        const xor1 = gate("xor1", "xor", x(-0.5), later)
+        const and2 = gate("and2", "and", later, y(0), "s")
+        const xor2 = gate("xor2", "xor", x(0.7), y(-0.2), "s")
+        const or = gate("or", "or", later, y.bottom - 2.5 * GRID_STEP, "s")
 
-        wire(ins.B, xor1.in[0], true)
-        wire(ins.A, and1.in[1], true)
-        wire(ins.A, xor1.in[1], "hv", [ins.A.posX, y(-0.85), true])
-        wire(ins.B, and1.in[0], "hv", [ins.B.posX, y(-.95), true])
+        wire(ins.A, xor1.in[0], true)
+        wire(ins.B, and1.in[1], true)
+        wire(ins.B, xor1.in[1], "vh", [x(-0.85), ins.B.posY, true])
+        wire(ins.A, and1.in[0], "vh", [x(-.95), ins.A.posY, true])
         wire(or, outs.Cout)
-        wire(and1, or.in[1], "vh")
+        wire(and1, or.in[1], "hv")
         wire(and2, or.in[0], false)
-        wire(xor1, and2.in[1], "vh")
-        wire(xor1, xor2.in[1], "vh", [xor1.outputs.Out.posX, and2.in[1].posY, true])
-        wire(ins.Cin, xor2.in[0], "vh", [x(0.9), ins.Cin.posY])
-        wire(ins.Cin, and2.in[0], "hv", [x(0.9), and2.in[0].posY, true])
-        wire(xor2, outs.S, "hv")
+        wire(xor1, and2.in[1], "hv")
+        wire(xor1, xor2.in[1], "hv", [and2.in[1].posX, xor1.posY, true])
+        wire(ins.Cin, xor2.in[0], "hv", [ins.Cin.posX, y(-0.9)])
+        wire(ins.Cin, and2.in[0], "vh", [and2.in[0].posX, y(-0.9), true])
+        wire(xor2, outs.S, "vh")
 
         return xray
     }

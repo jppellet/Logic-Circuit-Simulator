@@ -1,7 +1,7 @@
 import { distSquaredToWaypointIfOver, drawWaypoint, GRID_STEP, NodeStyle, WAYPOINT_DIAMETER } from "../drawutils"
-import { HighImpedance, InteractionResult, isUnknown, LogicValue, Mode, RepeatFunction, toLogicValue, Unknown } from "../utils"
-import { Component, InputNodeRepr, NodeGroup, OutputNodeRepr } from "./Component"
-import { DrawableParent, DrawableWithPosition, DrawContext, GraphicsRendering, Orientation } from "./Drawable"
+import { HighImpedance, InteractionResult, isUnknown, LogicValue, Mode, Orientation, RepeatFunction, toLogicValue, Unknown } from "../utils"
+import { Component, InputNodeRepr, NodeGroup, NodeLabelOffsetProvider, OutputNodeRepr } from "./Component"
+import { DrawableParent, DrawableWithPosition, DrawContext, GraphicsRendering } from "./Drawable"
 import { Wire } from "./Wire"
 
 export type Node = NodeIn | NodeOut
@@ -42,6 +42,7 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         public readonly hasTriangle: boolean,
         relativePosition: Orientation,
         private readonly _leadLengthOverride: number | undefined,
+        public readonly labelOffset: NodeLabelOffsetProvider | undefined,
     ) {
         super(parent)
         this.id = nodeSpec.id

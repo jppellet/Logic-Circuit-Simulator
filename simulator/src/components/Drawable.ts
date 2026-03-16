@@ -13,7 +13,7 @@ import { COLOR_COMPONENT_BORDER, COLOR_MOUSE_OVER, COLOR_MOUSE_OVER_DANGER, Colo
 import { fixedWidthInContextMenu, Modifier, ModifierObject, span } from "../htmlgen"
 import { IconName } from "../images"
 import { S } from "../strings"
-import { Expand, FixedArray, InteractionResult, Mode, PromiseOrValue, RichStringEnum, typeOrUndefined } from "../utils"
+import { Expand, FixedArray, InteractionResult, Mode, Orientation, Orientations, Orientations_, PromiseOrValue, typeOrUndefined } from "../utils"
 import { Component, ComponentBase, InjectedParams } from "./Component"
 import { type LinkManager } from "./Wire"
 
@@ -334,58 +334,6 @@ export interface HasPosition {
     readonly posX: number
     readonly posY: number
 
-}
-
-export const Orientations_ = {
-    "e": {},
-    "s": {},
-    "w": {},
-    "n": {},
-} as const
-
-export const Orientations = RichStringEnum.withProps<{
-}>()(Orientations_)
-
-
-export type Orientation = typeof Orientations.type
-
-export const Orientation = {
-    default: "e" as Orientation,
-    invert(o: Orientation): Orientation {
-        switch (o) {
-            case "e": return "w"
-            case "w": return "e"
-            case "n": return "s"
-            case "s": return "n"
-        }
-    },
-    nextClockwise(o: Orientation): Orientation {
-        switch (o) {
-            case "e": return "s"
-            case "s": return "w"
-            case "w": return "n"
-            case "n": return "e"
-        }
-    },
-    nextCounterClockwise(o: Orientation): Orientation {
-        switch (o) {
-            case "e": return "n"
-            case "n": return "w"
-            case "w": return "s"
-            case "s": return "e"
-        }
-    },
-    isVertical(o: Orientation): o is "s" | "n" {
-        return o === "s" || o === "n"
-    },
-    add(o1: Orientation, o2: Orientation): Orientation {
-        switch (o2) {
-            case "e": return o1
-            case "w": return Orientation.invert(o1)
-            case "s": return Orientation.nextClockwise(o1)
-            case "n": return Orientation.nextCounterClockwise(o1)
-        }
-    },
 }
 
 

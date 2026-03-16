@@ -7,8 +7,8 @@ import { UIPermissions } from "../UIPermissions"
 import { COLORCOMP_BACKGROUND_TRANSLUCENT, COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, COMPONENT_OUTLINE_THICKNESS, DrawingRect, GRID_STEP, drawClockInput, drawComponentName, drawLabel, drawWireLineToComponent, isTrivialNodeName, shouldDrawNodeLabel, useCompact } from "../drawutils"
 import { IconName, ImageName } from "../images"
 import { S, Template } from "../strings"
-import { ArrayFillUsing, ArrayOrDirect, EdgeTrigger, Expand, FixedArrayMap, HasField, HighImpedance, InteractionResult, LogicValue, LogicValueRepr, Mode, Unknown, brand, deepArrayEquals, isArray, isBoolean, isNumber, isRecord, isString, mergeWhereDefined, toLogicValueRepr, typeOrUndefined, validateJson } from "../utils"
-import { DrawContext, DrawContextExt, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, GraphicsRendering, MenuData, MenuItem, MenuItemPlacement, MenuItems, Orientation, PositionSupportRepr } from "./Drawable"
+import { ArrayFillUsing, ArrayOrDirect, EdgeTrigger, Expand, FixedArrayMap, HasField, HighImpedance, InteractionResult, LogicValue, LogicValueRepr, Mode, Orientation, Unknown, brand, deepArrayEquals, isArray, isBoolean, isNumber, isRecord, isString, mergeWhereDefined, toLogicValueRepr, typeOrUndefined, validateJson } from "../utils"
+import { DrawContext, DrawContextExt, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, GraphicsRendering, MenuData, MenuItem, MenuItemPlacement, MenuItems, PositionSupportRepr } from "./Drawable"
 import { DEFAULT_WIRE_COLOR, Node, NodeBase, NodeIn, NodeOut, WireColor } from "./Node"
 import { XRay } from "./XRay"
 
@@ -199,16 +199,41 @@ export const ComponentNameRepr = typeOrUndefined(
     ])
 )
 
-type NodeOutDescOptions = { hasTriangle?: boolean, labelName?: string, leadLength?: number }
+export type NodeLabelOffsetProvider = (compOrient: Orientation) => readonly [number, number] | undefined
+type NodeOutDescOptions = { hasTriangle?: boolean, labelName?: string, labelOffset?: NodeLabelOffsetProvider, leadLength?: number }
 export type NodeOutDesc =
     | readonly [x: number, y: number, orient: Orientation, opts?: NodeOutDescOptions]
     | readonly [x: number, y: number, orient: Orientation, fullName?: string, opts?: NodeOutDescOptions]
 
 
-type NodeInDescOptions = { hasTriangle?: boolean, labelName?: string, leadLength?: number, prefersSpike?: boolean, isClock?: boolean }
+type NodeInDescOptions = { hasTriangle?: boolean, labelName?: string, labelOffset?: NodeLabelOffsetProvider, leadLength?: number, prefersSpike?: boolean, isClock?: boolean }
 export type NodeInDesc =
     | readonly [x: number, y: number, orient: Orientation, opts?: NodeInDescOptions]
     | readonly [x: number, y: number, orient: Orientation, fullName?: string, opts?: NodeInDescOptions]
+
+export function shiftWhenHorizontal(dx: number, dy: number): NodeLabelOffsetProvider {
+    return e => {
+        switch (e) {
+            case "e": return [dx, dy] as const
+            case "w": return [-dx, -dy] as const
+            case "s":
+            case "n":
+                return undefined
+        }
+    }
+}
+
+export function shiftWhenVertical(dx: number, dy: number): NodeLabelOffsetProvider {
+    return e => {
+        switch (e) {
+            case "s": return [dx, dy] as const
+            case "n": return [-dx, -dy] as const
+            case "e":
+            case "w":
+                return undefined
+        }
+    }
+}
 
 export type NodeDesc = NodeOutDesc | NodeInDesc
 export type NodeDescInGroup = readonly [x: number, y: number, shortNameOverride?: string, opts?: NodeInDescOptions]
@@ -435,6 +460,7 @@ export abstract class ComponentBase<
             hasTriangle: boolean,
             orient: Orientation,
             leadLength: number | undefined,
+            labelOffset: NodeLabelOffsetProvider | undefined,
         ) => TNode) {
 
         const nodes: Record<string, TNode | ReadonlyArray<TNode> | ReadonlyArray<ReadonlyArray<TNode>>> = {}
@@ -459,6 +485,7 @@ export abstract class ComponentBase<
                 const isClock = options?.isClock ?? false
                 const prefersSpike = options?.prefersSpike ?? false
                 const leadLength = options?.leadLength
+                const labelOffset = options?.labelOffset
                 const hasTriangle = options?.hasTriangle ?? false
                 if (group !== undefined && nameOverride !== undefined) {
                     // names in groups are considered short names to be used as labels
@@ -481,6 +508,7 @@ export abstract class ComponentBase<
                     hasTriangle,
                     orient,
                     leadLength,
+                    labelOffset,
                 )
                 if (prefersSpike || isClock) {
                     if (newNode instanceof NodeIn) {
@@ -977,7 +1005,7 @@ export abstract class ComponentBase<
         const ins: Record<string, NodeOut | NodeOut[]> = {}
         for (const input of this.inputs._all) {
             const id = xray.nodeMgr.getFreeId()
-            const internalNode = new NodeOut(this, xray, { id }, undefined, input.idName, input.shortName, input.fullName, 0, 0, false, Orientation.invert(input.orient), 0)
+            const internalNode = new NodeOut(this, xray, { id }, undefined, input.idName, input.shortName, input.fullName, 0, 0, false, Orientation.invert(input.orient), 0, undefined)
             internalNode.setPositionAsXRayFor(input, scale)
             internalNode.value = input.value
             if (input.xrayNode !== undefined) {
@@ -996,7 +1024,7 @@ export abstract class ComponentBase<
         const outs: Record<string, NodeIn | NodeIn[]> = {}
         for (const output of this.outputs._all) {
             const id = xray.nodeMgr.getFreeId()
-            const internalNode = new NodeIn(this, xray, { id }, undefined, output.idName, output.shortName, output.fullName, 0, 0, false, Orientation.invert(output.orient), 0)
+            const internalNode = new NodeIn(this, xray, { id }, undefined, output.idName, output.shortName, output.fullName, 0, 0, false, Orientation.invert(output.orient), 0, undefined)
             internalNode.setPositionAsXRayFor(output, scale)
             if (output.group === undefined) {
                 outs[output.idName] = internalNode
@@ -1834,10 +1862,11 @@ export class ComponentDef<
         return comp
     }
 
-    public makeSpawned<TComp extends Component>(parent: DrawableParent, x: number, y: number, orient?: Orientation): TComp {
+    public makeSpawned<TComp extends Component>(parent: DrawableParent, validatedId: string, x: number, y: number, orient?: Orientation): TComp {
         const comp = this.make<TComp>(parent)
         comp.setPosition(x, y, false)
         comp.setSpawned()
+        comp.doSetValidatedId(validatedId)
         if (orient !== undefined) {
             comp.doSetOrient(orient)
         }

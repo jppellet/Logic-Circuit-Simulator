@@ -13,8 +13,8 @@ export const ComparatorDef =
         size: () => ({ gridWidth: 5, gridHeight: 7 }),
         makeNodes: () => ({
             ins: {
-                A: [-4, 2, "w", "A", { hasTriangle: true }],
-                B: [-4, -2, "w", "B", { hasTriangle: true }],
+                A: [-4, -2, "w", "A", { hasTriangle: true }],
+                B: [-4, 2, "w", "B", { hasTriangle: true }],
                 E: [0, 5, "s", "E", { hasTriangle: true }],
             },
             outs: {
@@ -95,11 +95,11 @@ export class Comparator extends ComponentBase<ComparatorRepr> {
         wire(andEq, outs.Eq, false)
         wire(andG, outs.G, false)
 
-        wire(notB, andG.in[0], false)
+        wire(notB, andG.in[1], false)
 
-        wire(ins.B, xnor.in[0], true)
-        wire(ins.A, andG.in[1], "vh", [-2 * GRID_STEP, ins.A.posY])
-        wire(ins.A, xnor.in[1], "vh", [x.left + 1.25 * GRID_STEP, ins.A.posY, true])
+        wire(ins.B, xnor.in[1], true)
+        wire(ins.A, andG.in[0], "vh", [-3 * GRID_STEP, ins.A.posY])
+        wire(ins.A, xnor.in[0], "vh", [x.left + 1.25 * GRID_STEP, ins.A.posY, true])
         wire(ins.B, notB, "vh", [x.left + GRID_STEP / 2, ins.B.posY, true])
 
         wire(xnor, andEq.in[0], "hv")

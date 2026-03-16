@@ -2,9 +2,9 @@ import * as t from "io-ts"
 import { COLOR_UNKNOWN, ColorString, TextVAlign, colorCompsRGB, colorForFraction, displayValuesFromArray, fillTextVAlign, formatWithRadix, useCompact } from "../drawutils"
 import { b, div, emptyMod, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
-import { InteractionResult, Mode, Unknown, isUnknown, typeOrUndefined } from "../utils"
+import { InteractionResult, Mode, Orientation, Unknown, isUnknown, typeOrUndefined } from "../utils"
 import { ComponentName, ComponentNameRepr, ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupVertical, param } from "./Component"
-import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems, Orientation } from "./Drawable"
+import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
 
 export const DisplayDef =
     defineParametrizedComponent("display", true, false, {

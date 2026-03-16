@@ -1,11 +1,11 @@
 import { Component, ComponentBase, ComponentName, isNodeArray, ReadonlyGroupedNodeArray } from "./components/Component"
 import { LedColor } from "./components/DisplayBar"
-import { DrawableWithPosition, DrawContext, DrawContextExt, GraphicsRendering, HasPosition, Orientation } from "./components/Drawable"
-import { Node, WireColor } from "./components/Node"
+import { DrawableWithPosition, DrawContext, DrawContextExt, GraphicsRendering, HasPosition } from "./components/Drawable"
+import { Node, NodeBase, WireColor } from "./components/Node"
 import { RectangleColor } from "./components/Rectangle"
 import { Waypoint } from "./components/Wire"
 import { LogicEditor } from "./LogicEditor"
-import { EdgeTrigger, FixedArray, FixedArrayAssert, InBrowser, isArray, isHighImpedance, isNumber, isString, isUnknown, LogicValue, Mode, Unknown } from "./utils"
+import { EdgeTrigger, FixedArray, FixedArrayAssert, InBrowser, isArray, isHighImpedance, isNumber, isString, isUnknown, LogicValue, Mode, Orientation, Unknown } from "./utils"
 
 
 //
@@ -751,8 +751,12 @@ export function drawLabel(ctx: DrawContextExt, compOrient: Orientation, text: st
     }
 
     let showLabel = true
+    let labelOffset: readonly [number, number] | undefined = undefined
     if (referenceNode !== undefined) {
         showLabel = shouldDrawNodeLabel(referenceNode)
+        if (referenceNode instanceof NodeBase) {
+            labelOffset = referenceNode.labelOffset?.(compOrient)
+        }
     }
     if (!showLabel) {
         return
@@ -775,7 +779,11 @@ export function drawLabel(ctx: DrawContextExt, compOrient: Orientation, text: st
         (isNodeArray(x) ? x.group : x).posXInParentTransform
     const yy = isNumber(y) ? y :
         (isNodeArray(y) ? y.group : y).posYInParentTransform
-    const [finalX, finalY] = ctx.rotatePoint(xx, yy)
+    let [finalX, finalY] = ctx.rotatePoint(xx, yy)
+    if (labelOffset) {
+        finalX += labelOffset[0]
+        finalY += labelOffset[1]
+    }
 
     // we assume a color and a font have been set before this function is called
     const g = ctx.g

@@ -2,9 +2,9 @@ import * as t from "io-ts"
 import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, displayValuesFromArray, drawLabel, drawWireLineToComponent, fillTextVAlign, GRID_STEP, TextVAlign } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
-import { ArrayFillUsing, ArrayFillWith, isBoolean, isHighImpedance, isUnknown, LogicValue, typeOrUndefined, Unknown } from "../utils"
+import { ArrayFillUsing, ArrayFillWith, isBoolean, isHighImpedance, isUnknown, LogicValue, Orientation, typeOrUndefined, Unknown } from "../utils"
 import { defineParametrizedComponent, groupHorizontal, groupVertical, param, paramBool, ParametrizedComponentBase, Repr, ResolvedParams, Value } from "./Component"
-import { DrawableParent, DrawContext, GraphicsRendering, MenuData, MenuItems, Orientation } from "./Drawable"
+import { DrawableParent, DrawContext, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
 import { Gate1Types, Gate2toNType, Gate2toNTypes } from "./GateTypes"
 
 
@@ -365,7 +365,7 @@ export function doALUAdd(a: readonly LogicValue[], b: readonly LogicValue[], cin
         cins[i + 1] = cout
     }
     const cout = cins[numBits]
-    const v = !isBoolean(cout) || !isBoolean(cins[numBits - 2]) ? Unknown : cout !== cins[numBits - 1]
+    const v = !isBoolean(cout) || !isBoolean(cins[numBits - 1]) ? Unknown : cout !== cins[numBits - 1]
     return { s, cout, v }
 }
 

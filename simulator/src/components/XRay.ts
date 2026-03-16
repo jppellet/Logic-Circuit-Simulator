@@ -4,9 +4,9 @@ import { DrawParams, LogicEditor } from "../LogicEditor"
 import { NodeManager } from "../NodeManager"
 import { RecalcManager } from "../RedrawRecalcManager"
 import { TestSuites } from "../TestSuite"
-import { Mode } from "../utils"
+import { Mode, Orientation } from "../utils"
 import { Component, InjectedParams } from "./Component"
-import { DrawableParent, GraphicsRendering, Orientation } from "./Drawable"
+import { DrawableParent, GraphicsRendering } from "./Drawable"
 import { Gate, Gate1, Gate1Def, GateN, GateNDef } from "./Gate"
 import { Gate1Type, Gate1Types, GateNType } from "./GateTypes"
 import { Node, NodeBase, NodeIn, NodeOut } from "./Node"
@@ -102,7 +102,7 @@ export class XRay implements DrawableParent {
 
     private alignComponentOf(nodeToAlign: Node, referenceNode: Node) {
         const comp = nodeToAlign.component
-        const alignX = Orientation.isVertical(referenceNode.orient)
+        const alignX = Orientation.isVertical(Orientation.add(referenceNode.component.orient, referenceNode.orient))
         let fail: [number, string] | undefined = undefined
         if (alignX) {
             if (comp.posX !== 0) {

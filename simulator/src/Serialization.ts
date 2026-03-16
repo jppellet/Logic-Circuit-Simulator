@@ -208,7 +208,7 @@ class _Serialization {
         if (parent.isMainEditor()) {
             // load userdata, keeping already existing data
             if (parsed.userdata !== undefined) {
-                if (typeof parent.userdata === "object" && typeof parsed.userdata === "object") {
+                if (isRecord(parent.userdata) && isRecord(parsed.userdata)) {
                     // merge
                     parent.userdata = {
                         ...parsed.userdata,
@@ -673,7 +673,7 @@ export function stringifySmart(
             replacer = undefined
         }
 
-        if (typeof obj === "object" && obj !== null) {
+        if (isRecord(obj)) {
             const nextIndent = currentIndent + indent
             const items: string[] = []
             let index = 0

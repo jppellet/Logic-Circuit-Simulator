@@ -1,7 +1,7 @@
 import { Serialization } from "./Serialization"
-import { binaryStringRepr, isAllZeros, isArray, isRecord, isString, toLogicValue } from "./utils"
+import { binaryStringRepr, isAllZeros, isArray, isRecord, isString, Orientation, Orientations, toLogicValue } from "./utils"
 
-export const CurrentFormatVersion = 7
+export const CurrentFormatVersion = 8
 
 export function migrateData(data: Record<string, unknown>, editorId: string | undefined) {
 
@@ -42,6 +42,26 @@ export function migrateData(data: Record<string, unknown>, editorId: string | un
 // Migration functions
 
 const migrateTo: Record<number, (container: Record<string, unknown>) => void> = {
+
+    8: (container) => {
+        let nextNewId = findFirstFreeId(container)
+
+        migrateAllComponentListsOfV6Plus(container, comp => {
+            // adder-array has one more output
+            if (comp.type === "adder-array") {
+                const outArray = isArray(comp.out) ? comp.out : [comp.out]
+                outArray.push(nextNewId++) // add a new Overflow output
+                comp.out = outArray
+            }
+
+            // adder changed orientation
+            if (comp.type === "adder") {
+                const orient = Orientations.includes(comp.orient) ? comp.orient : Orientation.default
+                const newOrient = Orientation.nextClockwise(orient)
+                comp.orient = newOrient
+            }
+        })
+    },
 
     7: (container) => {
         // dec-bcd4 is now dec-bcd with bits=4
@@ -409,7 +429,7 @@ function findFirstFreeId(parsedContents: Record<string, unknown>): number {
 
     let maxId = -1
 
-    function inspectComponentDef(compDef: Record<string, unknown>) {
+    function inspectComponentLine(compDef: Record<string, unknown>) {
         for (const fieldName of ["id", "in", "out"]) {
             inspectValue(compDef[fieldName])
         }
@@ -431,16 +451,17 @@ function findFirstFreeId(parsedContents: Record<string, unknown>): number {
             for (const item of value) {
                 inspectValue(item)
             }
-        } else if (typeof value === "object" && value !== null) {
-            inspectValue((value as Record<string, unknown>).id)
+        } else if (isRecord(value)) {
+            inspectValue(value.id)
         }
     }
 
     for (const jsonField of Object.keys(parsedContents)) {
-        const arr = parsedContents[jsonField]
-        if (arr !== undefined && isArray(arr)) {
+        const value = parsedContents[jsonField]
+        if (value !== undefined) {
+            const arr = isArray(value) ? value : isRecord(value) ? Object.values(value) : []
             for (const comp of arr) {
-                inspectComponentDef(comp)
+                inspectComponentLine(comp)
             }
         }
     }

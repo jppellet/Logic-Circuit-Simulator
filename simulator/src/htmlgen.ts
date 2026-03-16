@@ -4,7 +4,7 @@
 //
 
 import { inlineIconSvgFor, isIconName } from "./images"
-import { isHighImpedance, isUnknown, LogicValue, Unknown } from "./utils"
+import { isHighImpedance, isRecord, isUnknown, LogicValue, Unknown } from "./utils"
 
 export interface ModifierObject {
     applyTo(parent: Element): void
@@ -23,11 +23,11 @@ export interface StyleBuilder {
     styleName: string
 }
 
-export function isModifierObject(mod: any): mod is ModifierObject {
-    return typeof mod.applyTo === "function"
+export function isModifierObject(mod: unknown): mod is ModifierObject {
+    return isRecord(mod) && typeof mod.applyTo === "function"
 }
-export function isNode(obj: any): obj is Node {
-    return typeof obj === "object" && "nodeType" in obj
+export function isNode(obj: unknown): obj is Node {
+    return isRecord(obj) && "nodeType" in obj
 }
 
 export function applyModifierTo(parent: Element, modifier: Modifier): void {

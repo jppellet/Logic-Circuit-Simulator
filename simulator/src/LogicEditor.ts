@@ -28,7 +28,7 @@ import { EditorSelection, PointerDragEvent, UIEventManager } from "./UIEventMana
 import { UndoManager } from './UndoManager'
 import { Component, ComponentBase, InjectedParams } from "./components/Component"
 import { CustomComponent } from "./components/CustomComponent"
-import { Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, EditTools, GraphicsRendering, Orientation } from "./components/Drawable"
+import { Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, EditTools, GraphicsRendering } from "./components/Drawable"
 import { type Input } from "./components/Input"
 import { Rectangle, RectangleDef } from "./components/Rectangle"
 import { LinkManager, Wire, WireStyle, WireStyles } from "./components/Wire"
@@ -38,7 +38,7 @@ import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
 import { makeIcon } from "./images"
 import { DefaultLang, S, getLang, isLang, setLang } from "./strings"
-import { Any, InBrowser, KeysOfByType, LogicValue, UIDisplay, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isString, isTruthyString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
+import { Any, InBrowser, KeysOfByType, LogicValue, Orientation, UIDisplay, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
 
 
 
@@ -103,6 +103,7 @@ const DEFAULT_EDITOR_OPTIONS = {
     hideMemoryContent: false,
     hideTooltips: false,
     hideXRay: false,
+    forceXRay: false,
     groupParallelWires: false,
     showHiddenWires: false,
     showAnchors: false,
@@ -554,7 +555,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                         this.userdata = value
                     } else {
                         key = key[0].toLowerCase() + key.substring(1)
-                        if (typeof this.userdata !== "object") {
+                        if (!isRecord(this.userdata)) {
                             this.userdata = {}
                         }
                         if (key in this.userdata) {

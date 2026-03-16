@@ -2,9 +2,9 @@ import * as t from "io-ts"
 import { COLOR_COMPONENT_BORDER, COLOR_UNKNOWN, TextVAlign, displayValuesFromArray, fillTextVAlign, formatWithRadix } from "../drawutils"
 import { b, div, emptyMod, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
-import { InteractionResult, Mode, isUnknown, typeOrUndefined } from "../utils"
+import { InteractionResult, Mode, Orientation, isUnknown, typeOrUndefined } from "../utils"
 import { ComponentBase, ComponentName, ComponentNameRepr, Repr, defineComponent, groupVertical } from "./Component"
-import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems, Orientation } from "./Drawable"
+import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
 
 
 export const DisplayAsciiDef =
