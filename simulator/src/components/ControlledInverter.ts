@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_COMPONENT_BORDER, COLOR_UNKNOWN, circle, colorForLogicValue } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, COLOR_UNKNOWN, GRID_STEP, circle, colorForLogicValue, useCompact } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, LogicValue, Unknown, isHighImpedance, isUnknown, typeOrUndefined } from "../utils"
@@ -123,7 +123,31 @@ export class ControlledInverter extends ParametrizedComponentBase<ControlledInve
                 circle(g, right - 10, this.posY, 5)
                 g.stroke()
             },
+            xrayScale: useCompact(this.numBits) ? 0.18 : 0.36,
         })
+    }
+
+    protected override makeXRay(scale: number) {
+        const { xray, wire, gate } = this.parent.editor.newXRay(this)
+        const { ins, outs, x, y, later } = this.makeXRayNodes<ControlledInverter>(xray, scale)
+
+        const bits = this.numBits
+
+        const xIn = x(-0.95)
+        const xorInDist = (useCompact(bits) ? 2 : 1) * GRID_STEP
+        const xorInTop = bits < 4 ? y(-0.7)
+            : y.top - (useCompact(bits) ? 1.5 : 1) / scale
+        for (let i = bits - 1; i >= 0; i--) {
+            const xor = gate(`xor${i}`, "xor", 0, later)
+            wire(xor, outs.Out[i], false)
+            wire(ins.In[i], xor.in[1], "hv", [xIn, xor.in[1].posY])
+            wire(ins.S, xor.in[0], "hv", [
+                [0, xorInTop],
+                [xor.in[0].posX - xorInDist, xor.in[0].posY, i < bits - 1],
+            ])
+        }
+
+        return xray
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {
