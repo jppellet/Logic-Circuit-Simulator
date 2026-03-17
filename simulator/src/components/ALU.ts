@@ -40,7 +40,12 @@ export const ALUDef =
             const top = -bottom
             const topGroupBits = usesExtendedOpcode ? 5 : 3
             // top group is built together
-            const topGroup = groupHorizontal("n", 0, top, topGroupBits, undefined, { leadLength: 20 })
+            const topGroup = groupHorizontal("n", 0, top, topGroupBits, undefined, { leadLength: 0 })
+            const leadLengthS = 9
+            const leadLengthM = 14
+            const leadLengthL = 20
+            const leadLengths = usesExtendedOpcode ? [leadLengthL, 17, leadLengthM, 11, leadLengthS] : [leadLengthL, leadLengthM, 9]
+            topGroup.forEach((spec, i) => spec[4]!.leadLength = leadLengths[i])
             const cin = topGroup.pop()!
             // extracted to be mapped correctly when switching between reduced/extended opcodes
             const opMode = topGroup.pop()!
@@ -50,13 +55,13 @@ export const ALUDef =
                     B: groupVertical("w", -outputX, inputCenterY, numBits),
                     Op: topGroup,
                     Mode: opMode,
-                    Cin: [cin[0], cin[1], "n", `Cin (${S.Components.ALU.InputCinDesc})`, { leadLength: 10 }],
+                    Cin: [cin[0], cin[1], "n", `Cin (${S.Components.ALU.InputCinDesc})`, cin[4]],
                 },
                 outs: {
                     S: groupVertical("e", outputX, 0, numBits),
-                    V: [0, bottom, "s", "V (oVerflow)", { leadLength: 20 }],
-                    Z: [2, bottom, "s", "Z (Zero)", { leadLength: 20 }],
-                    Cout: [-2, bottom, "s", `Cout (${S.Components.ALU.OutputCoutDesc})`, { leadLength: 20 }],
+                    V: [0, bottom, "s", "V (oVerflow)", { leadLength: leadLengthM }],
+                    Z: [2, bottom, "s", "Z (Zero)", { leadLength: leadLengthL }],
+                    Cout: [-2, bottom, "s", `Cout (${S.Components.ALU.OutputCoutDesc})`, { leadLength: leadLengthS }],
                 },
             }
         },
@@ -412,7 +417,7 @@ export function doALUSub(a: readonly LogicValue[], b: readonly LogicValue[], cin
         const yNeg = s[lastIdx] === true
 
         // see https://stackoverflow.com/a/34547815/390581
-        // Signed integer overflow of the expression x-y-c (where c is again 0 or 1)
+        // Signed integer overflow of the expression x-y-c (where c is 0 or 1)
         // occurs if and only if x and y have opposite signs, and the sign of the 
         // result is opposite to that of x (or, equivalently, the same as that of y).
         v = aNeg !== bNeg && aNeg !== yNeg

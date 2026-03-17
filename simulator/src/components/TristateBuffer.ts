@@ -22,19 +22,22 @@ export const TristateBufferDef =
             return { controlPinsAtBottom: bottom }
         },
         size: () => ({ gridWidth: 4, gridHeight: 4 }),
-        makeNodes: ({ controlPinsAtBottom }) => ({
-            ins: {
-                In: [-4, 0, "w", { leadLength: 20 }],
-                E: [0,
-                    controlPinsAtBottom ? 3 : -3,
-                    controlPinsAtBottom ? "s" : "n",
-                    "E (Enable)", { leadLength: 20 },
-                ],
-            },
-            outs: {
-                Out: [+4, 0, "e", { leadLength: 20 }],
-            },
-        }),
+        makeNodes: ({ controlPinsAtBottom, isXRay }) => {
+            const eDist = isXRay ? 2 : 3
+            return {
+                ins: {
+                    In: [-4, 0, "w", { leadLength: 20 }],
+                    E: [0,
+                        controlPinsAtBottom ? eDist : -eDist,
+                        controlPinsAtBottom ? "s" : "n",
+                        "E (Enable)", { leadLength: isXRay ? 10 : 20 },
+                    ],
+                },
+                outs: {
+                    Out: [+4, 0, "e", { leadLength: 20 }],
+                },
+            }
+        },
         initialValue: () => HighImpedance as LogicValue,
     })
 

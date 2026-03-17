@@ -45,8 +45,8 @@ export const DemuxDef =
             const gridHeight = spacing * numLeftSlots
             return { gridWidth, gridHeight }
         },
-        makeNodes: ({ numFrom, numGroups, numSel, controlPinsAtBottom }) => {
-            const outX = 1 + numSel
+        makeNodes: ({ numFrom, numGroups, numSel, controlPinsAtBottom, isXRay }) => {
+            const outX = (isXRay ? 0.5 : 1) + numSel
             const inX = -outX
 
             const groupOfOutputs = groupVerticalMulti("e", outX, 0, numGroups, numFrom)

@@ -42,8 +42,8 @@ export const MuxDef =
             const gridHeight = 1 + spacing * numLeftSlots
             return { gridWidth, gridHeight }
         },
-        makeNodes: ({ numTo, numGroups, numSel, controlPinsAtBottom }) => {
-            const outX = 1 + numSel
+        makeNodes: ({ numTo, numGroups, numSel, controlPinsAtBottom, isXRay }) => {
+            const outX = (isXRay ? 0.5 : 1) + numSel
             const inX = -outX
 
             const groupOfInputs = groupVerticalMulti("w", inX, 0, numGroups, numTo)

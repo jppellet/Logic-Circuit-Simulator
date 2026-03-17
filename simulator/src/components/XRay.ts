@@ -4,10 +4,10 @@ import { DrawParams, LogicEditor } from "../LogicEditor"
 import { NodeManager } from "../NodeManager"
 import { RecalcManager } from "../RedrawRecalcManager"
 import { TestSuites } from "../TestSuite"
-import { Mode, Orientation } from "../utils"
+import { isArray, Mode, Orientation } from "../utils"
 import { Component, InjectedParams } from "./Component"
 import { DrawableParent, GraphicsRendering } from "./Drawable"
-import { Gate, Gate1, Gate1Def, GateN, GateNDef } from "./Gate"
+import { Gate1, Gate1Def, GateN, GateNDef } from "./Gate"
 import { Gate1Type, Gate1Types, GateNType } from "./GateTypes"
 import { Node, NodeBase, NodeIn, NodeOut } from "./Node"
 import { LinkManager, WireStyle } from "./Wire"
@@ -54,7 +54,7 @@ export class XRay implements DrawableParent {
      * on other components that don't have their final position yet, and make the
      * wires with visible intersection waypoints after the wire undernear without.
      */
-    public wire(startNode: NodeOut | Gate, endNode: NodeIn | Gate1, styleOrAlign?: WireStyle | boolean, via?: WaypointSpecCompact | WaypointSpecCompact[]) {
+    public wire(startNode: NodeOut | Component & { outputs: { Out: NodeOut } }, endNode: NodeIn | Gate1, styleOrAlign?: WireStyle | boolean, via?: WaypointSpecCompact | WaypointSpecCompact[]) {
         if (!(startNode instanceof NodeBase)) {
             startNode = startNode.outputs.Out
         }
@@ -102,7 +102,8 @@ export class XRay implements DrawableParent {
 
     private alignComponentOf(nodeToAlign: Node, referenceNode: Node) {
         const comp = nodeToAlign.component
-        const alignX = Orientation.isVertical(Orientation.add(referenceNode.component.orient, referenceNode.orient))
+        const referenceComponentOrient = referenceNode.isXRayMirrorNode ? Orientation.default : referenceNode.component.orient
+        const alignX = Orientation.isVertical(Orientation.add(referenceComponentOrient, referenceNode.orient))
         let fail: [number, string] | undefined = undefined
         if (alignX) {
             if (comp.posX !== 0) {

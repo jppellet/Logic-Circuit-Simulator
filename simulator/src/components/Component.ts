@@ -450,6 +450,7 @@ export abstract class ComponentBase<
         node: new (
             component: Component,
             parent: DrawableParent,
+            isXRayMirrorNode: boolean,
             nodeSpec: InputNodeRepr | OutputNodeRepr,
             group: NodeGroup<TNode> | undefined,
             idName: string,
@@ -498,6 +499,7 @@ export abstract class ComponentBase<
                 const newNode = new node(
                     this,
                     this.parent,
+                    false,
                     spec,
                     group,
                     idName,
@@ -989,6 +991,10 @@ export abstract class ComponentBase<
         return undefined
     }
 
+    protected invalidateXRay() {
+        this._cachedXRay = undefined
+    }
+
     protected makeXRayNodes<C extends Component>(this: C, xray: XRay, scale: number): {
         ins: {
             [K in Exclude<keyof C["inputs"], "_all">]:
@@ -1005,7 +1011,7 @@ export abstract class ComponentBase<
         const ins: Record<string, NodeOut | NodeOut[]> = {}
         for (const input of this.inputs._all) {
             const id = xray.nodeMgr.getFreeId()
-            const internalNode = new NodeOut(this, xray, { id }, undefined, input.idName, input.shortName, input.fullName, 0, 0, false, Orientation.invert(input.orient), 0, undefined)
+            const internalNode = new NodeOut(this, xray, true, { id }, undefined, input.idName, input.shortName, input.fullName, 0, 0, false, Orientation.invert(input.orient), 0, undefined)
             internalNode.setPositionAsXRayFor(input, scale)
             internalNode.value = input.value
             if (input.xrayNode !== undefined) {
@@ -1024,7 +1030,7 @@ export abstract class ComponentBase<
         const outs: Record<string, NodeIn | NodeIn[]> = {}
         for (const output of this.outputs._all) {
             const id = xray.nodeMgr.getFreeId()
-            const internalNode = new NodeIn(this, xray, { id }, undefined, output.idName, output.shortName, output.fullName, 0, 0, false, Orientation.invert(output.orient), 0, undefined)
+            const internalNode = new NodeIn(this, xray, true, { id }, undefined, output.idName, output.shortName, output.fullName, 0, 0, false, Orientation.invert(output.orient), 0, undefined)
             internalNode.setPositionAsXRayFor(output, scale)
             if (output.group === undefined) {
                 outs[output.idName] = internalNode
@@ -1667,7 +1673,7 @@ export function groupVertical(orient: "e" | "w", x: number, yCenter: number, num
     const span = (num - 1) * spacing_
     const yTop = yCenter - span / 2
     return group(orient,
-        ArrayFillUsing(i => [x, yTop + i * spacing_, undefined, opts], num)
+        ArrayFillUsing(i => [x, yTop + i * spacing_, undefined, { ...opts }], num)
     )
 }
 
@@ -1687,7 +1693,7 @@ export function groupHorizontal(orient: "n" | "s", xCenter: number, y: number, n
     const span = (num - 1) * spacing_
     const xRight = xCenter + span / 2
     return group(orient,
-        ArrayFillUsing(i => [xRight - i * spacing_, y, undefined, opts], num)
+        ArrayFillUsing(i => [xRight - i * spacing_, y, undefined, { ...opts }], num)
     )
 }
 

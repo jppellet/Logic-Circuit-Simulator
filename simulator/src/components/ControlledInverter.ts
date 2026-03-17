@@ -29,18 +29,21 @@ export const ControlledInverterDef =
             gridWidth: 4,
             gridHeight: 8 + Math.max(0, numBits - 8),
         }),
-        makeNodes: ({ numBits, controlPinsAtBottom, gridHeight }) => ({
-            ins: {
-                In: groupVertical("w", -3, 0, numBits),
-                S: [0,
-                    -(gridHeight / 2 + 1) * (controlPinsAtBottom ? -1 : 1),
-                    controlPinsAtBottom ? "s" : "n",
-                ],
-            },
-            outs: {
-                Out: groupVertical("e", +3, 0, numBits),
-            },
-        }),
+        makeNodes: ({ numBits, controlPinsAtBottom, gridHeight, isXRay }) => {
+            const outX = isXRay ? 2.5 : 3
+            return {
+                ins: {
+                    In: groupVertical("w", -outX, 0, numBits),
+                    S: [0,
+                        -(gridHeight / 2 + 1) * (controlPinsAtBottom ? -1 : 1),
+                        controlPinsAtBottom ? "s" : "n",
+                    ],
+                },
+                outs: {
+                    Out: groupVertical("e", outX, 0, numBits),
+                },
+            }
+        },
         initialValue: (saved, { numBits }) => ArrayFillWith<LogicValue>(false, numBits),
     })
 

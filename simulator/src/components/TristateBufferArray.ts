@@ -1,11 +1,12 @@
 import * as t from "io-ts"
-import { COLOR_COMPONENT_BORDER, colorForLogicValue } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, GRID_STEP, colorForLogicValue, useCompact } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, HighImpedance, LogicValue, Unknown, isHighImpedance, isUnknown, typeOrUndefined } from "../utils"
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupVertical, param, paramBool } from "./Component"
 import { ControlledInverterDef } from "./ControlledInverter"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
+import { TristateBuffer, TristateBufferDef } from "./TristateBuffer"
 
 
 export const TristateBufferArrayDef =
@@ -27,19 +28,22 @@ export const TristateBufferArrayDef =
             controlPinsAtBottom: bottom,
         }),
         size: ControlledInverterDef.size,
-        makeNodes: ({ numBits, controlPinsAtBottom, gridHeight }) => ({
-            ins: {
-                In: groupVertical("w", -3, 0, numBits),
-                E: [0,
-                    -(gridHeight / 2 + 1) * (controlPinsAtBottom ? -1 : 1),
-                    controlPinsAtBottom ? "s" : "n",
-                    "E (Enable)",
-                ],
-            },
-            outs: {
-                Out: groupVertical("e", 3, 0, numBits),
-            },
-        }),
+        makeNodes: ({ numBits, controlPinsAtBottom, gridHeight, isXRay }) => {
+            const outX = isXRay ? 2.5 : 3
+            return {
+                ins: {
+                    In: groupVertical("w", -outX, 0, numBits),
+                    E: [0,
+                        -(gridHeight / 2 + 1) * (controlPinsAtBottom ? -1 : 1),
+                        controlPinsAtBottom ? "s" : "n",
+                        "E (Enable)",
+                    ],
+                },
+                outs: {
+                    Out: groupVertical("e", outX, 0, numBits),
+                },
+            }
+        },
         initialValue: (saved, { numBits }) => ArrayFillWith<LogicValue>(HighImpedance, numBits),
     })
 
@@ -117,7 +121,32 @@ export class TristateBufferArray extends ParametrizedComponentBase<TristateBuffe
                 g.closePath()
                 g.stroke()
             },
+            xrayScale: useCompact(this.numBits) ? 0.18 : 0.36,
         })
+    }
+
+    protected override makeXRay(scale: number) {
+        const { xray, wire } = this.parent.editor.newXRay(this)
+        const { ins, outs, x, y, later } = this.makeXRayNodes<TristateBufferArray>(xray, scale)
+
+        const bits = this.numBits
+
+        const xIn = x(-0.95)
+        const triInX = -(useCompact(bits) ? 5 : 3.5) * GRID_STEP
+        const triInTop = bits < 4 ? y(-0.7)
+            : y.top - (useCompact(bits) ? 1.5 : 1) / scale
+        for (let i = bits - 1; i >= 0; i--) {
+            const tri = TristateBufferDef.makeSpawned<TristateBuffer>(xray, `tri${i}`, 0, later, "e", { bottom: true })
+
+            wire(tri, outs.Out[i], false)
+            wire(ins.In[i], tri.inputs.In, "hv", [xIn, tri.inputs.In.posY])
+            wire(ins.E, tri.inputs.E, "hv", [
+                [0, triInTop],
+                [triInX, tri.inputs.E.posY + 4, i < bits - 1],
+            ])
+        }
+
+        return xray
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

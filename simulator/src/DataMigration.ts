@@ -10,7 +10,7 @@ export function migrateData(data: Record<string, unknown>, editorId: string | un
     let jsonVersion = Number(data.v ?? 0)
     const savedVersion = jsonVersion
     if (savedVersion > CurrentFormatVersion) {
-        throw new Error(`Data format v${savedVersion} is newer than what this editor can load (v ≤ ${CurrentFormatVersion}`)
+        throw new Error(`Data format v${savedVersion} is newer than what this editor can load (v ≤ ${CurrentFormatVersion})`)
     }
     while (jsonVersion < CurrentFormatVersion) {
         const migrationFunc = migrateTo[++jsonVersion]
@@ -33,7 +33,7 @@ export function migrateData(data: Record<string, unknown>, editorId: string | un
     }
     if (jsonVersion !== savedVersion) {
         const newRepr = Serialization.stringifyObject(data, false)
-        const editorIdStr = editorId !== undefined ? ` for editor '${editorId}'` : ""
+        const editorIdStr = editorId !== undefined ? ` with ID '${editorId}'` : ""
         console.log(`LogicEditor${editorIdStr} migrated data format from v${savedVersion} to v${jsonVersion}, consider upgrading its source to this:\n${newRepr}`)
         // console.log("WAS:\n" + initialRepr)
     }
