@@ -562,10 +562,13 @@ export const Gate1Def =
             gridWidth: 4,
             gridHeight: 4,
         }),
-        makeNodes: ({ isXRay }) => ({
-            ins: { In: [[isXRay ? -2.5 : -4, 0, "w", { leadLength: 20 }]] },
-            outs: { Out: [isXRay ? 2.5 : +4, 0, "e", { leadLength: 20 }] },
-        }),
+        makeNodes: ({ isXRay }) => {
+            const leadLength = isXRay ? 5 : 20
+            return {
+                ins: { In: [[isXRay ? -2.5 : -4, 0, "w", { leadLength }]] },
+                outs: { Out: [isXRay ? 2.5 : +4, 0, "e", { leadLength }] },
+            }
+        },
         initialValue: () => false as LogicValue,
     })
 

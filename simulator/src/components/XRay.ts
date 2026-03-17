@@ -90,6 +90,62 @@ export class XRay implements DrawableParent {
         }
     }
 
+    public wires(startNodes: NodeOut[], endNodes: NodeIn[], leftOrTop: number, rightOrBottom: number): number[] & { width: number }
+    public wires(startNodes: NodeOut[], endNodes: NodeIn[], lineCoords?: number[]): number[] & { width: number }
+
+    public wires(startNodes: NodeOut[], endNodes: NodeIn[], lineCoordsOrLeftOrTop?: number | number[], rightOrBottom?: number): number[] & { width: number } {
+        const num = Math.min(startNodes.length, endNodes.length)
+        if (num === 0) {
+            return Object.assign([], { width: 0 })
+        }
+        if (isArray(lineCoordsOrLeftOrTop) && lineCoordsOrLeftOrTop.length < num) {
+            console.warn(`lineCoords too short in XRay.wires, should have length ${num} but has length ${lineCoordsOrLeftOrTop.length}`)
+            lineCoordsOrLeftOrTop = undefined
+        }
+
+        let lineCoords: number[]
+        if (Orientation.isVertical(startNodes[0].orient)) {
+            // mainly-horizontal wires
+            console.log("unhandled horizontal auto connect")
+            lineCoords = []
+            for (let i = 0; i < num; i++) {
+                this.wire(startNodes[i], endNodes[i])
+            }
+
+        } else {
+
+            if (isArray(lineCoordsOrLeftOrTop)) {
+                lineCoords = lineCoordsOrLeftOrTop
+            } else {
+                lineCoords = []
+                const xRight = rightOrBottom ?? endNodes[0].posX
+                const incWidth = (xRight - (lineCoordsOrLeftOrTop ?? startNodes[0].posX)) / (num - 1)
+                for (let i = 0; i < num; i++) {
+                    const posX = xRight - i * incWidth
+                    lineCoords.push(posX)
+                }
+            }
+
+            // mainly-vertical wires
+            let start, inc
+            if (startNodes[0].posY < endNodes[0].posY) {
+                // begin with first index
+                start = 0
+                inc = 1
+            } else {
+                // begin with last index
+                start = num - 1
+                inc = -1
+            }
+            for (let i = start, j = 0; j < num; i += inc, j += 1) {
+                this.wire(startNodes[i], endNodes[i], "vh", [lineCoords[j], startNodes[i].posY])
+            }
+        }
+
+        const width = lineCoords.length === 0 ? 0 : lineCoords[0] - lineCoords[lineCoords.length - 1]
+        return Object.assign(lineCoords, { width })
+    }
+
     public gate<G extends GateNType | Gate1Type>(validatedId: string, type: G, x: number, y: number, orient?: Orientation, bits?: G extends Gate1Type ? undefined : number): G extends Gate1Type ? Gate1 : GateN {
         if (Gate1Types.includes(type)) {
             const gate1 = Gate1Def.makeSpawned<Gate1>(this, validatedId, x, y, orient, { type })

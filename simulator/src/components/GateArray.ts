@@ -3,7 +3,7 @@ import { circle, COLOR_COMPONENT_BORDER, COLOR_UNKNOWN, fillTextVAlign, GRID_STE
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillUsing, ArrayFillWith, LogicValue, Mode, typeOrUndefined } from "../utils"
-import { AdderArrayDef, getArrayXRayScale, makeArrayXRayLayout } from "./AdderArray"
+import { AdderArrayDef, getXRayArrayScale, xrayWireAndLayoutAsArray } from "./AdderArray"
 import { defineParametrizedComponent, groupVertical, param, ParametrizedComponentBase, Repr, ResolvedParams } from "./Component"
 import { DrawableParent, DrawContext, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
 import { GateTypePrefix, validateGateType } from "./Gate"
@@ -229,7 +229,7 @@ export class GateArray extends ParametrizedComponentBase<GateArrayRepr> {
                     }
                 }
             },
-            xrayScale: getArrayXRayScale(this.numBits),
+            xrayScale: getXRayArrayScale(this.numBits),
         })
     }
 
@@ -239,7 +239,7 @@ export class GateArray extends ParametrizedComponentBase<GateArrayRepr> {
         const { xray, gate } = this.parent.editor.newXRay(this)
         const { ins, outs, x } = this.makeXRayNodes<GateArray>(xray, scale)
 
-        makeArrayXRayLayout(
+        xrayWireAndLayoutAsArray(
             xray, bits, ins, outs, x, 3,
             (i, x, y) => gate(`gate${i}`, this.type, x, y),
             gate => gate.inputs.In[0],

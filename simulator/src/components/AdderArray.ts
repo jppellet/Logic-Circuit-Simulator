@@ -5,8 +5,9 @@ import { S } from "../strings"
 import { ArrayFillUsing, ArrayFillWith, LogicValue, typeOrUndefined } from "../utils"
 import { Adder, AdderDef } from "./Adder"
 import { ALUDef, doALUAdd } from "./ALU"
-import { ParametrizedComponentBase, Repr, ResolvedParams, Value, defineParametrizedComponent, groupVertical, param, shiftWhenHorizontal } from "./Component"
+import { Component, ParametrizedComponentBase, Repr, ResolvedParams, Value, defineParametrizedComponent, groupVertical, param, shiftWhenHorizontal } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
+import { NodeIn, NodeOut } from "./Node"
 import { XRay } from "./XRay"
 
 
@@ -29,19 +30,19 @@ export const AdderArrayDef =
             gridWidth: 4, // constant
             gridHeight: ALUDef.size({ ...params, usesExtendedOpcode: false }).gridHeight, // mimic ALU
         }),
-        makeNodes: ({ numBits, gridHeight }) => {
+        makeNodes: ({ numBits, gridHeight, isXRay }) => {
             const inputCenterY = 5 + Math.max(0, (numBits - 8) / 2)
             const coutY = Math.floor(gridHeight / 2) + 1
-            const cinY = -coutY
+            const outX = isXRay ? 2.5 : 3
 
             return {
                 ins: {
-                    A: groupVertical("w", -3, -inputCenterY, numBits),
-                    B: groupVertical("w", -3, inputCenterY, numBits),
-                    Cin: [0, cinY, "n"],
+                    A: groupVertical("w", -outX, -inputCenterY, numBits),
+                    B: groupVertical("w", -outX, inputCenterY, numBits),
+                    Cin: [0, -coutY, "n"],
                 },
                 outs: {
-                    S: groupVertical("e", 3, 0, numBits),
+                    S: groupVertical("e", outX, 0, numBits),
                     Cout: [-1, coutY, "s", { labelOffset: shiftWhenHorizontal(4, 0) }],
                     V: [1, coutY, "s", { labelOffset: shiftWhenHorizontal(2, 0) }],
                 },
@@ -104,7 +105,7 @@ export class AdderArray extends ParametrizedComponentBase<AdderArrayRepr> {
                 g.textAlign = "center"
                 fillTextVAlign(g, TextVAlign.middle, "+", ...ctx.rotatePoint(this.posX - 4, this.posY - 2))
             },
-            xrayScale: [0.32, 0.3, 0.20, 0.15][Math.log2(this.numBits) - 1],
+            xrayScale: getXRayArrayScale(this.numBits),
         })
     }
 
@@ -114,52 +115,13 @@ export class AdderArray extends ParametrizedComponentBase<AdderArrayRepr> {
         const { xray, wire, gate } = this.parent.editor.newXRay(this)
         const { ins, outs, x, y, later } = this.makeXRayNodes<AdderArray>(xray, scale)
 
-        const vGridStepSpacing = bits < 16 ? 11 : 12
-        const yFirstAdder = -(bits - 1) / 2 * vGridStepSpacing
-        const addersX = bits <= 2 ? 0
-            : bits <= 4 ? GRID_STEP / 2
-                : bits <= 8 ? GRID_STEP
-                    : 3.5 * GRID_STEP
-
-        // output line coords
-        const numOutLines = bits / 2
-        const outLineLeft = numOutLines === 1 ? x.right - GRID_STEP / 2 : addersX + 3.5 * GRID_STEP
-        const outLineSpacing = (x.right - outLineLeft) / numOutLines
-
-        const adders = ArrayFillUsing(i => {
-            const y = (yFirstAdder + i * vGridStepSpacing) * GRID_STEP
-            const adder = AdderDef.makeSpawned<Adder>(xray, `adder${i}`, addersX, y)
-            // output line
-            const outLineIndex = Math.floor(Math.abs(i - ((bits - 1) / 2)))
-            const outLineX = outLineLeft + outLineIndex * outLineSpacing
-            wire(adder.outputs.S, outs.S[i], "vh", [outLineX, adder.outputs.S.posY])
-            return adder
-        }, bits)
-
-        // input line coords
-        const inLineRight = addersX - 3.5 * GRID_STEP
-        const numLeftLines = bits + bits / 2 // half are never in visual conflict
-        const inLineSpacing = (inLineRight - x(-.95)) / (numLeftLines - 1)
-
-        // first, connect the non-visually-conflicting inputs (the "outer" ones)
-        const lastIndex = bits - 1
-        for (let i = 0; i < bits / 2; i++) {
-            const outLineX = inLineRight - i * inLineSpacing
-            wire(ins.A[i], adders[i].inputs.A, "vh", [outLineX, ins.A[i].posY])
-            wire(ins.B[lastIndex - i], adders[lastIndex - i].inputs.B, "vh", [outLineX, ins.B[lastIndex - i].posY])
-        }
-        // then connect the visually-conflicting inputs for the top half
-        for (let i = 0; i < bits / 2; i++) {
-            const inLineIndex = numLeftLines - 1 - 2 * i
-            const outLineX = inLineRight - inLineIndex * inLineSpacing
-            wire(ins.B[i], adders[i].inputs.B, "vh", [outLineX, ins.B[i].posY])
-        }
-        // then bottom half
-        for (let i = bits / 2; i < bits; i++) {
-            const inLineIndex = bits / 2 + (i - bits / 2) * 2
-            const outLineX = inLineRight - inLineIndex * inLineSpacing
-            wire(ins.A[i], adders[i].inputs.A, "vh", [outLineX, ins.A[i].posY])
-        }
+        const [addersX, adders] = xrayWireAndLayoutAsArray<Adder>(
+            xray, bits, ins, outs, x, 3.5,
+            (i, x, y) => AdderDef.makeSpawned(xray, `adder${i}`, x, y),
+            comp => comp.inputs.A,
+            comp => comp.inputs.B,
+            comp => comp.outputs.S,
+        )
 
         wire(ins.Cin, adders[0].inputs.Cin, "vh", [addersX, y.top + GRID_STEP])
         for (let i = 1; i < bits; i++) {
@@ -191,3 +153,74 @@ export class AdderArray extends ParametrizedComponentBase<AdderArrayRepr> {
 
 }
 AdderArrayDef.impl = AdderArray
+
+
+export function xrayWireAndLayoutAsArray<C extends Component>(
+    xray: XRay,
+    bits: number,
+    ins: { A: NodeOut[]; B: NodeOut[] },
+    outs: { S: NodeIn[] },
+    x: ((f: number) => number) & { left: number, right: number },
+    compNodeGridDist: number,
+    makeComp: (i: number, x: number, y: number) => C,
+    getCompInputTop: (c: C) => NodeIn,
+    getCompInputBottom: (c: C) => NodeIn,
+    getCompOutput: (c: C) => NodeOut,
+): [number, C[]] {
+
+    const vGridStepSpacing = bits < 16 ? 11 : 12
+    const yFirstComp = -(bits - 1) / 2 * vGridStepSpacing
+    const compX = bits <= 2 ? 0
+        : bits <= 4 ? GRID_STEP / 2
+            : bits <= 8 ? GRID_STEP
+                : 3.5 * GRID_STEP
+
+    // output line coords
+    const numOutLines = bits / 2
+    const outLineLeft = numOutLines === 1 ? x.right - GRID_STEP / 2
+        : compX + compNodeGridDist * GRID_STEP
+    const outLineSpacing = (x.right - outLineLeft) / numOutLines
+
+    const comps = ArrayFillUsing(i => {
+        const y = (yFirstComp + i * vGridStepSpacing) * GRID_STEP
+        const comp = makeComp(i, compX, y)
+
+        // output line
+        const outLineIndex = Math.floor(Math.abs(i - ((bits - 1) / 2)))
+        const outLineX = outLineLeft + outLineIndex * outLineSpacing
+        const compOutput = getCompOutput(comp)
+        xray.wire(compOutput, outs.S[i], "vh", [outLineX, compOutput.posY])
+        return comp
+    }, bits)
+
+    // input line coords
+    const inLineRight = compX - compNodeGridDist * GRID_STEP
+    const numLeftLines = bits + bits / 2 // half are never in visual conflict
+    const inLineSpacing = (inLineRight - x(-.95)) / (numLeftLines - 1)
+
+    // first, connect the non-visually-conflicting inputs (the "outer" ones)
+    const lastIndex = bits - 1
+    for (let i = 0; i < bits / 2; i++) {
+        const outLineX = inLineRight - i * inLineSpacing
+        xray.wire(ins.A[i], getCompInputTop(comps[i]), "vh", [outLineX, ins.A[i].posY])
+        xray.wire(ins.B[lastIndex - i], getCompInputBottom(comps[lastIndex - i]), "vh", [outLineX, ins.B[lastIndex - i].posY])
+    }
+    // then connect the visually-conflicting inputs for the top half
+    for (let i = 0; i < bits / 2; i++) {
+        const inLineIndex = numLeftLines - 1 - 2 * i
+        const outLineX = inLineRight - inLineIndex * inLineSpacing
+        xray.wire(ins.B[i], getCompInputBottom(comps[i]), "vh", [outLineX, ins.B[i].posY])
+    }
+    // then bottom half
+    for (let i = bits / 2; i < bits; i++) {
+        const inLineIndex = bits / 2 + (i - bits / 2) * 2
+        const outLineX = inLineRight - inLineIndex * inLineSpacing
+        xray.wire(ins.A[i], getCompInputTop(comps[i]), "vh", [outLineX, ins.A[i].posY])
+    }
+
+    return [compX, comps]
+}
+
+export function getXRayArrayScale(bits: number) {
+    return [0.32, 0.3, 0.20, 0.15][Math.log2(bits) - 1]
+}
