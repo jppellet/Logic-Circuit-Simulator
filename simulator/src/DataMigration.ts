@@ -1,5 +1,5 @@
 import { Serialization } from "./Serialization"
-import { binaryStringRepr, isAllZeros, isArray, isRecord, isString, Orientation, Orientations, toLogicValue } from "./utils"
+import { binaryStringRepr, isAllZeros, isArray, isNumber, isRecord, isString, Orientation, Orientations, toLogicValue } from "./utils"
 
 export const CurrentFormatVersion = 8
 
@@ -59,6 +59,17 @@ const migrateTo: Record<number, (container: Record<string, unknown>) => void> = 
                 const orient = Orientations.includes(comp.orient) ? comp.orient : Orientation.default
                 const newOrient = Orientation.nextClockwise(orient)
                 comp.orient = newOrient
+            }
+
+            // adder and comp has switched A and B
+            if (comp.type === "adder" || comp.type === "comp") {
+                const inIds = parseNodeIds(comp.in)
+                if (inIds !== undefined && inIds.length >= 2) {
+                    const t = inIds[0]
+                    inIds[0] = inIds[1]
+                    inIds[1] = t
+                    comp.in = inIds
+                }
             }
         })
     },
@@ -494,4 +505,25 @@ function migrateAllComponentListsOfV6Plus(container: Record<string, unknown>, mi
             }
         }
     }
+}
+
+
+function parseNodeIds(idSpec: unknown): number[] | undefined {
+    if (idSpec === null || idSpec === undefined) {
+        return undefined
+    }
+    const ids = []
+
+    for (const spec of (isArray(idSpec) ? idSpec : [idSpec])) {
+        if (isNumber(spec)) {
+            ids.push(spec)
+        } else if (isString(spec)) {
+            const [start, end] = spec.split('-').map(s => parseInt(s))
+            for (let i = start; i <= end; i++) {
+                ids.push(i)
+            }
+        }
+    }
+
+    return ids
 }
