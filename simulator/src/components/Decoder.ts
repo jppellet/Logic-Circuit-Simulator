@@ -115,7 +115,7 @@ export class Decoder extends ParametrizedComponentBase<DecoderRepr> {
         const inNots = ins.In.map((in_, i) => {
             const not = gate(`not${i}`, "not", xPosNot, later)
             wire(in_, not, true)
-            not.setPosition(not.posX, not.posY - 3 * GRID_STEP, false)
+            not.setPosition(not.posX, not.posY - 3.3 * GRID_STEP, false) // grid factor set to mostly avoid touching other wires visually
             return not
         })
 

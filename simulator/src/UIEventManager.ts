@@ -1008,9 +1008,6 @@ export class UIEventManager {
             closeButton = makeIcon("close")
             closeButton.classList.add("close-palette")
             closeButton.addEventListener("click", closeHandler)
-            closeButton.addEventListener("click", () => {
-                console.log("close palette")
-            })
             title.appendChild(closeButton)
         }
 

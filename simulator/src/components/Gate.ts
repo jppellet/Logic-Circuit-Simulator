@@ -11,6 +11,7 @@ type GateRepr = Gate1Repr | GateNRepr
 
 const LEAD_LENGTH_NORMAL = 20
 const LEAD_LENGTH_OR_STYLE = 25
+const LEAD_LENGTH_XRAY_SHORTENING = 15
 
 export abstract class GateBase<
     TRepr extends GateRepr,
@@ -27,14 +28,16 @@ export abstract class GateBase<
 > {
 
     public abstract get numBits(): number
+    protected readonly _isXRay: boolean // needed for lead length adjustment
     private _type: TGateType
     private _poseAs: TGateType | undefined
     private _showAsUnknown: boolean
 
-    protected constructor(parent: DrawableParent, SubclassDef: [InstantiatedComponentDef<TRepr, LogicValue>, SomeParametrizedComponentDef<TParamDefs>], type: TGateType, saved?: TRepr) {
+    protected constructor(parent: DrawableParent, SubclassDef: [InstantiatedComponentDef<TRepr, LogicValue>, SomeParametrizedComponentDef<TParamDefs>], isXRay: boolean, type: TGateType, saved?: TRepr) {
         super(parent, SubclassDef, saved)
 
         this._type = type
+        this._isXRay = isXRay
         // this.updateLeadsFor(type) // done in subclass after it can set numBits
         this._poseAs = saved?.poseAs as TGateType ?? undefined
         this._showAsUnknown = saved?.showAsUnknown ?? false
@@ -70,7 +73,7 @@ export abstract class GateBase<
 
     protected updateLeadsFor(type: TGateType) {
         const isOrStyle = type === "or" || type === "nor" || type === "imply" || type === "rimply"
-        const leadLength = isOrStyle ? LEAD_LENGTH_OR_STYLE : LEAD_LENGTH_NORMAL
+        const leadLength = isOrStyle ? LEAD_LENGTH_OR_STYLE : LEAD_LENGTH_NORMAL - (this._isXRay ? LEAD_LENGTH_XRAY_SHORTENING : 0)
         const ins = this.inputs.In
         ins.forEach(node => node.updateLeadLength(leadLength))
         // very empirical way to make the gates look better
@@ -563,7 +566,7 @@ export const Gate1Def =
             gridHeight: 4,
         }),
         makeNodes: ({ isXRay }) => {
-            const leadLength = isXRay ? 5 : 20
+            const leadLength = LEAD_LENGTH_NORMAL - (isXRay ? LEAD_LENGTH_XRAY_SHORTENING : 0)
             return {
                 ins: { In: [[isXRay ? -2.5 : -4, 0, "w", { leadLength }]] },
                 outs: { Out: [isXRay ? 2.5 : +4, 0, "e", { leadLength }] },
@@ -581,7 +584,7 @@ export class Gate1 extends GateBase<Gate1Repr> {
     public get numBits() { return 1 }
 
     public constructor(parent: DrawableParent, params: Gate1Params, saved?: Gate1Repr) {
-        super(parent, Gate1Def.with(params), params.type, saved)
+        super(parent, Gate1Def.with(params), params.isXRay, params.type, saved)
     }
 
     protected gateTypes() { return Gate1Types }
@@ -636,7 +639,7 @@ export const GateNDef =
             }
         },
         makeNodes: ({ isXRay, numBits }) => {
-            const leadLength = 20
+            const leadLength = LEAD_LENGTH_NORMAL // will be updated dynamically for the inputs
             return {
                 ins: {
                     In: groupVertical("w", isXRay ? -2.5 : -4, 0, numBits, undefined, { leadLength }),
@@ -657,7 +660,7 @@ export class GateN extends GateBase<GateNRepr> {
     public readonly numBits: number
 
     public constructor(parent: DrawableParent, params: GateNParams, saved?: GateNRepr) {
-        super(parent, GateNDef.with(params), params.type, saved)
+        super(parent, GateNDef.with(params), params.isXRay, params.type, saved)
         this.numBits = params.numBits
         this.updateLeadsFor(params.type)
     }

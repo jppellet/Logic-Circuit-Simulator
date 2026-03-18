@@ -134,7 +134,7 @@ export class AdderArray extends ParametrizedComponentBase<AdderArrayRepr> {
         const lastButOneCoutY = lastButOneCout.posY
         wire(lastCout, outs.Cout, "hv", [addersX, y.bottom - GRID_STEP])
 
-        const xorV = gate("xorV", "xor", later, y.bottom - 3 * GRID_STEP, "s")
+        const xorV = gate("xorV", "xor", later, y.bottom - 2.5 * GRID_STEP, "s")
 
         wire(xorV, outs.V, false)
         wire(lastCout, xorV.in[1], "hv", [addersX, lastCoutY + (xorV.in[1].posY - lastCoutY) / 2])
@@ -222,5 +222,5 @@ export function xrayWireAndLayoutAsArray<C extends Component>(
 }
 
 export function getXRayArrayScale(bits: number) {
-    return [0.32, 0.3, 0.20, 0.15][Math.log2(bits) - 1]
+    return [0.32, 0.3, 0.19, 0.15][Math.log2(bits) - 1]
 }

@@ -452,6 +452,15 @@ export function circle(g: GraphicsRendering, cx: number, cy: number, d: number) 
     g.ellipse(cx, cy, r, r, 0, 0, 2 * Math.PI)
 }
 
+export function diamond(g: GraphicsRendering, cx: number, cy: number, d: number) {
+    const r = d / 2
+    g.moveTo(cx, cy - r)
+    g.lineTo(cx - r, cy)
+    g.lineTo(cx, cy + r)
+    g.lineTo(cx + r, cy)
+    g.closePath()
+}
+
 // Stroking/filling
 
 export function strokeSingleLine(g: GraphicsRendering, x0: number, y0: number, x1: number, y1: number) {
@@ -715,16 +724,17 @@ export function drawWaypoint(g: GraphicsRendering, x: number, y: number, style: 
     g.strokeStyle = circleColor
     g.lineWidth = thickness
     g.fillStyle = style === NodeStyle.IN_DISCONNECTED ? COLOR_BACKGROUND : (neutral ? COLOR_UNKNOWN : colorForLogicValue(value))
+    const drawShape = style === NodeStyle.WAYPOINT ? diamond : circle
 
     g.beginPath()
-    circle(g, x, y, WAYPOINT_DIAMETER)
+    drawShape(g, x, y, WAYPOINT_DIAMETER)
     g.fill()
     g.stroke()
 
     if (isMouseOver) {
         g.fillStyle = COLOR_NODE_MOUSE_OVER
         g.beginPath()
-        circle(g, x, y, WAYPOINT_DIAMETER * 2)
+        drawShape(g, x, y, WAYPOINT_DIAMETER * 2)
         g.fill()
         g.stroke()
     }

@@ -34,6 +34,7 @@
 
 ### DONE
  
+ * Automatic branch point detection and display
  * X-ray mode for some components
  * Zoom and pan with touch event, trackpad, mousewheel, Space-drag
  * Save/restore using browser's storage
