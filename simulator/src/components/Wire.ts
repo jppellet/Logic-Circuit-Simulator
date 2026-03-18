@@ -328,13 +328,13 @@ export class Wire extends Drawable {
             pathParts.push([prevX, prevY, endLeadX, endLeadY])
 
             this._wirePath = new WirePath(pathParts)
-            this.startNode.invalidateBranchPoints()
         }
         return this._wirePath
     }
 
     public invalidateWirePath() {
         this._wirePath = undefined
+        this.startNode.invalidateBranchPoints()
     }
 
     public get style() {
