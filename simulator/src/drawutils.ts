@@ -568,6 +568,35 @@ export function strokeWireOutlineAndSingleValue(g: GraphicsRendering, value: Log
     strokeWireValue(g, value, undefined, neutral, timeFraction)
 }
 
+let _smallestDrawingScale = 1
+
+export function updateSmallestDrawingScale(scale: number) {
+    if (scale < _smallestDrawingScale) {
+        _smallestDrawingScale = scale
+    }
+}
+
+export function resetSmallestDrawingScale() {
+    _smallestDrawingScale = 1
+}
+
+export function getSmallestDrawingScale() {
+    return _smallestDrawingScale
+}
+
+let _wireWidthFactor = 1
+
+export function getWireWidthFactor() {
+    return _wireWidthFactor
+}
+
+export function setWireWidthFactor(f: number) {
+    if (f !== _wireWidthFactor) {
+        // console.log("new width factor: " + f)
+    }
+    _wireWidthFactor = f
+}
+
 /**
  * Draws the outline of a wire.
  * @param isMouseOver determines whether the border color is thicker with the mouse-over color
@@ -578,10 +607,10 @@ export function strokeWireOutline(g: GraphicsRendering, color: WireColor, isMous
 
     const mainStrokeWidth = WIRE_WIDTH / 2
     if (isMouseOver) {
-        g.lineWidth = mainStrokeWidth + 2
+        g.lineWidth = (mainStrokeWidth + 2) * _wireWidthFactor
         g.strokeStyle = COLOR_MOUSE_OVER
     } else {
-        g.lineWidth = mainStrokeWidth
+        g.lineWidth = mainStrokeWidth * _wireWidthFactor
         g.strokeStyle = COLOR_WIRE[color]
     }
 
@@ -604,7 +633,7 @@ export function strokeWireValue(g: GraphicsRendering, value: LogicValue, lengthT
     g.lineCap = "butt"
 
     // inner value
-    g.lineWidth = WIRE_WIDTH / 2 - 2
+    g.lineWidth = (WIRE_WIDTH / 2 - 2) * _wireWidthFactor
     const [baseColor, altColor] = neutral ? [COLOR_UNKNOWN, COLOR_UNKNOWN_ALT] : colorsForLogicValue(value)
     g.strokeStyle = baseColor
     const animationDashSize = 20
@@ -675,7 +704,7 @@ export enum NodeStyle {
     WAYPOINT,
 }
 
-export function drawWaypoint(g: GraphicsRendering, ctx: DrawContext, x: number, y: number, style: NodeStyle, value: LogicValue, isMouseOver: boolean, neutral: boolean, showForced: boolean, showForcedWarning: boolean, parentOrientIsVertical: boolean) {
+export function drawWaypoint(g: GraphicsRendering, x: number, y: number, style: NodeStyle, value: LogicValue, isMouseOver: boolean, neutral: boolean, showForced: boolean, showForcedWarning: false | [ctx: DrawContext, parentOrientIsVertical: boolean]) {
 
     const [circleColor, thickness] =
         showForced
@@ -699,7 +728,8 @@ export function drawWaypoint(g: GraphicsRendering, ctx: DrawContext, x: number, 
         g.stroke()
     }
 
-    if (showForcedWarning) {
+    if (showForcedWarning !== false) {
+        const [ctx, parentOrientIsVertical] = showForcedWarning
         // forced value to something that is contrary to normal output
         g.textAlign = "center"
         g.fillStyle = circleColor
@@ -1164,9 +1194,11 @@ function bezierBoundingBox(coords: BezierCoordsInit, margin: number): [left: num
     return [minX - margin, minY - margin, maxX + margin, maxY + margin]
 }
 
-export function isPointOnStraightWire(x: number, y: number, coords: LineCoords): boolean {
+export function isPointCloseToStraightWire(x: number, y: number, coords: LineCoords): boolean {
     const [x1, y1, x2, y2] = coords
-    const length2 = (x2 - x1) ** 2 + (y2 - y1) ** 2
+    const dx = x2 - x1
+    const dy = y2 - y1
+    const length2 = dx * dx + dy * dy
 
     // if the segment length is zero, check if the point matches the start
     if (length2 === 0) {
@@ -1174,16 +1206,62 @@ export function isPointOnStraightWire(x: number, y: number, coords: LineCoords):
     }
 
     // projection of the point onto the segment (t parameter, 0 <= t <= 1)
-    const t = ((x - x1) * (x2 - x1) + (y - y1) * (y2 - y1)) / length2
+    const t = ((x - x1) * dx + (y - y1) * dy) / length2
     if (t < 0 || t > 1) {
         return false
     }
 
     // closest point on the segment to the given point
-    const closestX = x1 + t * (x2 - x1)
-    const closestY = y1 + t * (y2 - y1)
+    const closestX = x1 + t * dx
+    const closestY = y1 + t * dy
     const dist2 = (x - closestX) ** 2 + (y - closestY) ** 2
     return dist2 <= WIRE_WIDTH_HALF_SQUARED
+}
+
+export function isPointOnStraightSegment(x: number, y: number, coords: LineCoords): boolean {
+    const [x1, y1, x2, y2] = coords
+    const dx = x2 - x1
+    const dy = y2 - y1
+
+    // Cross product of (dx, dy) × (px-x1, py-y1)
+    // Zero iff the point is collinear with the segment's infinite line
+    const cross = dx * (y - y1) - dy * (x - x1)
+
+    const eps = 1e-10
+    if (Math.abs(cross) > eps * Math.hypot(dx, dy)) {
+        return false
+    }
+
+    // Dot product to check the point falls within [x1,y1]→[x2,y2]
+    // t ∈ [0, 1] means the point projects onto the segment
+    const dot = (x - x1) * dx + (y - y1) * dy
+    const lenSq = dx * dx + dy * dy
+
+    if (lenSq === 0) {
+        // degenerate: segment is a point
+        return x === x1 && y === y1
+    }
+
+    const t = dot / lenSq
+    return t >= 0 && t < 1 // exclude endpoint, handled by next wire part
+}
+
+export function isSameDirection(x: number, y: number, endX: number, endY: number, coords: LineCoords): boolean {
+    const [x1, y1, x2, y2] = coords
+    const dx1 = endX - x
+    const dy1 = endY - y
+    const dx2 = x2 - x1
+    const dy2 = y2 - y1
+
+    // colinear?
+    const cross = dx1 * dy2 - dy1 * dx2
+    if (Math.abs(cross) >= 0.00001 * Math.hypot(dx2, dy2)) {
+        return false
+    }
+
+    // same direction?
+    const dot = dx1 * dx2 + dy1 * dy2
+    return dot > 0
 }
 
 export function makeBezierCoords(coords: BezierCoordsInit): BezierCoords {
@@ -1196,7 +1274,7 @@ export function makeBezierCoords(coords: BezierCoordsInit): BezierCoords {
     return [...coords, bezierMEta]
 }
 
-export function isPointOnBezierWire(x: number, y: number, coords: BezierCoords): boolean {
+export function isPointCloseToBezierWire(x: number, y: number, coords: BezierCoords): boolean {
     const bezierMeta = coords[8]
 
     // fast reject outside bounding box

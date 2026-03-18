@@ -23,7 +23,7 @@ export class Waypoint extends DrawableWithDraggablePosition {
             // alternatives with more fields first
             t.tuple([t.number, t.number, t.keyof(Orientations_), typeOrNull(t.string), t.partial({
                 lockPos: t.boolean,
-                showDot: t.boolean,
+                showDot: t.boolean, // TODO remove this when the branch point detector works well
             })]),
             t.tuple([t.number, t.number, t.keyof(Orientations_), t.string]),
             t.tuple([t.number, t.number, t.keyof(Orientations_)]),
@@ -137,7 +137,7 @@ export class Waypoint extends DrawableWithDraggablePosition {
             g.globalAlpha = OPACITY_HIDDEN_ITEMS * normalAlpha
         }
         const neutral = this.parent.editor.options.hideWireColors
-        drawWaypoint(g, ctx, this.posX, this.posY, NodeStyle.WAYPOINT, this.wire.startNode.value, ctx.isMouseOver, neutral, false, false, false)
+        drawWaypoint(g, this.posX, this.posY, NodeStyle.WAYPOINT, this.wire.startNode.value, ctx.isMouseOver, neutral, false, false)
         g.globalAlpha = normalAlpha
     }
 
@@ -276,7 +276,7 @@ export class Wire extends Drawable {
         })
     }
 
-    private get wirePath(): WirePath {
+    public get wirePath(): WirePath {
         if (this._wirePath === undefined) {
             // eslint-disable-next-line prefer-const
             let [startX, startY, prevX, prevY, prevProlong] = this.startNode.drawCoords
@@ -332,6 +332,7 @@ export class Wire extends Drawable {
             pathParts.push([prevX, prevY, endLeadX, endLeadY])
 
             this._wirePath = new WirePath(pathParts)
+            this.startNode.invalidateBranchPoints()
         }
         return this._wirePath
     }
@@ -968,6 +969,9 @@ export class LinkManager {
                 ribbon.draw(g, drawParams)
             }
         }
+
+        // draw all wires, collecting branch points
+        const branchPointsMap = new Map<NodeOut, Array<[number, number]>>()
         for (const wire of this._wires) {
             if (useRibbons && wire.ribbon !== undefined) {
                 continue
@@ -976,7 +980,20 @@ export class LinkManager {
             for (const waypoint of wire.waypoints) {
                 waypoint.draw(g, drawParams)
             }
+            const nodeFrom = wire.startNode
+            if (!branchPointsMap.has(nodeFrom)) {
+                branchPointsMap.set(nodeFrom, nodeFrom.branchPoints)
+            }
         }
+
+        // draw branch points
+        const neutral = this.parent.editor.options.hideWireColors
+        for (const [node, branchPoints] of branchPointsMap.entries()) {
+            for (const branchPoint of branchPoints) {
+                drawWaypoint(g, branchPoint[0], branchPoint[1], NodeStyle.WAYPOINT, node.value, false, neutral, false, false)
+            }
+        }
+
         this.drawWireBeingAdded(g, drawParams)
         this.drawAnchorBeingSet(g)
     }

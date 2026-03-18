@@ -931,8 +931,8 @@ export abstract class ComponentBase<
         // xray
         this._showingXRay = false
         const options = this.parent.editor.options
-        if (opts?.xrayScale !== undefined && !options.hideXRay) {
-            const scale = opts.xrayScale
+        const scale = opts?.xrayScale
+        if (scale !== undefined && !options.hideXRay) {
             const limitFactor = 0.6 // draw components starting at this fraction of their normal size
             const myDrawParams = ctx.drawParams
             const zoomExcess = myDrawParams.currentDrawingScale - limitFactor / scale

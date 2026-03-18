@@ -194,7 +194,7 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         const showForcedWarning = mode >= Mode.FULL && !isUnknown(this._value) && !isUnknown(this.value) && this._value !== this.value
         const parentOrientIsVertical = Orientation.isVertical(this.component.orient)
         const neutral = this.parent.editor.options.hideWireColors
-        drawWaypoint(g, ctx, this.posX, this.posY, this.nodeDisplayStyle, this.value, ctx.isMouseOver, neutral, showForced, showForcedWarning, parentOrientIsVertical)
+        drawWaypoint(g, this.posX, this.posY, this.nodeDisplayStyle, this.value, ctx.isMouseOver, neutral, showForced, showForcedWarning ? [ctx, parentOrientIsVertical] : false)
     }
 
     protected abstract get nodeDisplayStyle(): NodeStyle
@@ -414,6 +414,7 @@ export class NodeOut extends NodeBase<NodeOut> {
     public readonly _tag = "_nodeout"
 
     private readonly _outgoingWires: Wire[] = []
+    private _branchPoints: Array<[number, number]> | undefined = undefined
 
     public get isClock() {
         return false
@@ -424,6 +425,7 @@ export class NodeOut extends NodeBase<NodeOut> {
         const i = this._outgoingWires.indexOf(wire)
         if (i === -1) {
             this._outgoingWires.push(wire)
+            this.invalidateBranchPoints()
         }
     }
 
@@ -431,7 +433,59 @@ export class NodeOut extends NodeBase<NodeOut> {
         const i = this._outgoingWires.indexOf(wire)
         if (i !== -1) {
             this._outgoingWires.splice(i, 1)
+            this.invalidateBranchPoints()
         }
+    }
+
+    public invalidateBranchPoints() {
+        this._branchPoints = undefined
+    }
+
+    public get branchPoints() {
+        if (this._branchPoints === undefined) {
+            const branchPoints: Array<[number, number]> = []
+
+            const numWires = this._outgoingWires.length
+            if (numWires > 1) {
+                const branchPointSet = new Set<string>()
+                for (const wire of this._outgoingWires) {
+                    if (wire.isHidden) {
+                        continue
+                    }
+                    const possibleBranchPoints = wire.wirePath.possibleBranchPoints
+                    // console.log(`wire has pbp = ${JSON.stringify(possibleBranchPoints)}`)
+                    // console.log(`    and path = ${JSON.stringify(wire.wirePath.parts)}`)
+                    for (const possibleBranchPoint of possibleBranchPoints) {
+                        const stringRepr = `${possibleBranchPoint[0]},${possibleBranchPoint[1]}`
+                        if (branchPointSet.has(stringRepr)) {
+                            continue
+                        }
+                        let confirmed = false
+                        // it is on another wire?
+                        for (const otherWire of this._outgoingWires) {
+                            if (otherWire === wire || otherWire.isHidden) {
+                                continue
+                            }
+                            // console.log(`     checking ${JSON.stringify(possibleBranchPoint)}`)
+                            if (otherWire.wirePath.goesOverPossibleBranchPoint(possibleBranchPoint)) {
+                                confirmed = true
+                                break
+                            }
+                        }
+                        if (confirmed) {
+                            // console.log(`     -> yes`)
+                            branchPointSet.add(stringRepr)
+                            branchPoints.push([possibleBranchPoint[0], possibleBranchPoint[1]])
+                        } else {
+                            // console.log(`     -> no`)
+                        }
+                    }
+                }
+            }
+            // console.log(` -> bp for ${this.component.ref}.${this.shortName}: ${JSON.stringify(branchPoints)}`)
+            this._branchPoints = branchPoints
+        }
+        return this._branchPoints
     }
 
     public get outgoingWires(): readonly Wire[] {
