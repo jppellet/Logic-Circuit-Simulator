@@ -99,15 +99,15 @@ export class Adder extends ComponentBase<AdderRepr> {
 
         wire(ins.A, xor1.in[0], true)
         wire(ins.B, and1.in[1], true)
-        wire(ins.B, xor1.in[1], "vh", [x(-0.85), ins.B.posY, true])
-        wire(ins.A, and1.in[0], "vh", [x(-.95), ins.A.posY, true])
+        wire(ins.B, xor1.in[1], "vh", [x(-0.85), ins.B.posY])
+        wire(ins.A, and1.in[0], "vh", [x(-.95), ins.A.posY])
         wire(or, outs.Cout)
         wire(and1, or.in[1], "hv")
         wire(and2, or.in[0], false)
         wire(xor1, and2.in[1], "hv")
-        wire(xor1, xor2.in[1], "hv", [and2.in[1].posX, xor1.posY, true])
+        wire(xor1, xor2.in[1], "hv", [and2.in[1].posX, xor1.posY])
         wire(ins.Cin, xor2.in[0], "hv", [ins.Cin.posX, y(-0.9)])
-        wire(ins.Cin, and2.in[0], "vh", [and2.in[0].posX, y(-0.9), true])
+        wire(ins.Cin, and2.in[0], "vh", [and2.in[0].posX, y(-0.9)])
         wire(xor2, outs.S, "vh")
 
         return xray

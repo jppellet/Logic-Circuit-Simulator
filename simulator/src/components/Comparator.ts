@@ -99,12 +99,12 @@ export class Comparator extends ComponentBase<ComparatorRepr> {
 
         wire(ins.B, xnor.in[1], true)
         wire(ins.A, andG.in[0], "vh", [-3 * GRID_STEP, ins.A.posY])
-        wire(ins.A, xnor.in[0], "vh", [x.left + 1.25 * GRID_STEP, ins.A.posY, true])
-        wire(ins.B, notB, "vh", [x.left + GRID_STEP / 2, ins.B.posY, true])
+        wire(ins.A, xnor.in[0], "vh", [x.left + 1.25 * GRID_STEP, ins.A.posY])
+        wire(ins.B, notB, "vh", [x.left + GRID_STEP / 2, ins.B.posY])
 
         wire(xnor, andEq.in[0], "hv")
         wire(ins.E, andG.in[2], "vh", [andEq.in[1].posX, andG.in[2].posY])
-        wire(ins.E, andEq.in[1], "vh", [andEq.in[1].posX, andG.in[2].posY, true])
+        wire(ins.E, andEq.in[1], "vh", [andEq.in[1].posX, andG.in[2].posY])
 
         return xray
     }

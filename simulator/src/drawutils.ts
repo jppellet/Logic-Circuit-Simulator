@@ -702,6 +702,7 @@ export enum NodeStyle {
     OUT_DISCONNECTED,
     IN_OUT,
     WAYPOINT,
+    BRANCH_POINT,
 }
 
 export function drawWaypoint(g: GraphicsRendering, x: number, y: number, style: NodeStyle, value: LogicValue, isMouseOver: boolean, neutral: boolean, showForced: boolean, showForcedWarning: false | [ctx: DrawContext, parentOrientIsVertical: boolean]) {

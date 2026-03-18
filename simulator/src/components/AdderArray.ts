@@ -137,8 +137,8 @@ export class AdderArray extends ParametrizedComponentBase<AdderArrayRepr> {
         const xorV = gate("xorV", "xor", later, y.bottom - 3 * GRID_STEP, "s")
 
         wire(xorV, outs.V, false)
-        wire(lastCout, xorV.in[1], "hv", [addersX, lastCoutY + (xorV.in[1].posY - lastCoutY) / 2, true])
-        wire(lastButOneCout, xorV.in[0], "hv", [addersX, lastButOneCoutY + (adders[bits - 1].inputs.Cin.posY - lastButOneCoutY) / 2, true])
+        wire(lastCout, xorV.in[1], "hv", [addersX, lastCoutY + (xorV.in[1].posY - lastCoutY) / 2])
+        wire(lastButOneCout, xorV.in[0], "hv", [addersX, lastButOneCoutY + (adders[bits - 1].inputs.Cin.posY - lastButOneCoutY) / 2])
 
 
         return xray

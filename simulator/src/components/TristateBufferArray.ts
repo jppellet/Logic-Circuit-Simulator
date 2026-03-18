@@ -142,7 +142,7 @@ export class TristateBufferArray extends ParametrizedComponentBase<TristateBuffe
             wire(ins.In[i], tri.inputs.In, "hv", [xIn, tri.inputs.In.posY])
             wire(ins.E, tri.inputs.E, "hv", [
                 [0, triInTop],
-                [triInX, tri.inputs.E.posY + 4, i < bits - 1],
+                [triInX, tri.inputs.E.posY + 4],
             ])
         }
 

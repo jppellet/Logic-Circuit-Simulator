@@ -146,7 +146,7 @@ export class ControlledInverter extends ParametrizedComponentBase<ControlledInve
             wire(ins.In[i], xor.in[1], "hv", [xIn, xor.in[1].posY])
             wire(ins.S, xor.in[0], "hv", [
                 [0, xorInTop],
-                [xor.in[0].posX - xorInDist, xor.in[0].posY, i < bits - 1],
+                [xor.in[0].posX - xorInDist, xor.in[0].posY],
             ])
         }
 

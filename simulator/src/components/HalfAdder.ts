@@ -93,8 +93,8 @@ export class HalfAdder extends ComponentBase<HalfAdderRepr> {
 
         wire(ins.B, and.in[1], true)
         wire(ins.A, xor.in[0], true)
-        wire(ins.A, and.in[0], "vh", [x(-0.7), ins.A.posY, true])
-        wire(ins.B, xor.in[1], "vh", [x(-0.4), ins.B.posY, true])
+        wire(ins.A, and.in[0], "vh", [x(-0.7), ins.A.posY])
+        wire(ins.B, xor.in[1], "vh", [x(-0.4), ins.B.posY])
         wire(and, outs.C, "vh")
         wire(xor, outs.S, "vh")
 

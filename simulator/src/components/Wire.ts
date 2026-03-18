@@ -23,7 +23,6 @@ export class Waypoint extends DrawableWithDraggablePosition {
             // alternatives with more fields first
             t.tuple([t.number, t.number, t.keyof(Orientations_), typeOrNull(t.string), t.partial({
                 lockPos: t.boolean,
-                showDot: t.boolean, // TODO remove this when the branch point detector works well
             })]),
             t.tuple([t.number, t.number, t.keyof(Orientations_), t.string]),
             t.tuple([t.number, t.number, t.keyof(Orientations_)]),
@@ -45,8 +44,6 @@ export class Waypoint extends DrawableWithDraggablePosition {
         }
     }
 
-    public showDot: boolean = false
-
     public constructor(
         public readonly wire: Wire,
         saved: WaypointRepr | undefined,
@@ -57,11 +54,10 @@ export class Waypoint extends DrawableWithDraggablePosition {
     public toJSON(): WaypointRepr {
         // check to determine representation (orientation, anchor, lockPos, etc.)
         const anchor = this.anchor?.ref
-        if (this.lockPos || this.showDot) {
+        if (this.lockPos) {
             // full representation with obj as last element
             return [this.posX, this.posY, this.orient, anchor ?? null, {
                 lockPos: this.lockPos,
-                showDot: this.showDot,
             }]
         }
         if (anchor !== undefined) {
@@ -124,7 +120,7 @@ export class Waypoint extends DrawableWithDraggablePosition {
     }
 
     protected doDraw(g: GraphicsRendering, ctx: DrawContext): void {
-        if (this.parent.mode < Mode.CONNECT && !this.showDot) {
+        if (this.parent.mode < Mode.CONNECT) {
             return
         }
 
@@ -990,7 +986,7 @@ export class LinkManager {
         const neutral = this.parent.editor.options.hideWireColors
         for (const [node, branchPoints] of branchPointsMap.entries()) {
             for (const branchPoint of branchPoints) {
-                drawWaypoint(g, branchPoint[0], branchPoint[1], NodeStyle.WAYPOINT, node.value, false, neutral, false, false)
+                drawWaypoint(g, branchPoint[0], branchPoint[1], NodeStyle.BRANCH_POINT, node.value, false, neutral, false, false)
             }
         }
 

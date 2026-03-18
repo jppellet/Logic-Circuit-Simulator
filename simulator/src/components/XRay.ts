@@ -12,7 +12,7 @@ import { Gate1Type, Gate1Types, GateNType } from "./GateTypes"
 import { Node, NodeBase, NodeIn, NodeOut } from "./Node"
 import { LinkManager, WireStyle } from "./Wire"
 
-type WaypointSpecCompact = [x: number, y: number] | [x: number, y: number, showDot: boolean]
+type WaypointSpecCompact = [x: number, y: number]
 
 export class XRay implements DrawableParent {
 
@@ -80,12 +80,8 @@ export class XRay implements DrawableParent {
         if (via !== undefined && via.length > 0) {
             const waypoints = (Array.isArray(via[0]) ? via : [via]) as WaypointSpecCompact[]
             let nb = 0
-            for (const wpSpec of waypoints) {
-                const [x, y, showDot] = wpSpec
-                const wp = wire.addWaypointWith(x, y, ++nb)
-                if (showDot === true) {
-                    wp.showDot = true
-                }
+            for (const [x, y] of waypoints) {
+                wire.addWaypointWith(x, y, ++nb)
             }
         }
     }
