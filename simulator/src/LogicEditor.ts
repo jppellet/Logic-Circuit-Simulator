@@ -2504,11 +2504,11 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             g.strokeStyle = COLOR_GRID_LINES
             g.lineWidth = 1
             g.beginPath()
-            for (let x = step; x < widthAdjusted; x += step) {
+            for (let x = this._translationX % step; x < widthAdjusted; x += step) {
                 g.moveTo(x, 0)
                 g.lineTo(x, heightAdjusted)
             }
-            for (let y = step; y < heightAdjusted; y += step) {
+            for (let y = this._translationY % step; y < heightAdjusted; y += step) {
                 g.moveTo(0, y)
                 g.lineTo(widthAdjusted, y)
             }
