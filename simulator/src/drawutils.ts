@@ -1229,7 +1229,7 @@ export function isPointCloseToStraightWire(x: number, y: number, coords: LineCoo
     return dist2 <= WIRE_WIDTH_HALF_SQUARED
 }
 
-export function isPointOnStraightSegment(x: number, y: number, coords: LineCoords): boolean {
+export function fractionIfPointOnStraightSegment(x: number, y: number, coords: LineCoords): number | undefined {
     const [x1, y1, x2, y2] = coords
     const dx = x2 - x1
     const dy = y2 - y1
@@ -1237,10 +1237,10 @@ export function isPointOnStraightSegment(x: number, y: number, coords: LineCoord
     // Cross product of (dx, dy) × (px-x1, py-y1)
     // Zero iff the point is collinear with the segment's infinite line
     const cross = dx * (y - y1) - dy * (x - x1)
-
     const eps = 1e-10
     if (Math.abs(cross) > eps * Math.hypot(dx, dy)) {
-        return false
+        // not on the line defined by the segment
+        return undefined
     }
 
     // Dot product to check the point falls within [x1,y1]→[x2,y2]
@@ -1250,11 +1250,17 @@ export function isPointOnStraightSegment(x: number, y: number, coords: LineCoord
 
     if (lenSq === 0) {
         // degenerate: segment is a point
-        return x === x1 && y === y1
+        if (x === x1 && y === y1) {
+            return 0
+        }
+        return undefined
     }
 
     const t = dot / lenSq
-    return t >= 0 && t < 1 // exclude endpoint, handled by next wire part
+    if (t >= 0 && t < 1) { // exclude endpoint, handled by next wire part
+        return t
+    }
+    return undefined
 }
 
 export function isSameDirection(x: number, y: number, endX: number, endY: number, coords: LineCoords): boolean {
@@ -1281,8 +1287,8 @@ export function makeBezierCoords(coords: BezierCoordsInit): BezierCoords {
     const numPoints = Math.max(3, Math.ceil(endpointDist / WIRE_WIDTH * 1.25))
     const tStepSize = 1 / numPoints
     const boundingBox = bezierBoundingBox(coords, WIRE_WIDTH / 2)
-    const bezierMEta = { tStepSize, boundingBox }
-    return [...coords, bezierMEta]
+    const bezierMeta = { tStepSize, boundingBox }
+    return [...coords, bezierMeta]
 }
 
 export function isPointCloseToBezierWire(x: number, y: number, coords: BezierCoords): boolean {

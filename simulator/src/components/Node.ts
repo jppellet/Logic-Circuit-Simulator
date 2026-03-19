@@ -194,10 +194,12 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         const showForcedWarning = mode >= Mode.FULL && !isUnknown(this._value) && !isUnknown(this.value) && this._value !== this.value
         const parentOrientIsVertical = Orientation.isVertical(this.component.orient)
         const neutral = this.parent.editor.options.hideWireColors
-        drawWaypoint(g, this.posX, this.posY, this.nodeDisplayStyle, this.value, ctx.isMouseOver, neutral, showForced, showForcedWarning ? [ctx, parentOrientIsVertical] : false)
+        drawWaypoint(g, this.posX, this.posY, this.nodeDisplayStyle, this.currentDrawValue, ctx.isMouseOver, neutral, showForced, showForcedWarning ? [ctx, parentOrientIsVertical] : false)
     }
 
     protected abstract get nodeDisplayStyle(): NodeStyle
+
+    protected abstract get currentDrawValue(): LogicValue
 
     public get isAlive() {
         return this._isAlive
@@ -406,15 +408,21 @@ export class NodeIn extends NodeBase<NodeIn> {
         return disconnected ? NodeStyle.IN_DISCONNECTED : NodeStyle.IN_CONNECTED
     }
 
+    protected get currentDrawValue() {
+        // doesn't matter, it's either empty or not drawn
+        return false
+    }
+
 }
 
+export type BranchPoint = [x: number, y: number, frac: number, wire: Wire]
 
 export class NodeOut extends NodeBase<NodeOut> {
 
     public readonly _tag = "_nodeout"
 
     private readonly _outgoingWires: Wire[] = []
-    private _branchPoints: Array<[number, number]> | undefined = undefined
+    private _branchPoints: BranchPoint[] | undefined = undefined
 
     public get isClock() {
         return false
@@ -443,12 +451,13 @@ export class NodeOut extends NodeBase<NodeOut> {
 
     public get branchPoints() {
         if (this._branchPoints === undefined) {
-            const branchPoints: Array<[number, number]> = []
+            const branchPoints: BranchPoint[] = []
 
             const numWires = this._outgoingWires.length
             if (numWires > 1) {
                 const branchPointSet = new Set<string>()
-                for (const wire of this._outgoingWires) {
+                for (let i = 0; i < numWires; i++) {
+                    const wire = this._outgoingWires[i]
                     if (wire.isHidden) {
                         continue
                     }
@@ -460,22 +469,42 @@ export class NodeOut extends NodeBase<NodeOut> {
                         if (branchPointSet.has(stringRepr)) {
                             continue
                         }
-                        let confirmed = false
+                        let match = -1
+                        let matchFraction: undefined | number = 0
                         // it is on another wire?
-                        for (const otherWire of this._outgoingWires) {
+                        for (let j = 0; j < numWires; j++) {
+                            const otherWire = this._outgoingWires[j]
                             if (otherWire === wire || otherWire.isHidden) {
                                 continue
                             }
                             // console.log(`     checking ${JSON.stringify(possibleBranchPoint)}`)
-                            if (otherWire.wirePath.goesOverPossibleBranchPoint(possibleBranchPoint)) {
-                                confirmed = true
+                            matchFraction = otherWire.wirePath.fractionIfOverPossibleBranchPoint(possibleBranchPoint)
+                            if (matchFraction !== undefined) {
+                                if (matchFraction > 1) {
+                                    matchFraction = otherWire.wirePath.fractionIfOverPossibleBranchPoint(possibleBranchPoint)
+                                }
+                                match = j
                                 break
                             }
                         }
-                        if (confirmed) {
+                        if (match !== -1 && matchFraction !== undefined) {
                             // console.log(`     -> yes`)
                             branchPointSet.add(stringRepr)
-                            branchPoints.push([possibleBranchPoint[0], possibleBranchPoint[1]])
+                            const [x, y] = possibleBranchPoint
+
+                            // pick frontmost wire as reference
+                            if (i > match) {
+                                // update matchFraction for i, remove direction to match also from colinear segment if from same wire
+                                const otherMatchFraction = wire.wirePath.fractionIfOverPossibleBranchPoint([x, y])
+                                if (otherMatchFraction === undefined) {
+                                    console.warn("Cannot find fraction of branch point from on wire from which it came")
+                                } else {
+                                    match = i
+                                    matchFraction = otherMatchFraction
+                                }
+                            }
+                            const refWire = this._outgoingWires[match]
+                            branchPoints.push([x, y, matchFraction, refWire])
                         } else {
                             // console.log(`     -> no`)
                         }
@@ -558,6 +587,15 @@ export class NodeOut extends NodeBase<NodeOut> {
     protected get nodeDisplayStyle() {
         const disconnected = this._outgoingWires.length === 0
         return disconnected ? NodeStyle.OUT_DISCONNECTED : NodeStyle.OUT_CONNECTED
+    }
+
+    protected get currentDrawValue() {
+        if (this._outgoingWires.length === 0) {
+            return this.value
+        }
+
+        const refWire = this._outgoingWires[this._outgoingWires.length - 1]
+        return refWire.drawnValueAt(refWire.wirePath.length.cumFracOfPart[0])
     }
 
     public override pointerDoubleClicked(e: PointerEvent): InteractionResult {

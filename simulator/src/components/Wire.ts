@@ -9,7 +9,7 @@ import { PointerDragEvent } from "../UIEventManager"
 import { InteractionResult, LogicValue, Mode, Orientation, Orientations_, isArray, isString, toLogicValueRepr, typeOrNull, typeOrUndefined } from "../utils"
 import { Component, NodeGroup } from "./Component"
 import { DrawContext, Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, GraphicsRendering, MenuData, PositionSupportRepr } from "./Drawable"
-import { Node, NodeIn, NodeOut, WireColor, tryMakeRepeatableNodeAction } from "./Node"
+import { BranchPoint, Node, NodeIn, NodeOut, WireColor, tryMakeRepeatableNodeAction } from "./Node"
 import { Passthrough, PassthroughDef } from "./Passthrough"
 import { WirePath } from "./WirePath"
 
@@ -43,6 +43,9 @@ export class Waypoint extends DrawableWithDraggablePosition {
             ref: undefined,
         }
     }
+
+    // index of the last wirePath part coming just before this waypoint
+    public wirePathPartIndex = -1
 
     public constructor(
         public readonly wire: Wire,
@@ -133,8 +136,12 @@ export class Waypoint extends DrawableWithDraggablePosition {
             g.globalAlpha = OPACITY_HIDDEN_ITEMS * normalAlpha
         }
         const neutral = this.parent.editor.options.hideWireColors
-        drawWaypoint(g, this.posX, this.posY, NodeStyle.WAYPOINT, this.wire.startNode.value, ctx.isMouseOver, neutral, false, false)
+        drawWaypoint(g, this.posX, this.posY, NodeStyle.WAYPOINT, this.drawValue, ctx.isMouseOver, neutral, false, false)
         g.globalAlpha = normalAlpha
+    }
+
+    public get drawValue(): LogicValue {
+        return this.wire.drawnValueAt(this.wire.wirePath.length.cumFracOfPart[this.wirePathPartIndex])
     }
 
     public override makeContextMenu(): MenuData {
@@ -186,6 +193,7 @@ export class Wire extends Drawable {
     private _style: WireStyle | undefined = undefined
     private _isHidden = false
     private _propagatingValues: [LogicValue, Timestamp][] = []
+    private _lastDrawnWireValues: [LogicValue, upToFrac: number][] = [] // in increasing order
     private _waypointBeingDragged: Waypoint | undefined = undefined
     public customPropagationDelay: number | undefined = undefined
     public ribbon: Ribbon | undefined = undefined
@@ -277,6 +285,7 @@ export class Wire extends Drawable {
             // eslint-disable-next-line prefer-const
             let [startX, startY, prevX, prevY, prevProlong] = this.startNode.drawCoords
             const [endLeadX, endLeadY, endNodeX, endNodeY, endNodeProlong] = this.endNode.drawCoords
+            // technically not a waypoint, just the end node, but treated as such for building the path
             const lastWaypointData = { posX: endNodeX, posY: endNodeY, orient: endNodeProlong }
             const allWaypoints = [...this._waypoints, lastWaypointData]
 
@@ -323,6 +332,10 @@ export class Wire extends Drawable {
                 prevX = nextX
                 prevY = nextY
                 prevProlong = Orientation.invert(nextProlong)
+
+                if (waypoint instanceof Waypoint) {
+                    waypoint.wirePathPartIndex = pathParts.length - 1
+                }
             }
             // last part, end lead
             pathParts.push([prevX, prevY, endLeadX, endLeadY])
@@ -565,8 +578,11 @@ export class Wire extends Drawable {
         // outline
         const color = this._startNode.color
         strokeWireOutline(g, color, ctx.isMouseOver)
+
+        const numValues = this._propagatingValues.length
+        this._lastDrawnWireValues.length = numValues
         // single value
-        if (this._propagatingValues.length === 1) {
+        if (numValues === 1) {
             // no need to compute the length of the path, which is costly
             const [value, timeSet] = this._propagatingValues[0]
             const frac = Math.min(1.0, (drawTime - timeSet) / propagationDelay)
@@ -574,24 +590,40 @@ export class Wire extends Drawable {
                 console.warn(`Propagating value not fully propagated but drawn as such (frac=${frac} < 1.0, drawTime=${drawTime}, timeSet=${timeSet}, propagationDelay=${propagationDelay})`)
             }
             strokeWireValue(g, value, undefined, neutral, drawParams.drawTimeAnimationFraction)
+            this._lastDrawnWireValues[0] = [value, 1]
 
         } else {
             // multiple propagating values
-            const totalLength = wirePath.length
-            for (const [value, timeSet] of this._propagatingValues) {
+            const length = wirePath.length
+            for (let i = 0; i < numValues; i++) {
+                const [value, timeSet] = this._propagatingValues[i]
                 const frac = Math.min(1.0, (drawTime - timeSet) / propagationDelay)
-                const lengthToDraw = totalLength * frac
-                strokeWireValue(g, value, [lengthToDraw, totalLength], neutral, drawParams.drawTimeAnimationFraction)
+                const lengthToDraw = length.total * frac
+                strokeWireValue(g, value, [lengthToDraw, length.total], neutral, drawParams.drawTimeAnimationFraction)
+                this._lastDrawnWireValues[numValues - 1 - i] = [value, frac]
             }
         }
 
         // wirePath.drawBezierDebug(g)
+
+        for (const waypoint of this.waypoints) {
+            waypoint.draw(g, drawParams)
+        }
 
         g.globalAlpha = normalAlpha
 
         if (isAnimating && !this.parent.editor.timeline.isPaused) {
             this.requestRedraw({ why: "propagating value", isPropagation: true })
         }
+    }
+
+    public drawnValueAt(frac: number): LogicValue {
+        for (const [value, upToFrac] of this._lastDrawnWireValues) {
+            if (frac <= upToFrac) {
+                return value
+            }
+        }
+        return false
     }
 
     public isOver(x: number, y: number): boolean {
@@ -967,15 +999,12 @@ export class LinkManager {
         }
 
         // draw all wires, collecting branch points
-        const branchPointsMap = new Map<NodeOut, Array<[number, number]>>()
+        const branchPointsMap = new Map<NodeOut, BranchPoint[]>()
         for (const wire of this._wires) {
             if (useRibbons && wire.ribbon !== undefined) {
                 continue
             }
             wire.draw(g, drawParams)
-            for (const waypoint of wire.waypoints) {
-                waypoint.draw(g, drawParams)
-            }
             const nodeFrom = wire.startNode
             if (!branchPointsMap.has(nodeFrom)) {
                 branchPointsMap.set(nodeFrom, nodeFrom.branchPoints)
@@ -984,9 +1013,11 @@ export class LinkManager {
 
         // draw branch points
         const neutral = this.parent.editor.options.hideWireColors
-        for (const [node, branchPoints] of branchPointsMap.entries()) {
-            for (const branchPoint of branchPoints) {
-                drawWaypoint(g, branchPoint[0], branchPoint[1], NodeStyle.BRANCH_POINT, node.value, false, neutral, false, false)
+        for (const branchPoints of branchPointsMap.values()) {
+            for (const [x, y, frac, wire] of branchPoints) {
+                const drawValue = wire.drawnValueAt(frac)
+                // console.log(`waypoint at ${x}, ${y}, frac=${frac} of wire to ${wire.endNode.component.ref}`)
+                drawWaypoint(g, x, y, NodeStyle.BRANCH_POINT, drawValue, false, neutral, false, false)
             }
         }
 

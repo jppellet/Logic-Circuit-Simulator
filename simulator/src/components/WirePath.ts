@@ -1,13 +1,20 @@
-import { BezierCoords, bezierPoint, circle, isPointCloseToBezierWire, isPointCloseToStraightWire, isPointOnStraightSegment, isSameDirection, LineCoords, WIRE_WIDTH } from "../drawutils"
+import { BezierCoords, bezierPoint, circle, fractionIfPointOnStraightSegment, isPointCloseToBezierWire, isPointCloseToStraightWire, isSameDirection, LineCoords, WIRE_WIDTH } from "../drawutils"
 import { GraphicsRendering } from "./Drawable"
 
 export type PossibleBranchPoints =
     | readonly [x: number, y: number, endX: number, endY: number] // don't match if following same dir
     | readonly [x: number, y: number] // for bezier end points and for the last point, match always
 
+
+type WirePathLength = {
+    ofPart: number[]
+    total: number
+    cumFracOfPart: number[]
+}
+
 export class WirePath {
 
-    private _length: number | undefined = undefined
+    private _length: WirePathLength | undefined = undefined
     private readonly _possibleBranchPoints: PossibleBranchPoints[] = []
 
     public constructor(
@@ -27,11 +34,29 @@ export class WirePath {
         this._possibleBranchPoints.push([lastPart[0], lastPart[1]])
     }
 
-    public get length(): number {
+    public get length(): WirePathLength {
         if (this._length === undefined) {
-            const helperElement = document.createElementNS('http://www.w3.org/2000/svg', "path")
-            helperElement.setAttributeNS(null, "d", buildPathDesc(this.parts))
-            this._length = helperElement.getTotalLength()
+            let totalLength = 0
+            const partLengths = []
+            const cumPartLengths = []
+            for (const part of this.parts) {
+                let partLength: number
+                if (part.length === 4) {
+                    // line
+                    const dx = part[2] - part[0]
+                    const dy = part[3] - part[1]
+                    partLength = Math.sqrt(dx * dx + dy * dy)
+                } else {
+                    // bezier with helper
+                    const helperElement = document.createElementNS('http://www.w3.org/2000/svg', "path")
+                    helperElement.setAttributeNS(null, "d", `M${part[0]} ${part[1]} C${part[4]} ${part[5]},${part[6]} ${part[7]},${part[2]} ${part[3]}`)
+                    partLength = helperElement.getTotalLength()
+                }
+                partLengths.push(partLength)
+                totalLength += partLength
+                cumPartLengths.push(totalLength)
+            }
+            this._length = { ofPart: partLengths, total: totalLength, cumFracOfPart: cumPartLengths.map(v => v / totalLength) }
         }
         return this._length
     }
@@ -100,26 +125,26 @@ export class WirePath {
         return undefined
     }
 
-    public goesOverPossibleBranchPoint(point: PossibleBranchPoints): boolean {
+    public fractionIfOverPossibleBranchPoint(point: PossibleBranchPoints): number | undefined {
         // skip first and last parts, which are leads
         const [x, y, endX, endY] = point
         for (let i = 1; i < this.parts.length; i++) {
+            const fracBefore = this.length.cumFracOfPart[i - 1]
             const part = this.parts[i]
             const [partStartX, partStartY] = part
             if (part.length !== 4 || i === this.parts.length - 1) {
                 // bezier or last segment: match start point
                 if (partStartX === x && partStartY === y) {
-                    return true
+                    return fracBefore
                 }
                 // console.log(`       part ${i}=${JSON.stringify(part)}, bezier or last, no match`)
             } else {
                 // straight: match if on segment and not same dir
-                if (isPointOnStraightSegment(x, y, part)) {
-                    if (endX === undefined || endY === undefined) {
-                        return true
-                    }
-                    if (!isSameDirection(x, y, endX, endY, part)) {
-                        return true
+                const fracOnThisPart = fractionIfPointOnStraightSegment(x, y, part)
+                if (fracOnThisPart !== undefined) {
+                    if (endX === undefined || endY === undefined || !isSameDirection(x, y, endX, endY, part)) {
+                        const fracOfPart = this.length.cumFracOfPart[i] - fracBefore
+                        return fracBefore + fracOnThisPart * fracOfPart
                     }
                     // console.log(`       part ${i}=${JSON.stringify(part)}, straight, no match because colinear with ${JSON.stringify(point)}`)
                 } else {
@@ -127,7 +152,7 @@ export class WirePath {
                 }
             }
         }
-        return false
+        return undefined
     }
 
 }
