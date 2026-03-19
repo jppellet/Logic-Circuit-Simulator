@@ -436,6 +436,8 @@ export function isTrivialNodeName(name: string | undefined): boolean {
 // DRAWING
 //
 
+export type XRayMode = "auto" | "force" | "off"
+
 export const COMPONENT_OUTLINE_THICKNESS = 3
 
 // Adding to current path

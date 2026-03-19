@@ -169,7 +169,6 @@ const Strings_fr = {
         showGateTypes: tuple("Montrer type des portes", "Si coché, affiche sur les portes logique le nom de la fonction réalisée."),
         showDisconnectedPins: tuple("Toujours montrer les pattes", "Si non coché, les pattes non connectées des composants sont masquées dans les modes où les connexions du circuit ne peuvent pas être modifiées (et restent visibles sinon)."),
         hideTooltips: tuple("Désactiver tooltips", "Si coché, les informations supplémentaires des tooltips (comme les tables de vérité) ne seront pas affichées."),
-        hideXRay: tuple("Désactiver rayons X", "Si coché, les composants ne montront pas leur structure interne si l’on zoome dessus."),
         groupParallelWires: tuple("Grouper les fils parallèles", "Si coché, les fils parralèles allant d'un composant à un autre seront regroupés en un seul fil plus épais."),
         showHiddenWires: tuple("Montrer les fils cachés", "Si coché, les fils cachés seront quand même affichés."),
         showAnchors: tuple("Montrer les ancrages", "Si coché, des flèches indiqueront les composants auxquels sont ancrés les composants lors de leur déplacement."),
@@ -181,6 +180,7 @@ const Strings_fr = {
         showUserDataLink: tuple("Voir les", "données liées"),
         userDataHeader: "Les données suivantes sont exportées avec le circuit:",
         wireStyle: "Style des fils:",
+        xrayMode: "Mode rayons X:",
     },
     Tests: {
         Title: "Tests",
@@ -820,6 +820,10 @@ const Strings_fr = {
                 WireStyleSquareVH: "V puis H",
                 WireStyleCurved: "Courbe",
 
+                XRayModeAuto: "Auto",
+                XRayModeForce: "Forcer",
+                XRayModeOff: "Désactiver",
+
                 HiddenWire: "Masquer le fil",
             },
             timeline: {
@@ -976,7 +980,6 @@ const Strings_en: Strings = {
         showGateTypes: tuple("Show gate types", "If checked, gates types are displayed textually on top of the gate symbol."),
         showDisconnectedPins: tuple("Always show pins", "If unchecked, disconnected component pins are hidden in modes where new connections can’t be made (but stay visible otherwise)."),
         hideTooltips: tuple("Disable tooltips", "If checked, additional information in component tooltips (such as truth tables) won’t be shown."),
-        hideXRay: tuple("Disable X-ray mode", "If checked, components won’t show their inner structure when zoomed in."),
         groupParallelWires: tuple("Group parallel wires", "If checked, parallel wires from one component to another will be grouped together as a thicker wire."),
         showHiddenWires: tuple("Show hidden wires", "If checked, hidden wires will still be shown."),
         showAnchors: tuple("Show anchors", "If checked, arrows will be shown to denote which component is anchored to which other component while moving."),
@@ -988,6 +991,7 @@ const Strings_en: Strings = {
         showUserDataLink: tuple("See ", "linked data"),
         userDataHeader: "This data is exported with the circuit:",
         wireStyle: "Wire style:",
+        xrayMode: "X-ray mode:",
     },
     Tests: {
         Title: "Tests",
@@ -1626,6 +1630,10 @@ const Strings_en: Strings = {
                 WireStyleSquareHV: "H then V",
                 WireStyleSquareVH: "V then H",
                 WireStyleCurved: "Curve",
+
+                XRayModeAuto: "Auto",
+                XRayModeForce: "Force",
+                XRayModeOff: "Disable",
 
                 HiddenWire: "Hide Wire",
             },

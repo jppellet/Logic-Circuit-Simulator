@@ -10,7 +10,7 @@ import { S, Template } from "../strings"
 import { ArrayFillUsing, ArrayOrDirect, EdgeTrigger, Expand, FixedArrayMap, HasField, HighImpedance, InteractionResult, LogicValue, LogicValueRepr, Mode, Orientation, Unknown, brand, deepArrayEquals, isArray, isBoolean, isNumber, isRecord, isString, mergeWhereDefined, toLogicValueRepr, typeOrUndefined, validateJson } from "../utils"
 import { DrawContext, DrawContextExt, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, GraphicsRendering, MenuData, MenuItem, MenuItemPlacement, MenuItems, PositionSupportRepr } from "./Drawable"
 import { DEFAULT_WIRE_COLOR, Node, NodeBase, NodeIn, NodeOut, WireColor } from "./Node"
-import { XRay } from "./XRay"
+import { type XRay } from "./XRay"
 
 
 type NodeSeqRepr<TFullNodeRepr> =
@@ -930,40 +930,45 @@ export abstract class ComponentBase<
 
         // xray
         this._showingXRay = false
-        const options = this.parent.editor.options
+        const xrayMode = this.parent.editor.options.xray
         const scale = opts?.xrayScale
-        if (scale !== undefined && !options.hideXRay) {
+        if (scale !== undefined && xrayMode !== "off") {
             const limitFactor = 0.6 // draw components starting at this fraction of their normal size
+            const fadeSpan = 0.3 // span during which some transition alpha is applied
             const myDrawParams = ctx.drawParams
-            const zoomExcess = myDrawParams.currentDrawingScale - limitFactor / scale
+            const zoomExcess = xrayMode === "force" ? fadeSpan : myDrawParams.currentDrawingScale - limitFactor / scale
             let xray = this._cachedXRay
             if (zoomExcess > 0) {
                 if (xray === undefined) {
                     xray = this._cachedXRay = this.makeXRay(scale)
                 }
                 if (xray !== undefined) {
+                    const composedDrawingScale = myDrawParams.currentDrawingScale * scale
+                    // updateSmallestDrawingScale(composedDrawingScale / this.parent.editor.userDrawingScale)
                     const xrayDrawParams: DrawParams = {
                         ...myDrawParams,
                         currentCompUnderPointer: null,
                         highlightedItems: undefined,
-                        currentDrawingScale: myDrawParams.currentDrawingScale * scale,
+                        currentDrawingScale: composedDrawingScale,
                     }
-                    const fadeSpan = 0.3
                     const backgroundAlpha = 0.95 * Math.min(1, zoomExcess / fadeSpan)
                     const bk = COLORCOMP_BACKGROUND_TRANSLUCENT
                     g.fillStyle = `rgb(${bk} ${bk} ${bk} / ${backgroundAlpha})`
                     g.fill(outline)
                     const oldTransform = g.getTransform()
                     const oldAlpha = g.globalAlpha
+                    // const oldWireWidthFactor = getWireWidthFactor()
 
                     try {
                         g.translate(this.posX, this.posY)
                         g.scale(scale, scale)
                         g.globalAlpha = oldAlpha * Math.min(1, zoomExcess / fadeSpan)
+                        // setWireWidthFactor(oldWireWidthFactor / scale)
                         xray.doDraw(g, xrayDrawParams)
                     } finally {
                         g.setTransform(oldTransform)
                         g.globalAlpha = oldAlpha
+                        // setWireWidthFactor(oldWireWidthFactor)
                     }
                     this._showingXRay = true
                 }

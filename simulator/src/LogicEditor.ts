@@ -33,7 +33,7 @@ import { type Input } from "./components/Input"
 import { Rectangle, RectangleDef } from "./components/Rectangle"
 import { LinkManager, Wire, WireStyle, WireStyles } from "./components/Wire"
 import { XRay } from "./components/XRay"
-import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, DrawZIndex, GRID_STEP, TextVAlign, USER_COLORS, drawAnchorsAroundComponent as drawAnchorsForComponent, drawComponentIDs, fillTextVAlign, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine } from "./drawutils"
+import { COLOR_BACKGROUND, COLOR_BACKGROUND_UNUSED_REGION, COLOR_BORDER, COLOR_COMPONENT_BORDER, COLOR_GRID_LINES, COLOR_GRID_LINES_GUIDES, DrawZIndex, GRID_STEP, TextVAlign, USER_COLORS, XRayMode, drawAnchorsAroundComponent as drawAnchorsForComponent, drawComponentIDs, fillTextVAlign, isDarkMode, parseColorToRGBA, setDarkMode, strokeSingleLine } from "./drawutils"
 import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
 import { makeIcon } from "./images"
@@ -75,7 +75,7 @@ const ATTRIBUTE_NAMES = {
     showgatetypes: "showgatetypes",
     showdisconnectedpins: "showdisconnectedpins",
     showtooltips: "showtooltips",
-    showxray: "showxray",
+    xray: "xray",
 
     src: "src",
     data: "data",
@@ -102,8 +102,7 @@ const DEFAULT_EDITOR_OPTIONS = {
     hideOutputColors: false,
     hideMemoryContent: false,
     hideTooltips: false,
-    hideXRay: false,
-    forceXRay: false,
+    xray: "auto" as XRayMode,
     groupParallelWires: false,
     showHiddenWires: false,
     showAnchors: false,
@@ -291,7 +290,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         hideOutputColorsCheckbox: HTMLInputElement,
         hideMemoryContentCheckbox: HTMLInputElement,
         hideTooltipsCheckbox: HTMLInputElement,
-        hideXRayCheckbox: HTMLInputElement,
+        xrayPopup: HTMLSelectElement,
         groupParallelWiresCheckbox: HTMLInputElement,
         showHiddenWiresCheckbox: HTMLInputElement,
         showAnchorsCheckbox: HTMLInputElement,
@@ -388,7 +387,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             optionsHtml.wireStylePopup.value = newOptions.wireStyle
             optionsHtml.showDisconnectedPinsCheckbox.checked = newOptions.showDisconnectedPins
             optionsHtml.hideTooltipsCheckbox.checked = newOptions.hideTooltips
-            optionsHtml.hideXRayCheckbox.checked = newOptions.hideXRay
+            optionsHtml.xrayPopup.value = newOptions.xray
             optionsHtml.groupParallelWiresCheckbox.checked = newOptions.groupParallelWires
             optionsHtml.showHiddenWiresCheckbox.checked = newOptions.showHiddenWires
             optionsHtml.showAnchorsCheckbox.checked = newOptions.showAnchors
@@ -724,9 +723,9 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             this._options.hideTooltips = !isFalsyString(showtooltipsAttr)
         }
 
-        const showxrayAttr = this.getAttribute(ATTRIBUTE_NAMES.showxray)
-        if (showxrayAttr !== null) {
-            this._options.hideXRay = !isFalsyString(showxrayAttr)
+        const xrayAttr = this.getAttribute(ATTRIBUTE_NAMES.xray)
+        if (xrayAttr !== null) {
+            this._options.xray = xrayAttr as XRayMode
         }
 
         // TODO move this to options so that it is correctly persisted, too
@@ -918,31 +917,52 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const showGateTypesCheckbox = makeCheckbox("showGateTypes", S.Settings.showGateTypes)
         const showDisconnectedPinsCheckbox = makeCheckbox("showDisconnectedPins", S.Settings.showDisconnectedPins)
         const hideTooltipsCheckbox = makeCheckbox("hideTooltips", S.Settings.hideTooltips)
-        const hideXRayCheckbox = makeCheckbox("hideXRay", S.Settings.hideXRay)
         const groupParallelWiresCheckbox = makeCheckbox("groupParallelWires", S.Settings.groupParallelWires, true)
         const showHiddenWiresCheckbox = makeCheckbox("showHiddenWires", S.Settings.showHiddenWires)
         const showAnchorsCheckbox = makeCheckbox("showAnchors", S.Settings.showAnchors)
         const showIdsCheckbox = makeCheckbox("showIDs", S.Settings.showIds)
-        // 
+
         const sw = S.Components.Wire.contextMenu
-        const wireStylePopup = select(
-            option(attr("value", WireStyles.auto), sw.WireStyleAuto),
-            option(attr("value", WireStyles.straight), sw.WireStyleStraight),
-            option(attr("value", WireStyles.hv), sw.WireStyleSquareHV),
-            option(attr("value", WireStyles.vh), sw.WireStyleSquareVH),
-            option(attr("value", WireStyles.bezier), sw.WireStyleCurved),
-        ).render()
-        wireStylePopup.addEventListener("change", this.wrapHandler(() => {
-            this._options.wireStyle = wireStylePopup.value as WireStyle
+
+        const makeSelect = <T extends string>(title: String, values: Array<[T, string]>, listener: (value: T) => void) => {
+            const popup = select(
+                ...values.map(([value, caption]) =>
+                    option(attr("value", value), caption),
+                )
+            ).render()
+            popup.addEventListener("change", this.wrapHandler(() => {
+                listener(popup.value as T)
+            }))
+            settingsPalette.appendChild(
+                div(
+                    style("height: 24px"),
+                    title + " ", popup
+                ).render()
+            )
+            return popup
+        }
+
+        const wireStylePopup = makeSelect<WireStyle>(S.Settings.wireStyle, [
+            [WireStyles.auto, sw.WireStyleAuto],
+            [WireStyles.straight, sw.WireStyleStraight],
+            [WireStyles.hv, sw.WireStyleSquareHV],
+            [WireStyles.vh, sw.WireStyleSquareVH],
+            [WireStyles.bezier, sw.WireStyleCurved],
+        ], value => {
+            this._options.wireStyle = value
             this.linkMgr.invalidateAllWirePaths()
             this.editTools.redrawMgr.requestRedraw({ why: "wire style changed", invalidateMask: true })
-        }))
-        settingsPalette.appendChild(
-            div(
-                style("height: 20px"),
-                S.Settings.wireStyle + " ", wireStylePopup
-            ).render()
-        )
+        })
+
+        const xrayPopup = makeSelect<XRayMode>(S.Settings.xrayMode, [
+            ["auto", sw.XRayModeAuto],
+            ["force", sw.XRayModeForce],
+            ["off", sw.XRayModeOff],
+        ], value => {
+            this._options.xray = value
+            this.editTools.redrawMgr.requestRedraw({ why: "xray mode changed", invalidateMask: false })
+        })
+
 
         const propagationDelayField = input(type("number"),
             style("margin: 0 4px; width: 4em"),
@@ -980,7 +1000,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             showGateTypesCheckbox,
             showDisconnectedPinsCheckbox,
             hideTooltipsCheckbox,
-            hideXRayCheckbox,
+            xrayPopup,
             groupParallelWiresCheckbox,
             showHiddenWiresCheckbox,
             showAnchorsCheckbox,
