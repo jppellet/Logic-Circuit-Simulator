@@ -33,11 +33,29 @@ export const DemuxDef =
             bottom: paramBool(),
         },
         validateParams: ({ from, to, bottom }) => {
-            // reference is 'from'; 'to' is clamped to be between 2*from and 16*from
-            const numTo = Math.min(16 * from, Math.max(2 * from, to))
-            const numGroups = Math.ceil(numTo / from)
-            const numSel = Math.ceil(Math.log2(numGroups))
-            return { numFrom: from, numTo, numGroups, numSel, controlPinsAtBottom: bottom }
+            // use 'from' as bit width reference
+            const numFrom = Math.max(0, Math.min(16, from))
+            // clamp 'to' to be between 2*from and 16*from
+            let numTo = Math.min(16 * numFrom, Math.max(2 * numFrom, to))
+            // derive number of selector bits
+            let numSel = Math.ceil(Math.log2(numTo / numFrom))
+
+            // impose some reasonable limits
+            if (numFrom >= 16 && numSel > 1) {
+                numSel = 1
+            } else if (numFrom >= 4 && numSel > 2) {
+                numSel = 2
+            } else if (numFrom >= 2 && numSel > 3) {
+                numSel = 3
+            }
+            // derive rest
+            const numGroups = Math.pow(2, numSel)
+            numTo = numFrom * numGroups
+
+            if (numFrom !== from || numTo !== to) {
+                console.warn(`Demux of type ${DemuxDef.variantName({ from, to, bottom })} was changed to ${DemuxDef.variantName({ from: numFrom, to: numTo, bottom })}`)
+            }
+            return { numFrom, numTo, numGroups, numSel, controlPinsAtBottom: bottom }
         },
         size: ({ numFrom, numTo, numGroups, numSel }) => {
             const gridWidth = 2 * Math.max(2, numSel)
@@ -49,7 +67,6 @@ export const DemuxDef =
         },
         makeNodes: ({ numFrom, numGroups, numSel, controlPinsAtBottom, isXRay, gridHeight }) => {
             const outX = (isXRay ? 0.5 : 1) + Math.max(2, numSel)
-            const inX = -outX
 
             const groupOfOutputs = groupVerticalMulti("e", outX, 0, numGroups, numFrom)
             const selY = (controlPinsAtBottom ? 1 : -1) * (gridHeight / 2 + 1)
@@ -63,7 +80,7 @@ export const DemuxDef =
 
             return {
                 ins: {
-                    In: groupVertical("w", inX, 0, numFrom),
+                    In: groupVertical("w", -outX, 0, numFrom),
                     S,
                 },
                 outs: {
@@ -215,7 +232,9 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
         }
 
         // xray and outline
-        this.doDrawXRayAndOutline(g, ctx, outline, 0.18)
+        const useSmallScale = this.numFrom === 1 && this.numSel >= 2
+        const scale = useSmallScale ? 0.11 : 0.18
+        this.doDrawXRayAndOutline(g, ctx, outline, scale)
     }
 
     protected override makeXRay(scale: number): XRay | undefined {
@@ -277,7 +296,8 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
 
                     const selLineX = linesRight - selLineIndex * lineSpacing
                     if (useNot) {
-                        wire(not, to, "vh", [selLineX, hSegmentY])
+                        const waypoints: WaypointSpecCompact | undefined = (bits === 1 && sels === 1) ? undefined : [selLineX, hSegmentY]
+                        wire(not, to, "vh", waypoints)
                     } else {
                         // try to simplify waypoints
                         const waypoints: WaypointSpecCompact[] =
@@ -297,7 +317,7 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
                     }
                 }
 
-                wire(in_, and.inputs.In[sels], "vh", [linesRight - (2 * sels + b + 1) * lineSpacing, in_.posY])
+                wire(in_, and.inputs.In[sels], "vh", [linesRight - (2 * sels + b) * lineSpacing, in_.posY])
             }
         }
 

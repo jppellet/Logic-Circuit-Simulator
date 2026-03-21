@@ -609,11 +609,6 @@ export class Gate1 extends GateBase<Gate1Repr> {
 Gate1Def.impl = Gate1
 
 
-export function gateGridHeight(numBits: number) {
-    const isTall = numBits !== 2 && numBits !== 4 && numBits !== 6
-    return isTall ? 5 : 4
-}
-
 export const GateNDef =
     defineParametrizedComponent(GateTypePrefix + "", true, true, {
         variantName: ({ type, bits }) =>
@@ -637,7 +632,7 @@ export const GateNDef =
         idPrefix: ({ type }) => type,
         size: ({ numBits }) => ({
             gridWidth: 4,
-            gridHeight: gateGridHeight(numBits),
+            gridHeight: (numBits !== 2 && numBits !== 4 && numBits !== 6) ? 5 : 4,
         }),
         makeNodes: ({ isXRay, numBits }) => {
             const leadLength = LEAD_LENGTH_NORMAL // will be updated dynamically for the inputs

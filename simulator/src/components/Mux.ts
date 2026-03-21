@@ -5,10 +5,10 @@ import { S } from "../strings"
 import { ArrayFillWith, LogicValue, Unknown, isUnknown, typeOrUndefined } from "../utils"
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupHorizontal, groupVertical, groupVerticalMulti, param, paramBool } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
-import { Gate1, GateN, gateGridHeight } from "./Gate"
-import { NodeIn, NodeOut } from "./Node"
+import { Gate1, GateN } from "./Gate"
+import { NodeIn } from "./Node"
 import { WireStyles } from "./Wire"
-import { XRay } from "./XRay"
+import { AllocationZone, WaypointSpecCompact, XRay } from "./XRay"
 
 
 export const MuxDef =
@@ -31,11 +31,29 @@ export const MuxDef =
             bottom: paramBool(),
         },
         validateParams: ({ from, to, bottom }) => {
-            // reference is 'to'; 'from' is clamped to be between 2*to and 16*to
-            const numFrom = Math.min(16 * to, Math.max(2 * to, from))
-            const numGroups = Math.ceil(numFrom / to)
-            const numSel = Math.ceil(Math.log2(numGroups))
-            return { numFrom, numTo: to, numGroups, numSel, controlPinsAtBottom: bottom }
+            // use 'to' as bit width reference
+            const numTo = Math.max(0, Math.min(16, to))
+            // clamp 'from' to be between 2*from and 16*from
+            let numFrom = Math.min(16 * numTo, Math.max(2 * numTo, from))
+            // derive number of selector bits
+            let numSel = Math.ceil(Math.log2(numFrom / numTo))
+
+            // impose some reasonable limits
+            if (numTo >= 16 && numSel > 1) {
+                numSel = 1
+            } else if (numTo >= 4 && numSel > 2) {
+                numSel = 2
+            } else if (numTo >= 2 && numSel > 3) {
+                numSel = 3
+            }
+            // derive rest
+            const numGroups = Math.pow(2, numSel)
+            numFrom = numTo * numGroups
+
+            if (numFrom !== from || numTo !== to) {
+                console.warn(`Mux of type ${MuxDef.variantName({ from, to, bottom })} was changed to ${MuxDef.variantName({ from: numFrom, to: numTo, bottom })}`)
+            }
+            return { numFrom, numTo, numGroups, numSel, controlPinsAtBottom: bottom }
         },
         size: ({ numFrom, numTo, numGroups, numSel }) => {
             const gridWidth = 2 * Math.max(2, numSel)
@@ -45,20 +63,23 @@ export const MuxDef =
             const gridHeight = 2 + spacing * numLeftSlots
             return { gridWidth, gridHeight }
         },
-        makeNodes: ({ numTo, numGroups, numSel, controlPinsAtBottom, isXRay }) => {
+        makeNodes: ({ numTo, numGroups, numSel, controlPinsAtBottom, isXRay, gridHeight }) => {
             const outX = (isXRay ? 0.5 : 1) + Math.max(2, numSel)
-            const inX = -outX
 
-            const groupOfInputs = groupVerticalMulti("w", inX, 0, numGroups, numTo)
-            const firstInputY = groupOfInputs[0][0][1]
-            const lastGroup = groupOfInputs[groupOfInputs.length - 1]
-            const lastInputY = lastGroup[lastGroup.length - 1][1]
-            const selY = controlPinsAtBottom ? lastInputY + 3 : firstInputY - 3
+            const groupOfInputs = groupVerticalMulti("w", -outX, 0, numGroups, numTo)
+            const selY = (controlPinsAtBottom ? 1 : -1) * (gridHeight / 2 + 1)
+
+            const S = groupHorizontal(controlPinsAtBottom ? "s" : "n", 0, selY, numSel, undefined, { leadLength: 0 })
+            const leadLengthIncrement = 6.7
+            const leadLengthS = 12.5 + (numSel !== 1 ? 0 : leadLengthIncrement / 2)
+            for (let s = 0; s < numSel; s++) {
+                S[numSel - 1 - s][4]!.leadLength = leadLengthS + s * leadLengthIncrement
+            }
 
             return {
                 ins: {
                     I: groupOfInputs,
-                    S: groupHorizontal(controlPinsAtBottom ? "s" : "n", 0, selY, numSel, undefined, /*{ leadLength: 35 }*/),
+                    S,
                 },
                 outs: {
                     Z: groupVertical("e", outX, 0, numTo),
@@ -190,7 +211,14 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
         }
 
         // xray and outline
-        this.doDrawXRayAndOutline(g, ctx, outline, 0.18)
+        const useSmallScale =
+            this.numTo >= 8 ||
+            this.numTo >= 4 && this.numSel >= 2 ||
+            this.numTo >= 1 && this.numSel >= 3
+        const useExtraSmallScale =
+            this.numTo === 1 && this.numSel === 3
+        const scale = useExtraSmallScale ? 0.0848 : useSmallScale ? 0.11 : 0.18
+        this.doDrawXRayAndOutline(g, ctx, outline, scale)
     }
 
     protected override makeXRay(scale: number): XRay | undefined {
@@ -200,35 +228,28 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
         const bits = this.numTo
         const groups = this.numGroups
         const sels = this.numSel
-        const compact = useCompact(bits)
 
         const nots: Gate1[] = []
         for (let s = 0; s < sels; s++) {
-            const notPosX = ins.S[s].posX + 2.5 * GRID_STEP
-            const not = gate(`not${s}`, "not", notPosX, y.top + 3 * GRID_STEP, "s")
-            wire(ins.S[s], not, "vh", [notPosX, y.top + 2])
+            const not = gate(`not${s}`, "not", ins.S[s].posX, ins.S[s].posY + 2.5 * GRID_STEP, "s")
+            wire(ins.S[s], not)
             nots.push(not)
         }
 
         const orCenterX = x.right - 3 * GRID_STEP
         const andCenterX = orCenterX - 6 * GRID_STEP
 
-        const andInputsSpacing = GRID_STEP
-        const notOutputsTop = nots[nots.length - 1].outputs.Out.posY
-        const notOutputsBottom = notOutputsTop + (2 * sels) * andInputsSpacing
-        const andInputsLeft = andCenterX - 3 * GRID_STEP - (2 * sels) * andInputsSpacing
-
-        const globalOffsetY = (notOutputsBottom + GRID_STEP - y.top) / 2
-        const andGateHeight = gateGridHeight(sels + 1) * GRID_STEP
-        const andGateSpacing = (compact ? 1 : 5) * GRID_STEP
+        const globalOffsetX = (nots[0].outputs.Out.posY - ins.S[0].posY) / 2
+        const andGateHeight = (2 + sels * (useCompact(sels + 1) ? 1 : 2)) * GRID_STEP
+        const andGateSpacing = GRID_STEP
         const andGroupHeight = groups * andGateHeight + (groups - 1) * andGateSpacing
-        const andGroupSpacing = (compact ? 1.5 : 10) * GRID_STEP
+        const andGroupSpacing = 6 * GRID_STEP
         const andGroupsTotalHeight = bits * andGroupHeight + (bits - 1) * andGroupSpacing
-        const firstAndGroupCenterY = globalOffsetY + (andGroupHeight - andGroupsTotalHeight) / 2
+        const firstAndGroupCenterY = globalOffsetX + (andGroupHeight - andGroupsTotalHeight) / 2
 
+        // make AND and OR gates, no wiring yet
         const ands: GateN[][] = []
         const ors: GateN[] = []
-
         for (let b = 0; b < bits; b++) {
             const groupCenterY = firstAndGroupCenterY + b * (andGroupHeight + andGroupSpacing)
             const or = gate(`or${b}`, "or", orCenterX, groupCenterY, "e", groups)
@@ -239,30 +260,64 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
             for (let g = 0; g < groups; g++) {
                 const andCenterY = firstGateCenterY + g * (andGateHeight + andGateSpacing)
                 const and = gate(`and${b}.${g}`, "and", andCenterX, andCenterY, "e", sels + 1)
-                for (let s = 0; s < sels; s++) {
-                    const useNot = ((g >> s) & 1) === 0
-                    const from = useNot ? nots[s] : ins.S[s]
-                    const delta = (sels * 2 - (s * 2 + Number(!useNot))) * andInputsSpacing
-                    wire(from, and.inputs.In[s], "vh", [andInputsLeft + delta, notOutputsTop + delta])
-                }
                 localAnds.push(and)
             }
-            xray.wires(localAnds.map(g => g.outputs.Out), or.inputs.In)
-
             ands.push(localAnds)
         }
-        xray.wires(ors.map(g => g.outputs.Out), outs.Z, undefined, x.right - 2)
 
-
-        const inss: NodeOut[] = []
-        const outss: NodeIn[] = []
+        // allocate wires in zones and set x positions of gates
+        const andInputs: NodeIn[] = []
         for (let g = 0; g < groups; g++) {
             for (let b = 0; b < bits; b++) {
-                inss.push(ins.I[g][b])
-                outss.push(ands[b][g].inputs.In[sels])
+                andInputs.push(ands[b][g].inputs.In[sels])
             }
         }
-        xray.wires(inss, outss, x.left + 2, andInputsLeft, false)
+        const gateWidth = ands[0][0].outputs.Out.posX - ands[0][0].inputs.In[0].posX
+        const andsFlat = ands.flat()
+        const zones: AllocationZone[] = [{
+            from: ins.I.flat(),
+            to: andInputs,
+            bookings: { right: 2 * sels },
+            after: { comps: andsFlat, compWidth: gateWidth },
+        }, {
+            from: ands.map(ands => ands.map(and => and.outputs.Out)),
+            to: ors.map(g => g.inputs.In),
+            after: { comps: ors, compWidth: gateWidth },
+        }, {
+            from: ors.map(g => g.outputs.Out),
+            to: outs.Z,
+        }]
+        const allocations = xray.wiresInZones(x.left + 2, x.right - 2, zones)
+
+        // wire the AND gate selector lines
+        const andInputAlloc = allocations[0]
+        for (let b = 0; b < bits; b++) {
+            for (let g = 0; g < groups; g++) {
+                for (let s = 0; s < sels; s++) {
+                    const useNot = ((g >> s) & 1) === 0
+                    const lineIndex = s * 2 + Number(!useNot)
+                    const notOuputY = nots[s].outputs.Out.posY + GRID_STEP
+                    const lineX = andInputAlloc.right - lineIndex * andInputAlloc.inc
+
+                    if (useNot) {
+                        const andIn = ands[b][g].inputs.In[s]
+                        wire(nots[s], andIn, "hv", [
+                            [nots[s].posX, notOuputY],
+                            [lineX, andIn.posY],
+                        ])
+                    } else {
+                        const in_ = ins.S[s]
+                        const inPosX = in_.posX - 2.5 * GRID_STEP
+                        const dir = inPosX < lineX ? 1 : -1
+                        const waypoints: WaypointSpecCompact[] = [
+                            [inPosX, in_.posY],
+                            [lineX, notOuputY + dir * andInputAlloc.inc],
+                        ]
+                        wire(in_, ands[b][g].inputs.In[s], "vh", waypoints)
+                    }
+                }
+            }
+        }
 
         return xray
     }
@@ -282,8 +337,8 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
         })
 
         return [
-            this.makeChangeParamsContextMenuItem("outputs", s.ParamNumTo, this.numTo, "to"),
             this.makeChangeParamsContextMenuItem("inputs", s.ParamNumFrom, this.numFrom, "from", [2, 4, 8, 16].map(x => x * this.numTo)),
+            this.makeChangeParamsContextMenuItem("outputs", s.ParamNumTo, this.numTo, "to"),
             ["mid", MenuData.sep()],
             this.makeChangeBooleanParamsContextMenuItem(this.numSel === 1 ? S.Components.Generic.contextMenu.ParamControlBitAtBottom : S.Components.Generic.contextMenu.ParamControlBitsAtBottom, this.controlPinsAtBottom, "bottom"),
             ["mid", toggleShowWiringItem],

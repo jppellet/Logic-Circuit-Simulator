@@ -1,6 +1,6 @@
 import { doALUAdd, doALUSub } from "./components/ALU"
 import { WireColumnAllocator } from "./components/XRay"
-import { displayValuesFromArray } from "./drawutils"
+import { displayValuesFromArray, WIRE_WIDTH } from "./drawutils"
 import { LogicValue } from "./utils"
 
 export class Tests {
@@ -146,7 +146,7 @@ export class Tests {
 
     public columnAllocator() {
         const alloc = new WireColumnAllocator(false)
-        const margin = alloc.margin
+        const margin = WIRE_WIDTH
 
         let numTests = 0
         let numFailed = 0

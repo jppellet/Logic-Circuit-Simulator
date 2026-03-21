@@ -3,7 +3,7 @@ import { circle, COLOR_COMPONENT_BORDER, COLOR_UNKNOWN, fillTextVAlign, GRID_STE
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillUsing, ArrayFillWith, LogicValue, Mode, typeOrUndefined } from "../utils"
-import { AdderArrayDef, getXRayArrayScale, xrayWireAndLayoutAsArray } from "./AdderArray"
+import { AdderArrayDef, getXRayScaleForArrayComponent, xrayWireAndLayoutAsArray } from "./AdderArray"
 import { defineParametrizedComponent, groupVertical, param, ParametrizedComponentBase, Repr, ResolvedParams } from "./Component"
 import { DrawableParent, DrawContext, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
 import { GateTypePrefix, validateGateType } from "./Gate"
@@ -229,7 +229,7 @@ export class GateArray extends ParametrizedComponentBase<GateArrayRepr> {
                     }
                 }
             },
-            xrayScale: getXRayArrayScale(this.numBits),
+            xrayScale: getXRayScaleForArrayComponent(this.numBits),
         })
     }
 
