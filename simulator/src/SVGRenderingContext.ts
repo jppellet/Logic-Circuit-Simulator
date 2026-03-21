@@ -273,7 +273,16 @@ export class SVGRenderingContext {
 
     /// CONTEXT SAVE/RESTORE and GROUPS
 
-    public beginGroup(className: string | undefined) {
+    public group<T>(className: string, f: () => T): T {
+        this._beginGroup(className)
+        try {
+            return f()
+        } finally {
+            this._endGroup()
+        }
+    }
+
+    private _beginGroup(className: string | undefined) {
         const group = this._createElement("g")
         if (className !== undefined) {
             group.setAttribute("class", className)
@@ -284,7 +293,7 @@ export class SVGRenderingContext {
         this._currentElement = group
     }
 
-    public endGroup() {
+    private _endGroup() {
         this._currentElement = this._groupStack.pop() ?? this._svg.children[1] as SVGElement
     }
 
@@ -292,7 +301,7 @@ export class SVGRenderingContext {
      * Saves the current state by creating a group tag
      */
     public save() {
-        this.beginGroup(undefined)
+        this._beginGroup(undefined)
         this._styleStack.push(this._getStyleState())
         this._transformMatrixStack.push(this.getTransform())
     }
@@ -301,7 +310,7 @@ export class SVGRenderingContext {
      * Sets current element to parent
      */
     public restore() {
-        this.endGroup()
+        this._endGroup()
         this._applyStyleState(this._styleStack.pop()!)
         this.setTransform(this._transformMatrixStack.pop()!)
     }

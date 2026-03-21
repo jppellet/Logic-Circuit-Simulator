@@ -102,8 +102,8 @@ export class Decoder extends ParametrizedComponentBase<DecoderRepr> {
             return
         }
 
-        const { xray, wire, gate } = this.parent.editor.newXRay(this)
-        const { ins, outs, x, later } = this.makeXRayNodes<Decoder>(xray, scale)
+        const { xray, wire, gate } = this.parent.editor.newXRay(this, scale)
+        const { ins, outs, x, later } = this.makeXRayNodes<Decoder>(xray)
 
         const addSpace = numBits > 3 ? 20 : 0
         const xPosNot = x.left + 3 * GRID_STEP + addSpace

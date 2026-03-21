@@ -1300,7 +1300,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     }
 
     public override focus() {
-        this.html.mainCanvas.focus()
+        this.html.mainCanvas.focus({ preventScroll: true })
     }
 
     /**
@@ -2517,108 +2517,107 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             // set the transform to the base one but still apply the zoom factor
             g.setTransform(baseTransform)
             g.scale(this._userDrawingScale, this._userDrawingScale)
-            g.beginGroup("grid")
-            const widthAdjusted = width / this._userDrawingScale
-            const heightAdjusted = height / this._userDrawingScale
-            const step = GRID_STEP //* 2
-            g.strokeStyle = COLOR_GRID_LINES
-            g.lineWidth = 1
-            g.beginPath()
-            for (let x = this._translationX % step; x < widthAdjusted; x += step) {
-                g.moveTo(x, 0)
-                g.lineTo(x, heightAdjusted)
-            }
-            for (let y = this._translationY % step; y < heightAdjusted; y += step) {
-                g.moveTo(0, y)
-                g.lineTo(widthAdjusted, y)
-            }
-            g.stroke()
-            g.endGroup()
+            g.group("grid", () => {
+                const widthAdjusted = width / this._userDrawingScale
+                const heightAdjusted = height / this._userDrawingScale
+                const step = GRID_STEP //* 2
+                g.strokeStyle = COLOR_GRID_LINES
+                g.lineWidth = 1
+                g.beginPath()
+                for (let x = this._translationX % step; x < widthAdjusted; x += step) {
+                    g.moveTo(x, 0)
+                    g.lineTo(x, heightAdjusted)
+                }
+                for (let y = this._translationY % step; y < heightAdjusted; y += step) {
+                    g.moveTo(0, y)
+                    g.lineTo(widthAdjusted, y)
+                }
+                g.stroke()
+            })
             g.setTransform(contentTransform)
         }
         if (!skipBorder && this.translationX !== 0 || this.translationY !== 0) {
             // draw axes when translated
-            g.beginGroup("axes")
-            g.strokeStyle = COLOR_GRID_LINES
-            g.fillStyle = COLOR_GRID_LINES
-            g.lineWidth = 1
-            g.beginPath()
-            g.moveTo(0, -10)
-            g.lineTo(0, 20)
-            g.moveTo(-10, 0)
-            g.lineTo(20, 0)
-            g.stroke()
+            g.group("axes", () => {
+                g.strokeStyle = COLOR_GRID_LINES
+                g.fillStyle = COLOR_GRID_LINES
+                g.lineWidth = 1
+                g.beginPath()
+                g.moveTo(0, -10)
+                g.lineTo(0, 20)
+                g.moveTo(-10, 0)
+                g.lineTo(20, 0)
+                g.stroke()
 
-            // draw arrow head right
-            g.beginPath()
-            g.moveTo(22, 0)
-            g.lineTo(15, -3)
-            g.lineTo(15, 3)
-            g.closePath()
-            g.fill()
+                // draw arrow head right
+                g.beginPath()
+                g.moveTo(22, 0)
+                g.lineTo(15, -3)
+                g.lineTo(15, 3)
+                g.closePath()
+                g.fill()
 
-            // draw arrow head down
-            g.beginPath()
-            g.moveTo(0, 22)
-            g.lineTo(-3, 15)
-            g.lineTo(3, 15)
-            g.closePath()
-            g.fill()
+                // draw arrow head down
+                g.beginPath()
+                g.moveTo(0, 22)
+                g.lineTo(-3, 15)
+                g.lineTo(3, 15)
+                g.closePath()
+                g.fill()
 
-            // draw "0" near origin
-            g.font = '10px sans-serif'
-            g.textAlign = 'right'
-            fillTextVAlign(g, TextVAlign.bottom, "0", -3, -3)
-
-            g.endGroup()
+                // draw "0" near origin
+                g.font = '10px sans-serif'
+                g.textAlign = 'right'
+                fillTextVAlign(g, TextVAlign.bottom, "0", -3, -3)
+            })
         }
 
         // draw guidelines when moving waypoint
         const singleMovingWaypoint = moveMgr.getSingleMovingWaypoint()
         if (singleMovingWaypoint !== undefined) {
-            g.beginGroup("guides")
-            const guides = singleMovingWaypoint.getPrevAndNextAnchors()
-            g.strokeStyle = COLOR_GRID_LINES_GUIDES
-            g.lineWidth = 1.5
-            g.beginPath()
-            for (const guide of guides) {
-                g.moveTo(guide.posX, 0)
-                g.lineTo(guide.posX, height)
-                g.moveTo(0, guide.posY)
-                g.lineTo(width, guide.posY)
-            }
-            g.stroke()
-            g.endGroup()
+            g.group("guides", () => {
+                const guides = singleMovingWaypoint.getPrevAndNextAnchors()
+                g.strokeStyle = COLOR_GRID_LINES_GUIDES
+                g.lineWidth = 1.5
+                g.beginPath()
+                for (const guide of guides) {
+                    g.moveTo(guide.posX, 0)
+                    g.lineTo(guide.posX, height)
+                    g.moveTo(0, guide.posY)
+                    g.lineTo(width, guide.posY)
+                }
+                g.stroke()
+            })
         }
 
         // draw border according to mode
         if (!skipBorder && (this._mode >= Mode.CONNECT || this._maxInstanceMode === MAX_MODE_WHEN_SINGLETON)) {
-            g.beginGroup("border")
-            g.setTransform(baseTransform)
-            g.strokeStyle = COLOR_BORDER
-            g.lineWidth = 2
-            if (this._maxInstanceMode === MAX_MODE_WHEN_SINGLETON && this._mode < this._maxInstanceMode) {
-                g.strokeRect(0, 0, width, height)
-                const h = this.guessAdequateCanvasSize(true)[1]
-                strokeSingleLine(g, 0, h, width, h)
+            g.group("border", () => {
+                g.setTransform(baseTransform)
+                g.strokeStyle = COLOR_BORDER
+                g.lineWidth = 2
+                if (this._maxInstanceMode === MAX_MODE_WHEN_SINGLETON && this._mode < this._maxInstanceMode) {
+                    g.strokeRect(0, 0, width, height)
+                    const h = this.guessAdequateCanvasSize(true)[1]
+                    strokeSingleLine(g, 0, h, width, h)
 
-                g.fillStyle = COLOR_BACKGROUND_UNUSED_REGION
-                g.fillRect(0, h, width, height - h)
-            } else {
-                // skip border where the top tab is
-                const myX = this.html.mainCanvas.getBoundingClientRect().x
-                const [x1, x2] = this._topBar?.getActiveTabCoords() ?? [0, 0]
-                g.beginPath()
-                g.moveTo(x1 - myX, 0)
-                g.lineTo(0, 0)
-                g.lineTo(0, height)
-                g.lineTo(width, height)
-                g.lineTo(width, 0)
-                g.lineTo(x2 - myX, 0)
-                g.stroke()
-            }
-            g.setTransform(contentTransform)
-            g.endGroup()
+                    g.fillStyle = COLOR_BACKGROUND_UNUSED_REGION
+                    g.fillRect(0, h, width, height - h)
+                } else {
+                    // skip border where the top tab is
+                    const myX = this.html.mainCanvas.getBoundingClientRect().x
+                    const [x1, x2] = this._topBar?.getActiveTabCoords() ?? [0, 0]
+                    g.beginPath()
+                    g.moveTo(x1 - myX, 0)
+                    g.lineTo(0, 0)
+                    g.lineTo(0, height)
+                    g.lineTo(width, height)
+                    g.lineTo(width, 0)
+                    g.lineTo(x2 - myX, 0)
+                    g.stroke()
+                }
+                g.setTransform(contentTransform)
+            })
         }
 
         // const currentScale = this._currentScale
@@ -2641,58 +2640,56 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const currentSelection = this.eventMgr.currentSelection
         drawParams.currentSelection = currentSelection
         const drawComp = (comp: Component) => {
-            g.beginGroup(comp.constructor.name)
-            try {
+            g.group(comp.constructor.name, () => {
                 comp.draw(g, drawParams)
                 for (const node of comp.allNodes()) {
                     node.draw(g, drawParams) // never show nodes as selected
                 }
-            } finally {
-                g.endGroup()
-            }
+            })
         }
 
         const root = this._editorRoot
 
         // draw background components
-        g.beginGroup("background")
-        for (const comp of root.components.withZIndex(DrawZIndex.Background)) {
-            drawComp(comp)
-        }
-        g.endGroup()
+        g.group("background", () => {
+            for (const comp of root.components.withZIndex(DrawZIndex.Background)) {
+                drawComp(comp)
+            }
+        })
 
         // draw wires
-        g.beginGroup("wires")
-        root.linkMgr.draw(g, drawParams) // never show wires as selected
-        g.endGroup()
+        g.group("wires", () => {
+            root.linkMgr.draw(g, drawParams) // never show wires as selected
+        })
 
         // draw normal components
-        g.beginGroup("components")
-        for (const comp of root.components.withZIndex(DrawZIndex.Normal)) {
-            drawComp(comp)
-        }
-        g.endGroup()
+        g.group("components", () => {
+            for (const comp of root.components.withZIndex(DrawZIndex.Normal)) {
+
+                drawComp(comp)
+            }
+        })
 
         // draw anchor of moving component, if any
         const movingCompWithAnchor = moveMgr.getSingleMovingComponentWithAnchors()
         if (movingCompWithAnchor !== undefined) {
-            g.beginGroup("anchors")
-            drawAnchorsForComponent(g, movingCompWithAnchor, true)
-            g.endGroup()
+            g.group("anchors", () => {
+                drawAnchorsForComponent(g, movingCompWithAnchor, true)
+            })
         } else if (this._options.showAnchors) {
-            g.beginGroup("anchors")
-            for (const comp of root.components.all()) {
-                drawAnchorsForComponent(g, comp, false)
-            }
-            g.endGroup()
+            g.group("anchors", () => {
+                for (const comp of root.components.all()) {
+                    drawAnchorsForComponent(g, comp, false)
+                }
+            })
         }
 
         // draw overlays
-        g.beginGroup("overlays")
-        for (const comp of root.components.withZIndex(DrawZIndex.Overlay)) {
-            drawComp(comp)
-        }
-        g.endGroup()
+        g.group("overlays", () => {
+            for (const comp of root.components.withZIndex(DrawZIndex.Overlay)) {
+                drawComp(comp)
+            }
+        })
 
         // draw refs
         if (this._options.showIDs) {
@@ -2700,17 +2697,17 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
 
         // draw selection
-        let selRect
-        if (currentSelection !== undefined && (selRect = currentSelection.currentlyDrawnRect) !== undefined) {
-            g.beginGroup("selection")
-            g.lineWidth = 1.5
-            g.strokeStyle = "rgb(100,100,255)"
-            g.fillStyle = "rgba(100,100,255,0.2)"
-            g.beginPath()
-            g.rect(selRect.x, selRect.y, selRect.width, selRect.height)
-            g.stroke()
-            g.fill()
-            g.endGroup()
+        if (currentSelection !== undefined && currentSelection.currentlyDrawnRect !== undefined) {
+            const selRect = currentSelection.currentlyDrawnRect
+            g.group("selection", () => {
+                g.lineWidth = 1.5
+                g.strokeStyle = "rgb(100,100,255)"
+                g.fillStyle = "rgba(100,100,255,0.2)"
+                g.beginPath()
+                g.rect(selRect.x, selRect.y, selRect.width, selRect.height)
+                g.stroke()
+                g.fill()
+            })
         }
 
         // this.drawDebugInfo(g)
@@ -2853,8 +2850,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
     }
 
-    public newXRay(comp: Component) {
-        const xray = new XRay(comp)
+    public newXRay(comp: Component, scale: number) {
+        const xray = new XRay(comp, scale)
         const wire = xray.wire.bind(xray)
         const gate = xray.gate.bind(xray)
         return { xray, wire, gate }
@@ -2867,8 +2864,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     public static getGraphics(canvas: HTMLCanvasElement): GraphicsRendering {
         const g = canvas.getContext("2d")! as GraphicsRendering
         g.createPath = (path?: Path2D | string) => new Path2D(path)
-        g.beginGroup = () => undefined
-        g.endGroup = () => undefined
+        g.group = (__className, f) => f()
         return g
     }
 

@@ -85,8 +85,8 @@ export class HalfAdder extends ComponentBase<HalfAdderRepr> {
     }
 
     protected override makeXRay(scale: number): XRay {
-        const { xray, wire, gate } = this.parent.editor.newXRay(this)
-        const { ins, outs, x, later } = this.makeXRayNodes<HalfAdder>(xray, scale)
+        const { xray, wire, gate } = this.parent.editor.newXRay(this, scale)
+        const { ins, outs, x, later } = this.makeXRayNodes<HalfAdder>(xray)
 
         const xor = gate("xor", "xor", x(0.3), later)
         const and = gate("and", "and", x(0.3), later)

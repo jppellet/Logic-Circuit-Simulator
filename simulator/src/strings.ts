@@ -371,20 +371,25 @@ const Strings_fr = {
         AdderArray: {
             tooltip: {
                 title: template("Additionneur à ${numBits} bit$s{numBits}"),
-                desc: "Additionne les deux nombres d'entrées A et B avec une retenue d’entrée Cin, et fournit les bits de somme S et une retenue de sortie Cout.",
+                desc: "Additionne les deux nombres d'entrées A et B avec une retenue d’entrée Cin, et fournit les bits de somme S, une retenue de sortie Cout et un bit de dépassement de capacité (overflow) V.",
             },
         },
         ALU: {
+            // Arith
             "A+B": tuple("+", "Addition"),
             "A-B": tuple("A–B", "Soustraction (A – B)"),
+            // Arith-ext
             "B-A": tuple("B–A", "Soustraction (B – A)"),
             "A+1": tuple("A+1", "A + 1"),
             "A-1": tuple("A–1", "A – 1"),
             "-A": tuple("–A", "Négation d’A"),
             "A*2": tuple("A×2", "Addition d’A à lui-même (A × 2)"),
             "A/2": tuple("A/2", "Décalage arithmétique à droite de 1 (A / 2)"),
+
+            // Logic
             "A|B": tuple("OU", "Disjonction (A OU B)"),
             "A&B": tuple("ET", "Conjonction (A ET B)"),
+            // Logic-ext
             "A|~B": tuple("OU-n", "A OU NON(B)"),
             "A&~B": tuple("ET-n", "A ET NON(B)"),
             "~A": tuple("A̅", "Inversion d’A"),
@@ -1176,26 +1181,31 @@ const Strings_en: Strings = {
         Adder: {
             tooltip: {
                 title: "Adder",
-                desc: "Adds two bits A and B together with an input carry Cin, and outputs a sum bit S and an output carry Cout.",
+                desc: "Adds two bits A and B together with an input carry Cin; outputs a sum bit S and an output carry Cout.",
             },
         },
         AdderArray: {
             tooltip: {
                 title: template("${numBits}-Bit Adder Array"),
-                desc: "Adds the two inputs numbers A et B together with an input carry Cin, and outputs sum bits S and an output carry Cout.",
+                desc: "Adds the two inputs numbers A et B together with an input carry Cin; outputs the sum bits S, an output carry Cout, and an overflow flag V.",
             },
         },
         ALU: {
+            // Arith
             "A+B": tuple("+", "Addition"),
             "A-B": tuple("A–B", "Subtraction (A – B)"),
+            // Arith-ext
             "B-A": tuple("B–A", "Subtraction (B – A)"),
             "A+1": tuple("A+1", "A + 1"),
             "A-1": tuple("A–1", "A – 1"),
             "-A": tuple("–A", "Negation of A"),
             "A*2": tuple("A×2", "Addition of A to itself (A × 2)"),
             "A/2": tuple("A/2", "Arithmetic right shift by 1 (A/2)"),
+
+            // Logic
             "A|B": tuple("OR", "Disjunction (A OR B)"),
             "A&B": tuple("AND", "Conjunction (A AND B)"),
+            // Logic-ext
             "A|~B": tuple("ORn", "A OR NOT(B)"),
             "A&~B": tuple("ANDn", "A AND NOT(B)"),
             "~A": tuple("A̅", "Inversion of A"),

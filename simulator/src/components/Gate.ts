@@ -73,7 +73,7 @@ export abstract class GateBase<
 
     protected updateLeadsFor(type: TGateType) {
         const isOrStyle = type === "or" || type === "nor" || type === "imply" || type === "rimply"
-        const leadLength = isOrStyle ? LEAD_LENGTH_OR_STYLE : LEAD_LENGTH_NORMAL - (this._isXRay ? LEAD_LENGTH_XRAY_SHORTENING : 0)
+        const leadLength = (isOrStyle ? LEAD_LENGTH_OR_STYLE : LEAD_LENGTH_NORMAL) - (this._isXRay ? LEAD_LENGTH_XRAY_SHORTENING : 0)
         const ins = this.inputs.In
         ins.forEach(node => node.updateLeadLength(leadLength))
         // very empirical way to make the gates look better
@@ -609,6 +609,10 @@ export class Gate1 extends GateBase<Gate1Repr> {
 Gate1Def.impl = Gate1
 
 
+export function gateGridHeight(numBits: number) {
+    const isTall = numBits !== 2 && numBits !== 4 && numBits !== 6
+    return isTall ? 5 : 4
+}
 
 export const GateNDef =
     defineParametrizedComponent(GateTypePrefix + "", true, true, {
@@ -631,13 +635,10 @@ export const GateNDef =
             return { type, numBits: bits }
         },
         idPrefix: ({ type }) => type,
-        size: ({ numBits }) => {
-            const tall = numBits !== 2 && numBits !== 4 && numBits !== 6
-            return {
-                gridWidth: 4,
-                gridHeight: tall ? 5 : 4,
-            }
-        },
+        size: ({ numBits }) => ({
+            gridWidth: 4,
+            gridHeight: gateGridHeight(numBits),
+        }),
         makeNodes: ({ isXRay, numBits }) => {
             const leadLength = LEAD_LENGTH_NORMAL // will be updated dynamically for the inputs
             return {

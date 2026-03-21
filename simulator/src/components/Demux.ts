@@ -1,12 +1,14 @@
 import * as t from "io-ts"
-import { COLOR_BACKGROUND, COMPONENT_OUTLINE_THICKNESS, displayValuesFromArray, drawWireLineToComponent, strokeWireOutlineAndSingleValue, useCompact } from "../drawutils"
+import { COLOR_BACKGROUND, GRID_STEP, displayValuesFromArray, drawWireLineToComponent, strokeWireOutlineAndSingleValue, useCompact } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { IconName } from "../images"
 import { S } from "../strings"
 import { ArrayFillWith, HighImpedance, LogicValue, Unknown, isUnknown, typeOrUndefined } from "../utils"
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupHorizontal, groupVertical, groupVerticalMulti, param, paramBool } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
+import { Gate1, GateN } from "./Gate"
 import { WireStyles } from "./Wire"
+import { WaypointSpecCompact, XRay } from "./XRay"
 
 
 export const DemuxDef =
@@ -38,27 +40,31 @@ export const DemuxDef =
             return { numFrom: from, numTo, numGroups, numSel, controlPinsAtBottom: bottom }
         },
         size: ({ numFrom, numTo, numGroups, numSel }) => {
-            const gridWidth = 2 * numSel
+            const gridWidth = 2 * Math.max(2, numSel)
             const spacing = useCompact(numFrom === 1 ? numTo : numFrom) ? 1 : 2
             const addByGroupSep = numFrom > 1 ? 1 : 0
             const numLeftSlots = numTo + (numGroups - 1) * addByGroupSep
-            const gridHeight = spacing * numLeftSlots
+            const gridHeight = spacing * numLeftSlots + 2
             return { gridWidth, gridHeight }
         },
-        makeNodes: ({ numFrom, numGroups, numSel, controlPinsAtBottom, isXRay }) => {
-            const outX = (isXRay ? 0.5 : 1) + numSel
+        makeNodes: ({ numFrom, numGroups, numSel, controlPinsAtBottom, isXRay, gridHeight }) => {
+            const outX = (isXRay ? 0.5 : 1) + Math.max(2, numSel)
             const inX = -outX
 
             const groupOfOutputs = groupVerticalMulti("e", outX, 0, numGroups, numFrom)
-            const firstInputY = groupOfOutputs[0][0][1]
-            const lastGroup = groupOfOutputs[groupOfOutputs.length - 1]
-            const lastInputY = lastGroup[lastGroup.length - 1][1]
-            const selY = controlPinsAtBottom ? lastInputY + 2 : firstInputY - 2
+            const selY = (controlPinsAtBottom ? 1 : -1) * (gridHeight / 2 + 1)
+
+            const S = groupHorizontal(controlPinsAtBottom ? "s" : "n", 0, selY, numSel, undefined, { leadLength: 0 })
+            const leadLengthIncrement = 6.7
+            const leadLengthS = 12.5 + (numSel !== 1 ? 0 : leadLengthIncrement / 2)
+            for (let s = 0; s < numSel; s++) {
+                S[s][4]!.leadLength = leadLengthS + s * leadLengthIncrement
+            }
 
             return {
                 ins: {
                     In: groupVertical("w", inX, 0, numFrom),
-                    S: groupHorizontal(controlPinsAtBottom ? "s" : "n", 0, selY, numSel, undefined, { leadLength: 35 }),
+                    S,
                 },
                 outs: {
                     Z: groupOfOutputs,
@@ -208,11 +214,94 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
             }
         }
 
-        // outline
-        g.lineWidth = COMPONENT_OUTLINE_THICKNESS
-        g.strokeStyle = ctx.borderColor
-        g.stroke(outline)
+        // xray and outline
+        this.doDrawXRayAndOutline(g, ctx, outline, 0.18)
+    }
 
+    protected override makeXRay(scale: number): XRay | undefined {
+        const { xray, wire, gate } = this.parent.editor.newXRay(this, scale)
+        const { ins, outs, x } = this.makeXRayNodes<Demux>(xray)
+
+        const bits = this.numFrom
+        const groups = this.numGroups
+        const sels = this.numSel
+
+        const ands: GateN[][] = []
+        for (let g = 0; g < groups; g++) {
+
+            const localAnds: GateN[] = []
+            for (let b = 0; b < bits; b++) {
+                const out = outs.Z[g][b]
+                const and = gate(`and${g}.${b}`, "and", x.right - 2 * GRID_STEP, out.posY, "e", sels + 1)
+                wire(and, out)
+                localAnds.push(and)
+            }
+            ands.push(localAnds)
+        }
+
+        const linesRight = ands[0][0].inputs.In[0].posX - GRID_STEP
+        const lineSpacing = Math.min(2 * GRID_STEP, (linesRight - (x.left + 2)) / (2 * sels + bits + 1))
+
+        const passShiftX = 2.5 * GRID_STEP
+        const firstNotX = Math.min(linesRight - passShiftX, ins.S[0].posX)
+        const firstNotShiftX = ins.S[0].posX - firstNotX
+
+        const nots: Gate1[] = []
+        for (let i = 0; i < sels; i++) {
+            const in_ = ins.S[i]
+            const notShiftX = sels === 1 ? firstNotShiftX : (sels - 1 - i) / (sels - 1) * firstNotShiftX
+            const notPosX = in_.posX - notShiftX
+            const notPosY = in_.posY + 2.5 * GRID_STEP + notShiftX / 3
+            const not = gate(`not${i}`, "not", notPosX, notPosY, "s")
+            wire(in_, not, "straight")
+            nots.push(not)
+        }
+
+        for (let b = 0; b < bits; b++) {
+            const in_ = ins.In[b]
+            for (let g = 0; g < groups; g++) {
+                const and = ands[g][b]
+                for (let s = 0; s < sels; s++) {
+                    const useNot = ((g >> s) & 1) === 0
+                    const to = and.inputs.In[s]
+                    const not = nots[s]
+                    const from = ins.S[s]
+                    const selLineIndex = 2 * s + Number(useNot)
+                    const passPosX = not.posX + passShiftX
+                    const passPosY = Math.max(from.posY, not.posY - 2.5 * GRID_STEP - passShiftX / 3)
+
+                    const hSegmentY = useNot
+                        ? /* not */ nots[s].outputs.Out.posY + 0.7 * GRID_STEP
+                        : /* direct */
+                        s === 0 ? passPosY : nots[s - 1].outputs.Out.posY + 2 * GRID_STEP
+
+                    const selLineX = linesRight - selLineIndex * lineSpacing
+                    if (useNot) {
+                        wire(not, to, "vh", [selLineX, hSegmentY])
+                    } else {
+                        // try to simplify waypoints
+                        const waypoints: WaypointSpecCompact[] =
+                            passPosX === selLineX ? [
+                                [selLineX, passPosY], // go right
+                                [selLineX, to.posY], // go down
+                            ] : passPosY === hSegmentY ? [
+                                [selLineX, passPosY], // go right
+                                [selLineX, to.posY], // go down
+                            ] : [
+                                [passPosX, passPosY], // go right
+                                [passPosX, hSegmentY], // go down
+                                [selLineX, hSegmentY], // go right
+                                [selLineX, to.posY], // go down
+                            ]
+                        wire(from, to, "straight", waypoints)
+                    }
+                }
+
+                wire(in_, and.inputs.In[sels], "vh", [linesRight - (2 * sels + b + 1) * lineSpacing, in_.posY])
+            }
+        }
+
+        return xray
     }
 
     private doSetShowWiring(showWiring: boolean) {
@@ -224,7 +313,6 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
         this._disconnectedAsHighZ = disconnectedAsHighZ
         this.setNeedsRecalc()
     }
-
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {
 

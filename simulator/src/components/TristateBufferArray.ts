@@ -126,8 +126,8 @@ export class TristateBufferArray extends ParametrizedComponentBase<TristateBuffe
     }
 
     protected override makeXRay(scale: number) {
-        const { xray, wire } = this.parent.editor.newXRay(this)
-        const { ins, outs, x, y, later } = this.makeXRayNodes<TristateBufferArray>(xray, scale)
+        const { xray, wire } = this.parent.editor.newXRay(this, scale)
+        const { ins, outs, x, y, later } = this.makeXRayNodes<TristateBufferArray>(xray)
 
         const bits = this.numBits
 

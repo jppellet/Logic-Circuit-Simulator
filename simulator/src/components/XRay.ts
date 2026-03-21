@@ -1,10 +1,10 @@
 import { ComponentList } from "../ComponentList"
-import { drawComponentIDs, DrawZIndex } from "../drawutils"
+import { drawComponentIDs, DrawZIndex, GRID_STEP, WIRE_WIDTH } from "../drawutils"
 import { DrawParams, LogicEditor } from "../LogicEditor"
 import { NodeManager } from "../NodeManager"
 import { RecalcManager } from "../RedrawRecalcManager"
 import { TestSuites } from "../TestSuite"
-import { isArray, Mode, Orientation } from "../utils"
+import { Mode, Orientation } from "../utils"
 import { Component, InjectedParams } from "./Component"
 import { DrawableParent, GraphicsRendering } from "./Drawable"
 import { Gate1, Gate1Def, GateN, GateNDef } from "./Gate"
@@ -12,7 +12,13 @@ import { Gate1Type, Gate1Types, GateNType } from "./GateTypes"
 import { Node, NodeBase, NodeIn, NodeOut } from "./Node"
 import { LinkManager, WireStyle } from "./Wire"
 
-type WaypointSpecCompact = [x: number, y: number]
+
+export type XRayNodesFor<T, N> =
+    T extends any[][] ? N[][] :
+    T extends any[] ? N[] : N
+
+export type WaypointSpecCompact = [x: number, y: number]
+type NodeOutOrComp = NodeOut | Component & { outputs: { Out: NodeOut } }
 
 export class XRay implements DrawableParent {
 
@@ -26,6 +32,8 @@ export class XRay implements DrawableParent {
     public readonly linkMgr: LinkManager = new LinkManager(this)
     public readonly recalcMgr = new RecalcManager()
 
+    private readonly _debugLines: Array<[vertical: boolean, pos: number, style: string | CanvasGradient | CanvasPattern]> = []
+
     public get ifEditing() { return undefined }
     public startEditingThis() { throw new Error("can't edit xray") }
     public stopEditingThis() { throw new Error("can't edit xray") }
@@ -34,6 +42,7 @@ export class XRay implements DrawableParent {
 
     public constructor(
         public readonly component: Component,
+        public readonly scale: number,
     ) {
     }
 
@@ -54,7 +63,7 @@ export class XRay implements DrawableParent {
      * on other components that don't have their final position yet, and make the
      * wires with visible intersection waypoints after the wire undernear without.
      */
-    public wire(startNode: NodeOut | Component & { outputs: { Out: NodeOut } }, endNode: NodeIn | Gate1, styleOrAlign?: WireStyle | boolean, via?: WaypointSpecCompact | WaypointSpecCompact[]) {
+    public wire(startNode: NodeOutOrComp, endNode: NodeIn | Gate1, styleOrAlign?: WireStyle | boolean, via?: WaypointSpecCompact | WaypointSpecCompact[]) {
         if (!(startNode instanceof NodeBase)) {
             startNode = startNode.outputs.Out
         }
@@ -86,61 +95,77 @@ export class XRay implements DrawableParent {
         }
     }
 
-    public wires(startNodes: NodeOut[], endNodes: NodeIn[], leftOrTop: number, rightOrBottom: number): number[] & { width: number }
-    public wires(startNodes: NodeOut[], endNodes: NodeIn[], lineCoords?: number[]): number[] & { width: number }
-
-    public wires(startNodes: NodeOut[], endNodes: NodeIn[], lineCoordsOrLeftOrTop?: number | number[], rightOrBottom?: number): number[] & { width: number } {
-        const num = Math.min(startNodes.length, endNodes.length)
+    public wires(startNodes: NodeOut[], endNodes: NodeIn[], left?: number, right?: number, monotonicAllocation?: boolean): [number, number] {
+        let num = startNodes.length
+        if (num !== endNodes.length) {
+            console.error(`connecting wrong number of inputs and outputs in xray`)
+            num = Math.min(num, endNodes.length)
+        }
         if (num === 0) {
-            return Object.assign([], { width: 0 })
-        }
-        if (isArray(lineCoordsOrLeftOrTop) && lineCoordsOrLeftOrTop.length < num) {
-            console.warn(`lineCoords too short in XRay.wires, should have length ${num} but has length ${lineCoordsOrLeftOrTop.length}`)
-            lineCoordsOrLeftOrTop = undefined
+            console.error(`no nodes to connect`)
+            return [0, 0]
         }
 
-        let lineCoords: number[]
-        if (Orientation.isVertical(startNodes[0].orient)) {
-            // mainly-horizontal wires
-            console.log("unhandled horizontal auto connect")
-            lineCoords = []
+        const alloc = new WireColumnAllocator(monotonicAllocation ?? true)
+        const cols = new Array<number>(num)
+
+        const allocateAt = (i: number) => {
+            const fromY = startNodes[i].posY
+            const toY = endNodes[i].posY
+            cols[i] = alloc.allocate(fromY, toY)
+        }
+
+        // determine allocation order
+        let someGoUp = false
+        let someGoDown = false
+        for (let i = 0; i < num; i++) {
+            const fromY = startNodes[i].posY
+            const toY = endNodes[i].posY
+            if (toY > fromY) {
+                someGoDown = true
+            }
+            if (toY < fromY) {
+                someGoUp = true
+            }
+        }
+
+        // allocation order
+        if (someGoUp && someGoDown) {
+            // top, bottom, top + 1, bottom - 1, etc.
+            for (let i = 0; i < (num >> 1); i++) {
+                allocateAt(i)
+                allocateAt(num - 1 - i)
+            }
+            if (num % 2 !== 0) {
+                allocateAt((num >> 1) + 1)
+            }
+        } else if (!someGoUp) {
+            // all down
             for (let i = 0; i < num; i++) {
-                this.wire(startNodes[i], endNodes[i])
+                allocateAt(i)
             }
-
         } else {
-
-            if (isArray(lineCoordsOrLeftOrTop)) {
-                lineCoords = lineCoordsOrLeftOrTop
-            } else {
-                lineCoords = []
-                const xRight = rightOrBottom ?? endNodes[0].posX
-                const incWidth = (xRight - (lineCoordsOrLeftOrTop ?? startNodes[0].posX)) / (num - 1)
-                for (let i = 0; i < num; i++) {
-                    const posX = xRight - i * incWidth
-                    lineCoords.push(posX)
-                }
-            }
-
-            // mainly-vertical wires
-            let start, inc
-            if (startNodes[0].posY < endNodes[0].posY) {
-                // begin with first index
-                start = 0
-                inc = 1
-            } else {
-                // begin with last index
-                start = num - 1
-                inc = -1
-            }
-            for (let i = start, j = 0; j < num; i += inc, j += 1) {
-                this.wire(startNodes[i], endNodes[i], "vh", [lineCoords[j], startNodes[i].posY])
+            // all up
+            for (let i = num - 1; i >= 0; i--) {
+                allocateAt(i)
             }
         }
 
-        const width = lineCoords.length === 0 ? 0 : lineCoords[0] - lineCoords[lineCoords.length - 1]
-        return Object.assign(lineCoords, { width })
+        // now that we know the number of columa, find distance
+        const numCols = alloc.numColumns
+        left ??= startNodes[0].posX
+        right ??= endNodes[0].posX
+        const [startX, inc] = numCols === 1 ? [(left + right) / 2, 0] : [right, (left - right) / (numCols - 1)]
+
+        for (let i = 0; i < num; i++) {
+            const x = startX + cols[i] * inc
+            this.wire(startNodes[i], endNodes[i], "hv", [x, endNodes[i].posY])
+            cols[i] = x
+        }
+
+        return [left, right]
     }
+
 
     public gate<G extends GateNType | Gate1Type>(validatedId: string, type: G, x: number, y: number, orient?: Orientation, bits?: G extends Gate1Type ? undefined : number): G extends Gate1Type ? Gate1 : GateN {
         if (Gate1Types.includes(type)) {
@@ -177,34 +202,120 @@ export class XRay implements DrawableParent {
         }
     }
 
+    public debugVline(x: number, style?: string | CanvasGradient | CanvasPattern) {
+        this._debugLines.push([true, x, style ?? "red"])
+    }
+
+    public debugHline(x: number, style?: string | CanvasGradient | CanvasPattern) {
+        this._debugLines.push([false, x, style ?? "red"])
+    }
+
     public doDraw(g: GraphicsRendering, drawParams: DrawParams) {
         this.recalcMgr.recalcAndPropagateIfNeeded()
         const drawComp = (comp: Component) => {
-            g.beginGroup(comp.constructor.name)
-            try {
+            g.group(comp.constructor.name, () => {
                 comp.draw(g, drawParams)
                 for (const node of comp.allNodes()) {
                     node.draw(g, drawParams)
                 }
-            } finally {
-                g.endGroup()
+            })
+        }
+
+        g.group("xray", () => {
+            for (const comp of this.components.withZIndex(DrawZIndex.Background)) {
+                drawComp(comp)
             }
-        }
+            this.linkMgr.draw(g, drawParams)
+            for (const comp of this.components.withZIndex(DrawZIndex.Normal)) {
+                drawComp(comp)
+            }
 
-        g.beginGroup("xray")
-        for (const comp of this.components.withZIndex(DrawZIndex.Background)) {
-            drawComp(comp)
-        }
-        this.linkMgr.draw(g, drawParams)
-        for (const comp of this.components.withZIndex(DrawZIndex.Normal)) {
-            drawComp(comp)
-        }
+            // draw refs
+            if (this.editor.options.showIDs) {
+                drawComponentIDs(g, this.components.all())
+            }
 
-        // draw refs
-        if (this.editor.options.showIDs) {
-            drawComponentIDs(g, this.components.all())
-        }
-
-        g.endGroup()
+            if (this._debugLines.length !== 0) {
+                const halfHeight = (this.component.unrotatedHeight / 2 + GRID_STEP) / this.scale
+                const halfWidth = (this.component.unrotatedWidth / 2 + GRID_STEP) / this.scale
+                for (const [vertical, pos, style] of this._debugLines) {
+                    g.lineWidth = 1
+                    g.strokeStyle = style
+                    g.beginPath()
+                    if (vertical) {
+                        g.moveTo(pos, -halfHeight)
+                        g.lineTo(pos, halfHeight)
+                    } else {
+                        g.moveTo(-halfWidth, pos)
+                        g.lineTo(halfWidth, pos)
+                    }
+                    g.stroke()
+                }
+            }
+        })
     }
+}
+
+
+type AllocatorSpan = [from: number, to: number]
+
+export class WireColumnAllocator {
+
+    private _usedSegmentsByColumn: Array<Array<AllocatorSpan>> = []
+    private _startSearchingAt: number = 0
+
+    public constructor(
+        public readonly monotonic: boolean,
+        public margin: number = WIRE_WIDTH,
+    ) { }
+
+    public get numColumns() {
+        return this._usedSegmentsByColumn.length
+    }
+
+    public allocate(spanStart: number, spanEnd: number): number {
+        const i = (() => {
+            const newSpan: AllocatorSpan = spanStart > spanEnd ? [spanEnd, spanStart] : [spanStart, spanEnd]
+            const margin = this.margin
+
+            // find first column that can fit it
+            let i = this._startSearchingAt
+            for (; i < this._usedSegmentsByColumn.length; i++) {
+                const colSpans = this._usedSegmentsByColumn[i]
+                let hasConflict = false
+                for (const span of colSpans) {
+                    if (spansOverlap(span, newSpan, margin)) {
+                        hasConflict = true
+                        break
+                    }
+                }
+                if (!hasConflict) {
+                    colSpans.push(newSpan)
+                    return i
+                }
+            }
+
+            // we didn't find a suitable colum so we allocate a new one
+            this._usedSegmentsByColumn.push([newSpan])
+            return i
+        })()
+
+        if (this.monotonic) {
+            this._startSearchingAt = i
+        }
+        return i
+    }
+
+    public dump() {
+        console.log(`WireColumnAllocator dump (margin=${this.margin})`)
+        for (let i = 0; i < this.numColumns; i++) {
+            const sortedSpans = [...this._usedSegmentsByColumn[i]].sort((a, b) => a[0] - b[0])
+            console.log(`  Col ${i}: ${sortedSpans.map(s => s.join("-")).join(", ")}`)
+        }
+    }
+
+}
+
+function spansOverlap(s1: AllocatorSpan, s2: AllocatorSpan, margin: number) {
+    return s1[0] - margin < s2[1] && s2[0] - margin < s1[1]
 }

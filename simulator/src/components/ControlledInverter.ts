@@ -131,8 +131,8 @@ export class ControlledInverter extends ParametrizedComponentBase<ControlledInve
     }
 
     protected override makeXRay(scale: number) {
-        const { xray, wire, gate } = this.parent.editor.newXRay(this)
-        const { ins, outs, x, y, later } = this.makeXRayNodes<ControlledInverter>(xray, scale)
+        const { xray, wire, gate } = this.parent.editor.newXRay(this, scale)
+        const { ins, outs, x, y, later } = this.makeXRayNodes<ControlledInverter>(xray)
 
         const bits = this.numBits
 

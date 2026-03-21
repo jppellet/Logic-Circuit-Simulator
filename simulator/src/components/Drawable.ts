@@ -20,8 +20,7 @@ import { type LinkManager } from "./Wire"
 export type GraphicsRendering =
     | CanvasRenderingContext2D & {
         fill(): void,
-        beginGroup(className?: string): void
-        endGroup(): void,
+        group<T>(className: string, f: () => T): T
         createPath(path?: Path2D | string): Path2D
     }
     | SVGRenderingContext

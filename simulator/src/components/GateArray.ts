@@ -236,8 +236,8 @@ export class GateArray extends ParametrizedComponentBase<GateArrayRepr> {
     protected override makeXRay(scale: number): XRay | undefined {
         const bits = this.numBits
 
-        const { xray, gate } = this.parent.editor.newXRay(this)
-        const { ins, outs, x } = this.makeXRayNodes<GateArray>(xray, scale)
+        const { xray, gate } = this.parent.editor.newXRay(this, scale)
+        const { ins, outs, x } = this.makeXRayNodes<GateArray>(xray)
 
         xrayWireAndLayoutAsArray(
             xray, bits, ins, outs, x, 3,

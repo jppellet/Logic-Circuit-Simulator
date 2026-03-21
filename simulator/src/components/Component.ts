@@ -10,7 +10,7 @@ import { S, Template } from "../strings"
 import { ArrayFillUsing, ArrayOrDirect, EdgeTrigger, Expand, FixedArrayMap, HasField, HighImpedance, InteractionResult, LogicValue, LogicValueRepr, Mode, Orientation, Unknown, brand, deepArrayEquals, isArray, isBoolean, isNumber, isRecord, isString, mergeWhereDefined, toLogicValueRepr, typeOrUndefined, validateJson } from "../utils"
 import { DrawContext, DrawContextExt, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, GraphicsRendering, MenuData, MenuItem, MenuItemPlacement, MenuItems, PositionSupportRepr } from "./Drawable"
 import { DEFAULT_WIRE_COLOR, Node, NodeBase, NodeIn, NodeOut, WireColor } from "./Node"
-import { type XRay } from "./XRay"
+import { XRayNodesFor, type XRay } from "./XRay"
 
 
 type NodeSeqRepr<TFullNodeRepr> =
@@ -928,10 +928,31 @@ export abstract class ComponentBase<
             opts?.drawLabels?.(ctx, bounds)
         })
 
-        // xray
+        // xray and outline
+        this.doDrawXRayAndOutline(g, ctx, outline, opts?.xrayScale)
+    }
+
+    private _cachedXRay: XRay | undefined = undefined
+    private _showingXRay = false
+
+    public get showingXRay() {
+        return this._showingXRay
+    }
+
+    protected makeXRay(__scale: number): XRay | undefined {
+        // override in subclasses
+        return undefined
+    }
+
+    protected invalidateXRay() {
+        this._cachedXRay = undefined
+    }
+
+    protected doDrawXRayAndOutline(
+        g: GraphicsRendering, ctx: DrawContext, outline: Path2D, scale: number | undefined
+    ) {
         this._showingXRay = false
         const xrayMode = this.parent.editor.options.xray
-        const scale = opts?.xrayScale
         if (scale !== undefined && xrayMode !== "off") {
             const limitFactor = 0.6 // draw components starting at this fraction of their normal size
             const fadeSpan = 0.3 // span during which some transition alpha is applied
@@ -984,74 +1005,79 @@ export abstract class ComponentBase<
         g.globalAlpha = oldAlpha
     }
 
-    private _cachedXRay: XRay | undefined = undefined
-    private _showingXRay = false
 
-    public get showingXRay() {
-        return this._showingXRay
-    }
-
-    protected makeXRay(__scale: number): XRay | undefined {
-        // override in subclasses
-        return undefined
-    }
-
-    protected invalidateXRay() {
-        this._cachedXRay = undefined
-    }
-
-    protected makeXRayNodes<C extends Component>(this: C, xray: XRay, scale: number): {
+    protected makeXRayNodes<C extends Component>(this: C, xray: XRay): {
         ins: {
-            [K in Exclude<keyof C["inputs"], "_all">]:
-            C["inputs"][K] extends any[] ? NodeOut[] : NodeOut
+            [K in Exclude<keyof C["inputs"], "_all">]: XRayNodesFor<C["inputs"][K], NodeOut>
         },
         outs: {
-            [K in Exclude<keyof C["outputs"], "_all">]:
-            C["outputs"][K] extends any[] ? NodeIn[] : NodeIn
+            [K in Exclude<keyof C["outputs"], "_all">]: XRayNodesFor<C["outputs"][K], NodeIn>
         },
         x: ((f: number) => number) & { left: number, right: number },
         y: ((f: number) => number) & { top: number, bottom: number },
         later: number
     } {
-        const ins: Record<string, NodeOut | NodeOut[]> = {}
-        for (const input of this.inputs._all) {
+
+        const makeInternalNodeForInput = (input: NodeIn) => {
             const id = xray.nodeMgr.getFreeId()
             const internalNode = new NodeOut(this, xray, true, { id }, undefined, input.idName, input.shortName, input.fullName, 0, 0, false, Orientation.invert(input.orient), 0, undefined)
-            internalNode.setPositionAsXRayFor(input, scale)
+            internalNode.setPositionAsXRayFor(input, xray.scale)
             internalNode.value = input.value
             if (input.xrayNode !== undefined) {
                 console.warn(`Unexpectedly replacing existing xray node for ${input.shortName}`)
             }
             input.xrayNode = internalNode
-            if (input.group === undefined) {
-                ins[input.idName] = internalNode
+            return internalNode
+        }
+
+        const ins: Record<string, NodeOut | NodeOut[] | NodeOut[][]> = {}
+        for (const [key, nodeOrNodes] of Object.entries(this.inputs) as Array<[string, NodeIn | NodeIn[] | NodeIn[][]]>) {
+            if (key === "_all") { continue }
+            if (!isArray(nodeOrNodes)) {
+                // single node
+                ins[key] = makeInternalNodeForInput(nodeOrNodes)
             } else {
-                const groupName = input.group.name
-                const group = groupName in ins && isArray(ins[groupName]) ? ins[groupName] : (ins[groupName] = [])
-                group.push(internalNode)
+                if (nodeOrNodes.length === 0 || !isArray(nodeOrNodes[0])) {
+                    // grouped nodes
+                    ins[key] = (nodeOrNodes as NodeIn[]).map(makeInternalNodeForInput)
+                } else {
+                    // array of grouped nodes (e.g., mux)
+                    ins[key] = (nodeOrNodes as NodeIn[][]).map(nodes => nodes.map(makeInternalNodeForInput))
+                }
             }
         }
 
-        const outs: Record<string, NodeIn | NodeIn[]> = {}
-        for (const output of this.outputs._all) {
+        const makeInternalNodeForOuput = (output: NodeOut) => {
             const id = xray.nodeMgr.getFreeId()
             const internalNode = new NodeIn(this, xray, true, { id }, undefined, output.idName, output.shortName, output.fullName, 0, 0, false, Orientation.invert(output.orient), 0, undefined)
-            internalNode.setPositionAsXRayFor(output, scale)
-            if (output.group === undefined) {
-                outs[output.idName] = internalNode
+            internalNode.setPositionAsXRayFor(output, xray.scale)
+            return internalNode
+        }
+
+        const outs: Record<string, NodeIn | NodeIn[] | NodeIn[][]> = {}
+        for (const [key, nodeOrNodes] of Object.entries(this.outputs) as Array<[string, NodeOut | NodeOut[] | NodeOut[][]]>) {
+            if (key === "_all") { continue }
+            if (!isArray(nodeOrNodes)) {
+                // single node
+                outs[key] = makeInternalNodeForOuput(nodeOrNodes)
             } else {
-                const groupName = output.group.name
-                const group = groupName in outs && isArray(outs[groupName]) ? outs[groupName] : (outs[groupName] = [])
-                group.push(internalNode)
+                if (nodeOrNodes.length === 0 || !isArray(nodeOrNodes[0])) {
+                    // grouped nodes
+                    outs[key] = (nodeOrNodes as NodeOut[]).map(makeInternalNodeForOuput)
+                } else {
+                    // array of grouped nodes (e.g., mux)
+                    outs[key] = (nodeOrNodes as NodeOut[][]).map(nodes => nodes.map(makeInternalNodeForOuput))
+                }
             }
         }
 
         const { width, height } = this.bounds()
         // compute client size so that a wire at fractional position 1 is roughly touching the edge
-        const scaledHalfWidth = (width - COMPONENT_OUTLINE_THICKNESS - 1) / scale / 2
-        const scaledHalfHeight = (height - COMPONENT_OUTLINE_THICKNESS - 1) / scale / 2
+        const scaledHalfWidth = (width - COMPONENT_OUTLINE_THICKNESS - 1) / xray.scale / 2
+        const scaledHalfHeight = (height - COMPONENT_OUTLINE_THICKNESS - 1) / xray.scale / 2
         const makeX = Object.assign((f: number) => f * scaledHalfWidth, { left: -scaledHalfWidth, right: scaledHalfWidth })
         const makeY = Object.assign((f: number) => f * scaledHalfHeight, { top: -scaledHalfHeight, bottom: scaledHalfHeight })
+
         return { ins: ins as any, outs: outs as any, x: makeX, y: makeY, later: 0 }
     }
 

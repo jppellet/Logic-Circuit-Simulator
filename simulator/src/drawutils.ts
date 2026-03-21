@@ -682,19 +682,19 @@ export function strokeWireValue(g: GraphicsRendering, value: LogicValue, lengthT
 }
 
 export function drawComponentIDs(g: GraphicsRendering, components: Generator<Component>) {
-    g.beginGroup("refs")
-    g.font = 'bold 14px sans-serif'
-    g.strokeStyle = "white"
-    g.lineWidth = 3
-    g.fillStyle = COLOR_COMPONENT_ID
-    g.textAlign = 'center'
-    for (const comp of components) {
-        if (comp.ref !== undefined && !comp.showingXRay) {
-            strokeTextVAlign(g, TextVAlign.middle, comp.ref, comp.posX, comp.posY)
-            fillTextVAlign(g, TextVAlign.middle, comp.ref, comp.posX, comp.posY)
+    g.group("refs", () => {
+        g.font = 'bold 14px sans-serif'
+        g.strokeStyle = "white"
+        g.lineWidth = 3
+        g.fillStyle = COLOR_COMPONENT_ID
+        g.textAlign = 'center'
+        for (const comp of components) {
+            if (comp.ref !== undefined && !comp.showingXRay) {
+                strokeTextVAlign(g, TextVAlign.middle, comp.ref, comp.posX, comp.posY)
+                fillTextVAlign(g, TextVAlign.middle, comp.ref, comp.posX, comp.posY)
+            }
         }
-    }
-    g.endGroup()
+    })
 }
 
 export function distSquaredToWaypointIfOver(x: number, y: number, waypointX: number, waypointY: number, moreTolerant: boolean): number | undefined {
@@ -1239,8 +1239,7 @@ export function fractionIfPointOnStraightSegment(x: number, y: number, coords: L
     // Cross product of (dx, dy) × (px-x1, py-y1)
     // Zero iff the point is collinear with the segment's infinite line
     const cross = dx * (y - y1) - dy * (x - x1)
-    const eps = 1e-10
-    if (Math.abs(cross) > eps * Math.hypot(dx, dy)) {
+    if (Math.abs(cross) > 0.00001 * Math.hypot(dx, dy)) {
         // not on the line defined by the segment
         return undefined
     }

@@ -3,9 +3,14 @@ import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, COLOR_COMPONENT_INNER_LABELS,
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillUsing, ArrayFillWith, isBoolean, isHighImpedance, isUnknown, LogicValue, Orientation, typeOrUndefined, Unknown } from "../utils"
+import { AdderArray, AdderArrayDef } from "./AdderArray"
 import { defineParametrizedComponent, groupHorizontal, groupVertical, param, paramBool, ParametrizedComponentBase, Repr, ResolvedParams, Value } from "./Component"
+import { ControlledInverter, ControlledInverterDef } from "./ControlledInverter"
 import { DrawableParent, DrawContext, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
+import { GateArray, GateArrayDef } from "./GateArray"
 import { Gate1Types, Gate2toNType, Gate2toNTypes } from "./GateTypes"
+import { Mux, MuxDef } from "./Mux"
+import { XRay } from "./XRay"
 
 
 export const ALUDef =
@@ -193,22 +198,18 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
         drawWireLineToComponent(g, this.outputs.V)
         drawWireLineToComponent(g, this.outputs.Cout)
 
-        // outline
+        // background
         g.fillStyle = COLOR_BACKGROUND
-        g.lineWidth = 3
-        g.strokeStyle = ctx.borderColor
-
-        g.beginPath()
-        g.moveTo(left, top)
-        g.lineTo(right, lowerTop)
-        g.lineTo(right, bottom - 2 * GRID_STEP)
-        g.lineTo(left, bottom)
-        g.lineTo(left, this.posY + 1 * GRID_STEP)
-        g.lineTo(left + 2 * GRID_STEP, this.posY)
-        g.lineTo(left, this.posY - 1 * GRID_STEP)
-        g.closePath()
-        g.fill()
-        g.stroke()
+        const outline = g.createPath()
+        outline.moveTo(left, top)
+        outline.lineTo(right, lowerTop)
+        outline.lineTo(right, bottom - 2 * GRID_STEP)
+        outline.lineTo(left, bottom)
+        outline.lineTo(left, this.posY + 1 * GRID_STEP)
+        outline.lineTo(left + 2 * GRID_STEP, this.posY)
+        outline.lineTo(left, this.posY - 1 * GRID_STEP)
+        outline.closePath()
+        g.fill(outline)
 
         // groups
         this.drawGroupBox(g, this.inputs.A.group, bounds)
@@ -265,6 +266,74 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
                 fillTextVAlign(g, TextVAlign.middle, opName, ...ctx.rotatePoint(this.posX + 5, this.posY))
             }
         })
+
+        // xray and outline
+        this.doDrawXRayAndOutline(g, ctx, outline, 0.22)
+    }
+
+    protected override makeXRay(scale: number): XRay | undefined {
+        if (this.usesExtendedOpcode) {
+            // man, can't do that
+            return undefined
+        }
+
+        const bits = this.numBits
+
+        const { xray, wire, gate } = this.parent.editor.newXRay(this, scale)
+        const { ins, outs, x, y, later } = this.makeXRayNodes<ALU>(xray)
+
+        const x1 = x(-0.5)
+        const x2 = x(.1)
+
+        // arithmetic part
+        const adder = AdderArrayDef.makeSpawned<AdderArray>(xray, "adder", x2, y(-.4), "e", { bits })
+        const xorCin = gate("xorCin", "xor", later, adder.posY - 12 * GRID_STEP, "s")
+        wire(xorCin, adder.inputs.Cin, false)
+        const xorCinInOpY = xorCin.in[0].posY - GRID_STEP
+        wire(ins.Cin, xorCin.in[1], "vh", [xorCin.in[1].posX, xorCinInOpY - GRID_STEP])
+        const xorCout = gate("xorCout", "xor", later, adder.posY + 13 * GRID_STEP, "s")
+        wire(adder.outputs.Cout, xorCout.in[0], true)
+
+        const inv = ControlledInverterDef.makeSpawned<ControlledInverter>(xray, "inv", x1, adder.posY + 5 * GRID_STEP, "e", { bits, bottom: false })
+        wire(ins.Op[0], inv.inputs.S, "vh", [inv.inputs.S.posX, xorCinInOpY])
+        wire(ins.Op[0], xorCout.in[1], "vh", [xorCout.in[1].posX, xorCinInOpY])
+        wire(ins.Op[0], xorCin.in[0], "vh", [xorCin.in[0].posX, xorCinInOpY])
+        wire(xorCout, outs.Cout, "hv", [xorCout.outputs.Out.posX, outs.Cout.posY - 4 * GRID_STEP])
+        wire(adder.outputs.V, outs.V, "hv", [adder.outputs.V.posX, outs.V.posY - 1 * GRID_STEP])
+
+        // logic part
+        const orArray = GateArrayDef.makeSpawned<GateArray>(xray, "orArray", x1, y(.10), "e", { type: "or", bits })
+        const andArray = GateArrayDef.makeSpawned<GateArray>(xray, "andArray", x1, y(.65), "e", { type: "and", bits })
+
+        const muxLog = MuxDef.makeSpawned<Mux>(xray, "muxLog", x(0.3), orArray.posY + 5 * GRID_STEP, "e", { from: 2 * bits, to: bits, bottom: false })
+        wire(ins.Op[0], muxLog.inputs.S[0], "vh", [muxLog.inputs.S[0].posX, xorCinInOpY])
+
+        // output
+        const muxAL = MuxDef.makeSpawned<Mux>(xray, "muxAL", x.right - 6 * GRID_STEP, 0, "e", { from: 2 * bits, to: bits, bottom: false })
+        wire(ins.Mode, muxAL.inputs.S[0], "hv", [[ins.Mode.posX, ins.Mode.posY + 4 * GRID_STEP], [muxAL.posX - 2 * GRID_STEP, xorCin.posY]])
+        const norZ = gate("norZ", "nor", later, outs.Z.posY - 4 * GRID_STEP, "s", bits)
+        wire(norZ, outs.Z, false)
+
+        // variable wiring
+        for (let i = 0; i < bits; i++) {
+            wire(inv.outputs.Out[i], adder.inputs.B[i])
+            wire(orArray.outputs.S[i], muxLog.inputs.I[0][i])
+            wire(ins.A[i], adder.inputs.A[i])
+            wire(ins.A[i], orArray.inputs.A[i])
+            wire(ins.A[i], andArray.inputs.A[i])
+            wire(ins.B[i], inv.inputs.In[i])
+            wire(ins.B[i], orArray.inputs.B[i])
+            wire(ins.B[i], andArray.inputs.B[i])
+            wire(muxAL.outputs.Z[i], norZ.in[i])
+        }
+
+        xray.wires(muxAL.outputs.Z, outs.S)
+        const [muxALWiresLeft, muxALWiresRight] = xray.wires(muxLog.outputs.Z, muxAL.inputs.I[1])
+        xray.wires(adder.outputs.S, muxAL.inputs.I[0], muxALWiresLeft, muxALWiresRight)
+        const andArrayOutX = andArray.outputs.S[0].posX
+        xray.wires(andArray.outputs.S, muxLog.inputs.I[1], andArrayOutX, andArrayOutX + muxALWiresRight - muxALWiresLeft)
+
+        return xray
     }
 
     private doSetShowOp(showOp: boolean) {

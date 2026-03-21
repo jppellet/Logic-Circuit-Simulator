@@ -112,8 +112,8 @@ export class AdderArray extends ParametrizedComponentBase<AdderArrayRepr> {
     protected override makeXRay(scale: number): XRay | undefined {
         const bits = this.numBits
 
-        const { xray, wire, gate } = this.parent.editor.newXRay(this)
-        const { ins, outs, x, y, later } = this.makeXRayNodes<AdderArray>(xray, scale)
+        const { xray, wire, gate } = this.parent.editor.newXRay(this, scale)
+        const { ins, outs, x, y, later } = this.makeXRayNodes<AdderArray>(xray)
 
         const [addersX, adders] = xrayWireAndLayoutAsArray<Adder>(
             xray, bits, ins, outs, x, 3.5,
@@ -179,24 +179,18 @@ export function xrayWireAndLayoutAsArray<C extends Component>(
     const numOutLines = bits / 2
     const outLineLeft = numOutLines === 1 ? x.right - GRID_STEP / 2
         : compX + compNodeGridDist * GRID_STEP
-    const outLineSpacing = (x.right - outLineLeft) / numOutLines
 
     const comps = ArrayFillUsing(i => {
         const y = (yFirstComp + i * vGridStepSpacing) * GRID_STEP
-        const comp = makeComp(i, compX, y)
-
-        // output line
-        const outLineIndex = Math.floor(Math.abs(i - ((bits - 1) / 2)))
-        const outLineX = outLineLeft + outLineIndex * outLineSpacing
-        const compOutput = getCompOutput(comp)
-        xray.wire(compOutput, outs.S[i], "vh", [outLineX, compOutput.posY])
-        return comp
+        return makeComp(i, compX, y)
     }, bits)
+
+    xray.wires(comps.map(getCompOutput), outs.S, outLineLeft, x.right - 2)
 
     // input line coords
     const inLineRight = compX - compNodeGridDist * GRID_STEP
     const numLeftLines = bits + bits / 2 // half are never in visual conflict
-    const inLineSpacing = (inLineRight - x(-.95)) / (numLeftLines - 1)
+    const inLineSpacing = (inLineRight - (x.left + 2)) / (numLeftLines - 1)
 
     // first, connect the non-visually-conflicting inputs (the "outer" ones)
     const lastIndex = bits - 1
