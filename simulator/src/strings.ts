@@ -620,9 +620,8 @@ const Strings_fr = {
             contextMenu: {
                 ShowWiring: "Afficher les connexions",
                 UseZForDisconnected: "Utiliser Z pour sorties déconnectées",
-
-                ParamNumFrom: tuple("Nombre d’entrées", template("${val} entrée$s{val}")),
-                ParamNumTo: tuple("Nombre de sorties", template("${val} sortie$s{val}")),
+                InputsOutputs: template("${numInputs} entrée$s{numInputs} → ${numOutputs} sortie$s{numOutputs}"),
+                ParamNumInOut: "Nombre d’entrées/sorties",
             },
         },
         Output: {
@@ -1435,9 +1434,8 @@ const Strings_en: Strings = {
             contextMenu: {
                 ShowWiring: "Show Internal Wiring",
                 UseZForDisconnected: "Use Z For Disconnected Pins",
-
-                ParamNumFrom: tuple("Number of Inputs", template("${val} Input$s{val}")),
-                ParamNumTo: tuple("Number of Outputs", template("${val} Output$s{val}")),
+                InputsOutputs: template("${numInputs} Input$s{numInputs} → ${numOutputs} Output$s{numOutputs}"),
+                ParamNumInOut: "Number of Inputs/Outputs",
             },
         },
         Output: {

@@ -10,6 +10,13 @@ import { NodeIn } from "./Node"
 import { WireStyles } from "./Wire"
 import { AllocationZone, WaypointSpecCompact, XRay } from "./XRay"
 
+export const MuxDemuxLimits: Array<[bits: number, maxSels: number]> = [
+    [1, 4],
+    [2, 3],
+    [4, 2],
+    [8, 2],
+    [16, 1],
+]
 
 export const MuxDef =
     defineParametrizedComponent("mux", true, true, {
@@ -26,7 +33,7 @@ export const MuxDef =
             showWiring: true,
         },
         params: {
-            to: param(2, [1, 2, 4, 8, 16]),
+            to: param(2, MuxDemuxLimits.map(([bits]) => bits)),
             from: param(4),
             bottom: paramBool(),
         },
@@ -336,9 +343,25 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
             this.doSetShowWiring(!this._showWiring)
         })
 
+        const makeChangeInOutItems = () => {
+            return MuxDemuxLimits.flatMap(([bits, maxSels]) => {
+                const items = []
+                for (let sels = 1; sels <= maxSels; sels++) {
+                    const isCurrent = bits === this.numTo && sels === this.numSel
+                    const icon = isCurrent ? "check" : "none"
+                    const numGroups = Math.pow(2, sels)
+                    const from = bits * numGroups
+                    const action = isCurrent ? () => undefined : () => {
+                        this.replaceWithNewParams({ from, to: bits })
+                    }
+                    items.push(MenuData.item(icon, s.InputsOutputs.expand({ numInputs: from, numOutputs: bits }), action))
+                }
+                return items
+            })
+        }
+
         return [
-            this.makeChangeParamsContextMenuItem("inputs", s.ParamNumFrom, this.numFrom, "from", [2, 4, 8, 16].map(x => x * this.numTo)),
-            this.makeChangeParamsContextMenuItem("outputs", s.ParamNumTo, this.numTo, "to"),
+            ["mid", MenuData.submenu("outputs", s.ParamNumInOut, makeChangeInOutItems())],
             ["mid", MenuData.sep()],
             this.makeChangeBooleanParamsContextMenuItem(this.numSel === 1 ? S.Components.Generic.contextMenu.ParamControlBitAtBottom : S.Components.Generic.contextMenu.ParamControlBitsAtBottom, this.controlPinsAtBottom, "bottom"),
             ["mid", toggleShowWiringItem],

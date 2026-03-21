@@ -7,6 +7,7 @@ import { ArrayFillWith, HighImpedance, LogicValue, Unknown, isUnknown, typeOrUnd
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupHorizontal, groupVertical, groupVerticalMulti, param, paramBool } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
 import { Gate1, GateN } from "./Gate"
+import { MuxDemuxLimits } from "./Mux"
 import { WireStyles } from "./Wire"
 import { WaypointSpecCompact, XRay } from "./XRay"
 
@@ -28,7 +29,7 @@ export const DemuxDef =
             disconnectedAsHighZ: false,
         },
         params: {
-            from: param(2, [1, 2, 4, 8, 16]),
+            from: param(2, MuxDemuxLimits.map(([bits]) => bits)),
             to: param(4),
             bottom: paramBool(),
         },
@@ -347,10 +348,25 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
             this.doSetDisconnectedAsHighZ(!this._disconnectedAsHighZ)
         })
 
+        const makeChangeInOutItems = () => {
+            return MuxDemuxLimits.flatMap(([bits, maxSels]) => {
+                const items = []
+                for (let sels = 1; sels <= maxSels; sels++) {
+                    const isCurrent = bits === this.numFrom && sels === this.numSel
+                    const icon = isCurrent ? "check" : "none"
+                    const numGroups = Math.pow(2, sels)
+                    const to = bits * numGroups
+                    const action = isCurrent ? () => undefined : () => {
+                        this.replaceWithNewParams({ from: bits, to })
+                    }
+                    items.push(MenuData.item(icon, s.InputsOutputs.expand({ numInputs: bits, numOutputs: to }), action))
+                }
+                return items
+            })
+        }
+
         return [
-            this.makeChangeParamsContextMenuItem("inputs", s.ParamNumFrom, this.numFrom, "from"),
-            this.makeChangeParamsContextMenuItem("outputs", s.ParamNumTo, this.numTo, "to", [2, 4, 8, 16].map(x => x * this.numFrom)),
-            ["mid", MenuData.sep()],
+            ["mid", MenuData.submenu("outputs", s.ParamNumInOut, makeChangeInOutItems())],
             this.makeChangeBooleanParamsContextMenuItem(this.numSel === 1 ? S.Components.Generic.contextMenu.ParamControlBitAtBottom : S.Components.Generic.contextMenu.ParamControlBitsAtBottom, this.controlPinsAtBottom, "bottom"),
             ["mid", toggleShowWiringItem],
             ["mid", toggleUseHighZItem],

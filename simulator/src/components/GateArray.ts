@@ -240,7 +240,7 @@ export class GateArray extends ParametrizedComponentBase<GateArrayRepr> {
         const { ins, outs, x } = this.makeXRayNodes<GateArray>(xray)
 
         xrayWireAndLayoutAsArray(
-            xray, bits, ins, outs, x, 3,
+            xray, bits, ins, outs, x,
             (i, x, y) => gate(`gate${i}`, this.type, x, y),
             gate => gate.inputs.In[0],
             gate => gate.inputs.In[1],

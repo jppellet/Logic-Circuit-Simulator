@@ -116,7 +116,7 @@ export class AdderArray extends ParametrizedComponentBase<AdderArrayRepr> {
         const { ins, outs, x, y, later } = this.makeXRayNodes<AdderArray>(xray)
 
         const adders = xrayWireAndLayoutAsArray<Adder>(
-            xray, bits, ins, outs, x, 3.5,
+            xray, bits, ins, outs, x,
             (i, x, y) => AdderDef.makeSpawned(xray, `adder${i}`, x, y),
             comp => comp.inputs.A,
             comp => comp.inputs.B,
@@ -162,7 +162,6 @@ export function xrayWireAndLayoutAsArray<C extends Component>(
     ins: { A: NodeOut[]; B: NodeOut[] },
     outs: { S: NodeIn[] },
     x: ((f: number) => number) & { left: number, right: number },
-    compNodeGridDist: number,
     makeComp: (i: number, x: number, y: number) => C,
     getCompInputTop: (c: C) => NodeIn,
     getCompInputBottom: (c: C) => NodeIn,
