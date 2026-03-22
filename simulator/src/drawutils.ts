@@ -570,13 +570,13 @@ export function drawStraightWireLine(g: GraphicsRendering, x0: number, y0: numbe
     g.beginPath()
     g.moveTo(x0, y0)
     g.lineTo(x1, y1)
-    strokeWireOutlineAndSingleValue(g, value, color, neutral, timeFraction)
+    strokeWireOutlineAndSingleValue(g, value, color, neutral, timeFraction, 0)
 }
 
 
-export function strokeWireOutlineAndSingleValue(g: GraphicsRendering, value: LogicValue, color: WireColor, neutral: boolean, timeFraction: number | undefined) {
-    strokeWireOutline(g, color, false)
-    strokeWireValue(g, value, undefined, neutral, timeFraction)
+export function strokeWireOutlineAndSingleValue(g: GraphicsRendering, value: LogicValue, color: WireColor, neutral: boolean, timeFraction: number | undefined, thinnerBy: number) {
+    strokeWireOutline(g, color, false, thinnerBy)
+    strokeWireValue(g, value, undefined, neutral, timeFraction, thinnerBy * 0.5)
 }
 
 let _smallestDrawingScale = 1
@@ -612,11 +612,12 @@ export function setWireWidthFactor(f: number) {
  * Draws the outline of a wire.
  * @param isMouseOver determines whether the border color is thicker with the mouse-over color
  */
-export function strokeWireOutline(g: GraphicsRendering, color: WireColor, isMouseOver: boolean) {
+export function strokeWireOutline(g: GraphicsRendering, color: WireColor, isMouseOver: boolean, thinnerBy: number
+) {
     const oldLineCap = g.lineCap
     g.lineCap = "butt"
 
-    const mainStrokeWidth = WIRE_WIDTH / 2
+    const mainStrokeWidth = WIRE_WIDTH / 2 - thinnerBy
     if (isMouseOver) {
         g.lineWidth = (mainStrokeWidth + 2) * _wireWidthFactor
         g.strokeStyle = COLOR_MOUSE_OVER
@@ -639,12 +640,12 @@ export function strokeWireOutline(g: GraphicsRendering, color: WireColor, isMous
  * @param timeFraction undefined to show no animation within the value being propagated, or a number between 0 and 1 to show an dashed line animation
  * @param path undefined to draw the current path in the context; otherwise, the path to draw
  */
-export function strokeWireValue(g: GraphicsRendering, value: LogicValue, lengthToDrawAndTotal: [number, number] | undefined, neutral: boolean, timeFraction: number | undefined) {
+export function strokeWireValue(g: GraphicsRendering, value: LogicValue, lengthToDrawAndTotal: [number, number] | undefined, neutral: boolean, timeFraction: number | undefined, thinnerBy: number) {
     const oldLineCap = g.lineCap
     g.lineCap = "butt"
 
     // inner value
-    g.lineWidth = (WIRE_WIDTH / 2 - 2) * _wireWidthFactor
+    g.lineWidth = (WIRE_WIDTH / 2 - 2 - thinnerBy) * _wireWidthFactor
     const [baseColor, altColor] = neutral ? [COLOR_UNKNOWN, COLOR_UNKNOWN_ALT] : colorsForLogicValue(value)
     g.strokeStyle = baseColor
     const animationDashSize = 20

@@ -146,7 +146,7 @@ export class XRay implements DrawableParent {
         // allocation order
         if (someGoUp && someGoDown) {
             const numHalf = num >> 1
-            const isFanOut = rightMinY > leftMaxY && rightMaxY < leftMinY
+            const isFanOut = rightMinY < leftMinY && rightMaxY > leftMaxY
 
             if (isFanOut) {
                 // TODO straightest is maybe not the one in the middle
@@ -185,10 +185,11 @@ export class XRay implements DrawableParent {
         return { numCols: alloc.numColumns, cols }
     }
 
-    public wires(startNodes: NodeOut[], endNodes: NodeIn[], left: number | null, right: number | null, allocation: boolean | WireColumnAllocation, bookings?: { left?: number, right?: number }): WirePositionAllocation {
+    public wires(startNodes: NodeOut[], endNodes: NodeIn[], left?: number | null, right?: number | null, allocation?: boolean | WireColumnAllocation, bookings?: { left?: number, right?: number }): WirePositionAllocation {
         const num = this._validateNodesToConnect(startNodes, endNodes)
         left ??= startNodes[0].posX
         right ??= endNodes[0].posX
+        allocation ??= true // default to monotonic
 
         if (num === 0) {
             return { right, inc: 0 }
@@ -201,10 +202,6 @@ export class XRay implements DrawableParent {
         const inc = (right - left) / (numCols + bookingLeft + bookingRight + 1)
         const startX = right - inc
 
-        const colXs = []
-        for (let i = 0; i < bookingRight; i++) {
-            colXs.push(startX - i * inc)
-        }
         for (let i = 0; i < num; i++) {
             const x = startX - (cols[i] + bookingRight) * inc
             this.wire(startNodes[i], endNodes[i], "hv", [x, endNodes[i].posY])
@@ -287,7 +284,7 @@ export class XRay implements DrawableParent {
         }
     }
 
-    private alignComponentOf(nodeToAlign: Node, referenceNode: Node) {
+    public alignComponentOf(nodeToAlign: Node, referenceNode: Node) {
         const comp = nodeToAlign.component
         const referenceComponentOrient = referenceNode.isXRayMirrorNode ? Orientation.default : referenceNode.component.orient
         const alignX = Orientation.isVertical(Orientation.add(referenceComponentOrient, referenceNode.orient))

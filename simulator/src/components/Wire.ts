@@ -577,7 +577,7 @@ export class Wire extends Drawable {
 
         // outline
         const color = this._startNode.color
-        strokeWireOutline(g, color, ctx.isMouseOver)
+        strokeWireOutline(g, color, ctx.isMouseOver, 0)
 
         const numValues = this._propagatingValues.length
         this._lastDrawnWireValues.length = numValues
@@ -589,7 +589,7 @@ export class Wire extends Drawable {
             if (frac < 1.0) {
                 console.warn(`Propagating value not fully propagated but drawn as such (frac=${frac} < 1.0, drawTime=${drawTime}, timeSet=${timeSet}, propagationDelay=${propagationDelay})`)
             }
-            strokeWireValue(g, value, undefined, neutral, drawParams.drawTimeAnimationFraction)
+            strokeWireValue(g, value, undefined, neutral, drawParams.drawTimeAnimationFraction, 0)
             this._lastDrawnWireValues[0] = [value, 1]
 
         } else {
@@ -599,7 +599,7 @@ export class Wire extends Drawable {
                 const [value, timeSet] = this._propagatingValues[i]
                 const frac = Math.min(1.0, (drawTime - timeSet) / propagationDelay)
                 const lengthToDraw = length.total * frac
-                strokeWireValue(g, value, [lengthToDraw, length.total], neutral, drawParams.drawTimeAnimationFraction)
+                strokeWireValue(g, value, [lengthToDraw, length.total], neutral, drawParams.drawTimeAnimationFraction, 0)
                 this._lastDrawnWireValues[numValues - 1 - i] = [value, frac]
             }
         }
@@ -1052,7 +1052,7 @@ export class LinkManager {
                 const [a2x, a2y] = bezierAnchorForWire(outgoingOrient, x2, y2, bezierAnchorPointDistX, bezierAnchorPointDistY)
                 g.bezierCurveTo(a1x, a1y, a2x, a2y, x2, y2)
             }
-            strokeWireOutlineAndSingleValue(g, nodeFrom.value, nodeFrom.color, false, drawParams.drawTimeAnimationFraction)
+            strokeWireOutlineAndSingleValue(g, nodeFrom.value, nodeFrom.color, false, drawParams.drawTimeAnimationFraction, 0)
         }
     }
 

@@ -103,6 +103,7 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
     public readonly numGroups: number
     public readonly numTo: number
     public readonly controlPinsAtBottom: boolean
+    private readonly _isXRay: boolean
     private _showWiring: boolean
     private _disconnectedAsHighZ: boolean
 
@@ -114,6 +115,7 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
         this.numGroups = params.numGroups
         this.numSel = params.numSel
         this.controlPinsAtBottom = params.controlPinsAtBottom
+        this._isXRay = params.isXRay
 
         this._showWiring = saved?.showWiring ?? DemuxDef.aults.showWiring
         this._disconnectedAsHighZ = saved?.disconnectedAsHighZ ?? DemuxDef.aults.disconnectedAsHighZ
@@ -167,7 +169,7 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
     }
 
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
-        const { top, left, bottom, right } = this.bounds()
+        const { top, left, bottom, right, width } = this.bounds()
         const dy = (right - left) / 3
 
         // inputs
@@ -200,15 +202,19 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
 
         // wiring
         if (this._showWiring) {
-            const neutral = this.parent.editor.options.hideWireColors
             const sels = this.inputValues(this.inputs.S)
             const sel = displayValuesFromArray(sels, false)[1]
             if (!isUnknown(sel)) {
+                const options = this.parent.editor.options
+                const neutral = options.hideWireColors
                 const selectedOutputs = this.outputs.Z[sel]
                 const anchorDiffX = (right - left) / 3
-                const wireStyle = this.parent.editor.options.wireStyle
+                const wireStyle = this._isXRay ? WireStyles.hv : options.wireStyle
                 const wireStyleBezier = wireStyle === WireStyles.bezier || wireStyle === WireStyles.auto
+                const wireStyleHV = wireStyle === WireStyles.hv || wireStyle === WireStyles.vh
+                const thinnerBy = Math.floor(this.numFrom / 8)
                 const timeFraction = ctx.drawParams.drawTimeAnimationFraction
+                const inc = width / (this.numFrom + 1)
 
                 for (let i = 0; i < this.inputs.In.length; i++) {
                     g.beginPath()
@@ -216,18 +222,23 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
                     const fromY = fromNode.posYInParentTransform
                     const toY = selectedOutputs[i].posYInParentTransform
                     g.moveTo(left + 1, fromY)
-                    if (!wireStyleBezier) {
-                        g.lineTo(left + 3, fromY)
-                        g.lineTo(right - 3, toY)
-                        g.lineTo(right - 1, toY)
-                    } else {
+                    if (wireStyleBezier) {
                         g.bezierCurveTo(
                             left + anchorDiffX, fromY, // anchor left
                             right - anchorDiffX, toY, // anchor right
                             right - 1, toY,
                         )
+                    } else if (wireStyleHV) {
+                        const lineX = left + (i + 1) * inc + Number(this.numSel >= 4) * GRID_STEP
+                        g.lineTo(lineX, fromY)
+                        g.lineTo(lineX, toY)
+                        g.lineTo(right - 1, toY)
+                    } else {
+                        g.lineTo(left + 3, fromY)
+                        g.lineTo(right - 3, toY)
+                        g.lineTo(right - 1, toY)
                     }
-                    strokeWireOutlineAndSingleValue(g, this.inputs.In[i].value, fromNode.color, neutral, timeFraction)
+                    strokeWireOutlineAndSingleValue(g, this.inputs.In[i].value, fromNode.color, neutral, timeFraction, thinnerBy)
                 }
             }
         }
