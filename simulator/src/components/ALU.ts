@@ -10,7 +10,7 @@ import { DrawableParent, DrawContext, GraphicsRendering, MenuData, MenuItems } f
 import { GateArray, GateArrayDef } from "./GateArray"
 import { Gate1Types, Gate2toNType, Gate2toNTypes } from "./GateTypes"
 import { Mux, MuxDef } from "./Mux"
-import { XRay } from "./XRay"
+import { WaypointSpecCompact, WireAllocationZone, XRay } from "./XRay"
 
 
 export const ALUDef =
@@ -268,7 +268,8 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
         })
 
         // xray and outline
-        this.doDrawXRayAndOutline(g, ctx, outline, 0.22)
+        const scale = this.numBits >= 16 ? 0.10 : this.numBits >= 8 ? 0.16 : 0.22
+        this.doDrawXRayAndOutline(g, ctx, outline, scale)
     }
 
     protected override makeXRay(scale: number): XRay | undefined {
@@ -287,18 +288,15 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
 
         // arithmetic part
         const adder = AdderArrayDef.makeSpawned<AdderArray>(xray, "adder", x2, y(-.4), "e", { bits })
-        const xorCin = gate("xorCin", "xor", later, adder.posY - 12 * GRID_STEP, "s")
+        const adderHalfHeight = adder.unrotatedHeight / 2 + 3 * GRID_STEP
+        const xorCin = gate("xorCin", "xor", later, adder.posY - adderHalfHeight, "s")
         wire(xorCin, adder.inputs.Cin, false)
         const xorCinInOpY = xorCin.in[0].posY - GRID_STEP
-        wire(ins.Cin, xorCin.in[1], "vh", [xorCin.in[1].posX, xorCinInOpY - GRID_STEP])
-        const xorCout = gate("xorCout", "xor", later, adder.posY + adder.unrotatedHeight / 2 + 3 * GRID_STEP, "s")
+        const xorCout = gate("xorCout", "xor", later, adder.posY + adderHalfHeight, "s")
         wire(adder.outputs.Cout, xorCout.in[0], true)
 
         const inv = ControlledInverterDef.makeSpawned<ControlledInverter>(xray, "inv", x1, later, "e", { bits, bottom: false })
         xray.alignComponentOf(inv.outputs.Out[0], adder.inputs.B[0])
-        wire(ins.Op[0], inv.inputs.S, "vh", [inv.inputs.S.posX, xorCinInOpY])
-        wire(ins.Op[0], xorCout.in[1], "vh", [xorCout.in[1].posX, xorCinInOpY])
-        wire(ins.Op[0], xorCin.in[0], "vh", [xorCin.in[0].posX, xorCinInOpY])
 
         // logic part
         const orArray = GateArrayDef.makeSpawned<GateArray>(xray, "orArray", x1, later, "e", { type: "or", bits })
@@ -307,34 +305,72 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
 
         const muxLog = MuxDef.makeSpawned<Mux>(xray, "muxLog", x(0.3), later, "e", { from: 2 * bits, to: bits, bottom: false })
         xray.alignComponentOf(muxLog.inputs.I[0][0], orArray.outputs.S[0])
-        wire(ins.Op[0], muxLog.inputs.S[0], "vh", [muxLog.inputs.S[0].posX, xorCinInOpY])
 
         // output
         const muxAL = MuxDef.makeSpawned<Mux>(xray, "muxAL", x.right - 4 * GRID_STEP, 0, "e", { from: 2 * bits, to: bits, bottom: false })
-        wire(ins.Mode, muxAL.inputs.S[0], "hv", [[ins.Mode.posX, ins.Mode.posY + 4 * GRID_STEP], [muxAL.posX - 2 * GRID_STEP, xorCin.posY]])
         const norZ = gate("norZ", "nor", later, outs.Z.posY - 4 * GRID_STEP, "s", bits)
         wire(norZ, outs.Z, false)
 
         xray.wires(inv.outputs.Out, adder.inputs.B)
 
-        xray.wires(
-            [...ins.A, ...ins.A, ...ins.A, ...ins.B, ...ins.B, ...ins.B],
-            [...adder.inputs.A, ...orArray.inputs.A, ...andArray.inputs.A, ...inv.inputs.In, ...orArray.inputs.B, ...andArray.inputs.B],
-            null, orArray.inputs.A[0].posX
-        )
+        const logicArrayWidth = orArray.outputs.S[0].posX - orArray.inputs.A[0].posX
+        const muxWidth = muxAL.outputs.Z[0].posX - muxAL.inputs.I[0][0].posX
 
-        xray.wires(muxAL.outputs.Z, outs.S)
-        xray.wires([...adder.outputs.S, ...muxLog.outputs.Z], [...muxAL.inputs.I[0], ...muxAL.inputs.I[1]], muxLog.outputs.Z[0].posX, null)
+        const zones: WireAllocationZone[] = [{
+            // debugId: "ALUin->",
+            from: [...ins.A, ...ins.B],
+            to: [[...adder.inputs.A, ...inv.inputs.In], orArray.inputs._all, andArray.inputs._all],
+            alloc: { order: "top-down" },
+            after: { comps: [inv, orArray, andArray], compWidth: logicArrayWidth },
+        }, {
+            // debugId: "->muxLog",
+            from: [...orArray.outputs.S, ...andArray.outputs.S],
+            to: [...muxLog.inputs.I[0], ...muxLog.inputs.I[1]],
+            bookings: { colsLeft: 3 },
+            after: { comps: [muxLog], compWidth: muxWidth },
+        }, {
+            // debugId: "->muxAL",
+            from: muxLog.outputs.Z,
+            to: muxAL.inputs.I[1],
+            after: { comps: [muxAL], compWidth: muxWidth },
+        }, {
+            // debugId: "->ALUout",
+            from: muxAL.outputs.Z,
+            to: outs.S,
+            alloc: { order: "bottom-up", allDifferent: true },
+        }]
+        const [allocIn, allocMuxLogIn, allocALIn, allocOut] = xray.wiresInZones(x.left, x.right, zones)
 
-        const alloc = xray.wires([...orArray.outputs.S, ...andArray.outputs.S], [...muxLog.inputs.I[0], ...muxLog.inputs.I[1]], null, null, undefined, { right: 2 })
+        xray.wires(adder.outputs.S, muxAL.inputs.I[0], undefined, allocALIn)
 
-        const flagsBranchY = xorCout.outputs.Out.posY
-        wire(xorCout, outs.Cout, "vh", [alloc.right - alloc.inc, flagsBranchY])
-        wire(adder.outputs.V, outs.V, "vh", [alloc.right, flagsBranchY])
+        const flagsBranchY1 = xorCout.outputs.Out.posY
+        const flagsBranchY2 = outs.Cout.posY - 3 * GRID_STEP
+        wire(xorCout, outs.Cout, "vh", [
+            [allocMuxLogIn.colXAt(bits + 2), flagsBranchY1],
+            [outs.Cout.posX, flagsBranchY2],
+        ])
+        wire(adder.outputs.V, outs.V, "vh", [
+            [allocMuxLogIn.colXAt(bits + 1), flagsBranchY1 + allocMuxLogIn.inc],
+            [outs.V.posX, flagsBranchY2],
+        ])
+        const muxLogSelInputX = allocALIn.colXAt(bits + 1)
+        wire(ins.Op[0], muxLog.inputs.S[0], "vh", [[muxLogSelInputX, xorCinInOpY], [muxLogSelInputX, flagsBranchY1 + 2 * allocMuxLogIn.inc]])
+        wire(ins.Op[0], inv.inputs.S, "vh", [inv.inputs.S.posX, xorCinInOpY])
+        wire(ins.Op[0], xorCout.in[1], "vh", [xorCout.in[1].posX, xorCinInOpY])
+        wire(ins.Op[0], xorCin.in[0], "vh", [xorCin.in[0].posX, xorCinInOpY])
+        wire(ins.Mode, muxAL.inputs.S[0], "vh", [muxAL.inputs.S[0].posX, xorCinInOpY - 2 * GRID_STEP])
 
+        const cInWireWaypoints: WaypointSpecCompact[] = [[xorCin.in[1].posX, xorCinInOpY - GRID_STEP]]
+        if (ins.Cin.posX < allocIn.right) {
+            cInWireWaypoints.unshift([allocIn.right + 2 * allocIn.inc, ins.A[0].posY - 2 * allocIn.inc])
+        }
+        wire(ins.Cin, xorCin.in[1], "vh", cInWireWaypoints)
 
+        const norZInMinY = norZ.in[0].posY
         for (let i = 0; i < bits; i++) {
-            wire(muxAL.outputs.Z[i], norZ.in[i])
+            const out = muxAL.outputs.Z[i]
+            const ind = bits - 1 - i
+            wire(out, norZ.in[ind], "hv", [allocOut.colXAt(ind), norZInMinY - ind * allocOut.inc])
         }
 
         return xray

@@ -8,7 +8,7 @@ import { ALUDef, doALUAdd } from "./ALU"
 import { Component, ParametrizedComponentBase, Repr, ResolvedParams, Value, defineParametrizedComponent, groupVertical, param, shiftWhenHorizontal } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
 import { NodeIn, NodeOut } from "./Node"
-import { AllocationZone, XRay } from "./XRay"
+import { WireAllocationZone, XRay } from "./XRay"
 
 
 export const AdderArrayDef =
@@ -177,7 +177,7 @@ export function xrayWireAndLayoutAsArray<C extends Component>(
     }, bits)
     const compWidth = getCompOutput(comps[0]).posX - getCompInputTop(comps[0]).posX
 
-    const allocationZones: AllocationZone[] = [{
+    const allocationZones: WireAllocationZone[] = [{
         from: [...ins.A, ...ins.B],
         to: [...comps.map(getCompInputTop), ...comps.map(getCompInputBottom)],
         after: { comps, compWidth },

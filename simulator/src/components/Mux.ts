@@ -8,7 +8,7 @@ import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } f
 import { Gate1, GateN } from "./Gate"
 import { NodeIn } from "./Node"
 import { WireStyles } from "./Wire"
-import { AllocationZone, WaypointSpecCompact, XRay } from "./XRay"
+import { WaypointSpecCompact, WireAllocationZone, XRay } from "./XRay"
 
 export const MuxDemuxLimits: Array<[bits: number, maxSels: number]> = [
     [1, 4],
@@ -71,7 +71,7 @@ export const MuxDef =
             return { gridWidth, gridHeight }
         },
         makeNodes: ({ numTo, numGroups, numSel, controlPinsAtBottom, isXRay, gridHeight }) => {
-            const outX = (isXRay ? 0.5 : 1) + Math.max(2, numSel)
+            const outX = (isXRay ? 0 : 1) + Math.max(2, numSel)
 
             const groupOfInputs = groupVerticalMulti("w", -outX, 0, numGroups, numTo)
             const selY = (controlPinsAtBottom ? 1 : -1) * (gridHeight / 2 + 1)
@@ -291,10 +291,10 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
         }
         const gateWidth = ands[0][0].outputs.Out.posX - ands[0][0].inputs.In[0].posX
         const andsFlat = ands.flat()
-        const zones: AllocationZone[] = [{
+        const zones: WireAllocationZone[] = [{
             from: ins.I.flat(),
             to: andInputs,
-            bookings: { right: 2 * sels },
+            bookings: { colsRight: 2 * sels },
             after: { comps: andsFlat, compWidth: gateWidth },
         }, {
             from: ands.map(ands => ands.map(and => and.outputs.Out)),
@@ -314,7 +314,7 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
                     const useNot = ((g >> s) & 1) === 0
                     const lineIndex = s * 2 + Number(!useNot)
                     const notOuputY = nots[s].outputs.Out.posY + GRID_STEP
-                    const lineX = andInputAlloc.right - lineIndex * andInputAlloc.inc
+                    const lineX = andInputAlloc.colXAt(lineIndex)
 
                     if (useNot) {
                         const andIn = ands[b][g].inputs.In[s]

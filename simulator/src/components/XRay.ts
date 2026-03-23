@@ -4,7 +4,7 @@ import { DrawParams, LogicEditor } from "../LogicEditor"
 import { NodeManager } from "../NodeManager"
 import { RecalcManager } from "../RedrawRecalcManager"
 import { TestSuites } from "../TestSuite"
-import { isArray, isBoolean, Mode, Orientation } from "../utils"
+import { isArray, Mode, Orientation } from "../utils"
 import { Component, InjectedParams } from "./Component"
 import { DrawableParent, GraphicsRendering } from "./Drawable"
 import { Gate1, Gate1Def, GateN, GateNDef } from "./Gate"
@@ -17,27 +17,78 @@ export type XRayNodesFor<T, N> =
     T extends any[][] ? N[][] :
     T extends any[] ? N[] : N
 
-export type WireColumnAllocation = { numCols: number, cols: number[] }
-
-export type WirePositionAllocation = { right: number, inc: number }
 
 export type WaypointSpecCompact = [x: number, y: number]
-type NodeOutOrComp = NodeOut | Component & { outputs: { Out: NodeOut } }
 
-export type AllocationZone = ({
-    from: NodeOut[],
-    to: NodeIn[],
+
+// Column allocation for wires
+
+type WireColumnAllocationOptions = {
+    /** Preset order for allocation */
+    order?: "top-down" | "bottom-up" | "outside-in" | "inside-out",
+    /** Whether each wire should be allocated in a different column */
+    allDifferent?: boolean,
+    /** Whether the allocation can reuse past columns. Doesn't make sense if allDifferent is true */
+    monotonic?: boolean
+}
+
+export type WireColumnAllocation = {
+    numCols: number,
+    cols: number[],
+}
+
+
+// Position allocation for wires (from columns)
+
+type WireColumnBookings = {
+    /** Add columns to the left */
+    colsLeft?: number,
+    /** Add columns to the right */
+    colsRight?: number,
+}
+
+type WirePositionAllocationOptions = {
+    /** Start from this left position (or from the first NodeOut) */
+    left?: number,
+    /** Stop at this right position (or at the first NodeIn) */
+    right?: number,
+    /** Reuse this increment in the width distribution */
+    presetInc?: number,
+}
+
+export class WirePositionAllocation {
+    public constructor(
+        public readonly right: number,
+        public readonly inc: number,
+    ) { }
+    public colXAt(i: number) {
+        return this.right - i * this.inc
+    }
+}
+
+
+// Multi-zone allocation
+
+export type WireAllocationZone = ({
+    /** Some id if we want debug information on allocation */
+    from: ReadonlyArray<NodeOut>,
+    to: ReadonlyArray<NodeIn> | ReadonlyArray<NodeIn>[],
 } | {
-    from: NodeOut[][],
-    to: NodeIn[][],
+    from: ReadonlyArray<NodeOut>[],
+    to: ReadonlyArray<NodeIn>[],
 }) & {
-    bookings?: { left?: number, right?: number },
-    monotonic?: boolean,
+    debugId?: string,
+    alloc?: WireColumnAllocationOptions,
+    bookings?: WireColumnBookings,
+    positions?: WirePositionAllocationOptions,
     after?: {
         comps: Component[],
         compWidth: number,
     },
 }
+
+
+type NodeOutOrComp = NodeOut | Component & { outputs: { Out: NodeOut } }
 
 export class XRay implements DrawableParent {
 
@@ -114,112 +165,167 @@ export class XRay implements DrawableParent {
         }
     }
 
-    public allocateColumns(startNodes: NodeOut[], endNodes: NodeIn[], monotonic: boolean): WireColumnAllocation {
-        const num = this._validateNodesToConnect(startNodes, endNodes)
-        const alloc = new WireColumnAllocator(monotonic)
-        const cols = new Array<number>(num)
+    public allocateColumns(startNodes: ReadonlyArray<NodeOut>, endNodeSpec: ReadonlyArray<NodeIn> | ReadonlyArray<NodeIn>[], opts?: WireColumnAllocationOptions, debugId?: string): WireColumnAllocation {
+        const [num, endNodeGroups] = this._validateNodesToConnect(startNodes, endNodeSpec)
+        const endNodesFor = (i: number) => endNodeGroups.map(en => en[i])
 
-        const allocateAt = (i: number) => {
-            const fromY = startNodes[i].posY
-            const toY = endNodes[i].posY
-            cols[i] = alloc.allocate(fromY, toY)
+        const debug = debugId === undefined ? () => null : (msg: string) => {
+            console.log(`Allocating '${debugId}' - ${msg}`)
         }
 
-        // determine allocation order
-        let someGoUp = false
-        let someGoDown = false
-        let leftMinY = Infinity
-        let leftMaxY = -Infinity
-        let rightMinY = Infinity
-        let rightMaxY = -Infinity
-        for (let i = 0; i < num; i++) {
-            const fromY = startNodes[i].posY
-            const toY = endNodes[i].posY
-            if (fromY > leftMaxY) { leftMaxY = fromY }
-            if (fromY < leftMinY) { leftMinY = fromY }
-            if (toY > rightMaxY) { rightMaxY = toY }
-            if (toY < rightMinY) { rightMinY = toY }
-            if (toY > fromY) { someGoDown = true }
-            if (toY < fromY) { someGoUp = true }
-        }
-
-        // allocation order
-        if (someGoUp && someGoDown) {
-            const numHalf = num >> 1
-            const isFanOut = rightMinY < leftMinY && rightMaxY > leftMaxY
-
-            if (isFanOut) {
-                // TODO straightest is maybe not the one in the middle
-                if (num % 2 !== 0) {
-                    allocateAt(numHalf + 1)
-                }
-                // top, bottom, top + 1, bottom - 1, etc.
-                for (let i = 0; i < numHalf; i++) {
-                    allocateAt(numHalf + i)
-                    allocateAt(numHalf - 1 - i)
-                }
-
-            } else {
-                // fan in: top, bottom, top + 1, bottom - 1, etc.
-                for (let i = 0; i < numHalf; i++) {
-                    allocateAt(i)
-                    allocateAt(num - 1 - i)
-                }
-                if (num % 2 !== 0) {
-                    allocateAt(numHalf + 1)
-                }
-            }
-
-        } else if (!someGoUp) {
-            // all down
-            for (let i = 0; i < num; i++) {
-                allocateAt(i)
-            }
+        let order = opts?.order
+        if (order !== undefined) {
+            debug(`Using preset order ${order}`)
         } else {
-            // all up
-            for (let i = num - 1; i >= 0; i--) {
-                allocateAt(i)
+            // determine allocation order
+            let someGoUp = false
+            let someGoDown = false
+            let leftMinY = Infinity
+            let leftMaxY = -Infinity
+            let rightMinY = Infinity
+            let rightMaxY = -Infinity
+            for (let i = 0; i < num; i++) {
+                const fromY = startNodes[i].posY
+                for (const node of endNodesFor(i)) {
+                    const toY = node.posY
+                    if (fromY > leftMaxY) { leftMaxY = fromY }
+                    if (fromY < leftMinY) { leftMinY = fromY }
+                    if (toY > rightMaxY) { rightMaxY = toY }
+                    if (toY < rightMinY) { rightMinY = toY }
+                    if (toY > fromY) { someGoDown = true }
+                    if (toY < fromY) { someGoUp = true }
+                }
+            }
+
+            if (someGoUp && someGoDown) {
+                const isFanOut = rightMinY < leftMinY && rightMaxY > leftMaxY
+                if (isFanOut) {
+                    order = "outside-in"
+                } else {
+                    order = "top-down"
+                }
+            } else if (!someGoUp) {
+                order = "top-down"
+            } else {
+                order = "bottom-up"
+            }
+
+            debug(`Determined order ${order} (someGoUp=${someGoUp}, someGoDown=${someGoDown}, leftMinY=${leftMinY}, leftMaxY=${leftMaxY}, rightMinY=${rightMinY}, rightMaxY=${rightMaxY})`)
+        }
+
+        const visitAll = (visitor: (i: number) => void) => {
+            const numHalf = num >> 1
+            switch (order) {
+                case "top-down":
+                    for (let i = 0; i < num; i++) {
+                        visitor(i)
+                    }
+                    break
+                case "bottom-up":
+                    for (let i = num - 1; i >= 0; i--) {
+                        visitor(i)
+                    }
+                    break
+                case "outside-in":
+                    for (let i = 0; i < numHalf; i++) {
+                        visitor(i)
+                        visitor(num - 1 - i)
+                    }
+                    if (num % 2 !== 0) {
+                        visitor(numHalf + 1)
+                    }
+                    break
+                case "inside-out":
+                    // TODO straightest is maybe not the one in the middle
+                    if (num % 2 !== 0) {
+                        visitor(numHalf + 1)
+                    }
+                    // top, bottom, top + 1, bottom - 1, etc.
+                    for (let i = 0; i < numHalf; i++) {
+                        visitor(numHalf + i)
+                        visitor(numHalf - 1 - i)
+                    }
             }
         }
 
-        return { numCols: alloc.numColumns, cols }
+        const allDifferent = opts?.allDifferent ?? false
+        if (allDifferent) {
+            const cols = new Array<number>(num)
+            let lastAllocatedCol = -1
+            visitAll(i => cols[i] = ++lastAllocatedCol)
+            debug(`With allDifferent=true, we have numCols=${num} and cols=[${cols.join(", ")}]`)
+            return { numCols: num, cols }
+        } else {
+            const alloc = new WireColumnAllocator(opts?.monotonic)
+            const cols = new Array<number>(num)
+            visitAll(i => {
+                const ys = [startNodes[i].posY, ...endNodesFor(i).map(node => node.posY)]
+                const y1 = Math.min(...ys)
+                const y2 = Math.max(...ys)
+                cols[i] = alloc.allocate(y1, y2)
+            })
+            debug(`With an allocator and monotonic=${alloc.monotonic}, we have numCols=${alloc.numColumns} and cols=[${cols.join(", ")}]`)
+            return {
+                numCols: alloc.numColumns, cols,
+            }
+        }
     }
 
-    public wires(startNodes: NodeOut[], endNodes: NodeIn[], left?: number | null, right?: number | null, allocation?: boolean | WireColumnAllocation, bookings?: { left?: number, right?: number }): WirePositionAllocation {
-        const num = this._validateNodesToConnect(startNodes, endNodes)
-        left ??= startNodes[0].posX
-        right ??= endNodes[0].posX
-        allocation ??= true // default to monotonic
+    public wires(
+        startNodes: ReadonlyArray<NodeOut>,
+        endNodeSpec: ReadonlyArray<NodeIn> | ReadonlyArray<NodeIn>[],
+        bookings?: WireColumnBookings,
+        position?: WirePositionAllocationOptions | WirePositionAllocation,
+        allocation?: WireColumnAllocationOptions | WireColumnAllocation,
+        debugId?: string,
+    ): WirePositionAllocation {
+        const [num, endNodeGroups] = this._validateNodesToConnect(startNodes, endNodeSpec)
 
-        if (num === 0) {
-            return { right, inc: 0 }
+        const { numCols, cols } = allocation !== undefined && "numCols" in allocation ? allocation
+            : this.allocateColumns(startNodes, endNodeGroups, allocation, debugId)
+        const bookingRight = bookings?.colsRight ?? 0
+        const bookingLeft = bookings?.colsLeft ?? 0
+
+        let positionAlloc: WirePositionAllocation
+        if (position instanceof WirePositionAllocation) {
+            positionAlloc = position
+        } else {
+            const left = position?.left ?? startNodes[0].posX
+            const right = position?.right ?? endNodeGroups[0][0].posX
+            if (num === 0) {
+                return new WirePositionAllocation(right, 0)
+            }
+            let inc = position?.presetInc
+            if (inc === undefined) {
+                inc = (right - left) / (numCols + bookingLeft + bookingRight + 1)
+            }
+            const startX = right - inc
+            positionAlloc = new WirePositionAllocation(startX, inc)
         }
-
-        const bookingRight = bookings?.right ?? 0
-        const bookingLeft = bookings?.left ?? 0
-        const { numCols, cols } = !isBoolean(allocation) ? allocation
-            : this.allocateColumns(startNodes, endNodes, allocation)
-        const inc = (right - left) / (numCols + bookingLeft + bookingRight + 1)
-        const startX = right - inc
 
         for (let i = 0; i < num; i++) {
-            const x = startX - (cols[i] + bookingRight) * inc
-            this.wire(startNodes[i], endNodes[i], "hv", [x, endNodes[i].posY])
+            const x = positionAlloc.colXAt(cols[i] + bookingRight)
+            for (const endNodes of endNodeGroups) {
+                this.wire(startNodes[i], endNodes[i], "hv", [x, endNodes[i].posY])
+            }
         }
 
-        return { right: startX, inc }
+        return positionAlloc
     }
 
-    private _validateNodesToConnect(startNodes: NodeOut[], endNodes: NodeIn[]): number {
+    private _validateNodesToConnect(startNodes: ReadonlyArray<NodeOut>, endNodeSpec: ReadonlyArray<NodeIn> | ReadonlyArray<NodeIn>[]): [number, NodeIn[][]] {
         const num = startNodes.length
-        if (num !== endNodes.length) {
-            console.error(`connecting wrong number of inputs and outputs in xray`)
-            return Math.min(num, endNodes.length)
+        const endNodeGroups = isArray(endNodeSpec[0]) ? endNodeSpec as NodeIn[][] : [endNodeSpec as NodeIn[]]
+        for (const endNodes of endNodeGroups) {
+            if (num !== endNodes.length) {
+                console.error(`connecting wrong number of inputs and outputs in xray`)
+                return [Math.min(num, endNodes.length), endNodeGroups]
+            }
         }
         if (num === 0) {
             console.error(`no nodes to connect`)
         }
-        return num
+        return [num, endNodeGroups]
     }
 
     /**
@@ -228,28 +334,28 @@ export class XRay implements DrawableParent {
      * It will move the X position of the middle components accordingly, but their Y
      * position is assumed to be final for the allocation to work.
      */
-    public wiresInZones(left: number, right: number, zones: AllocationZone[]): WirePositionAllocation[] {
+    public wiresInZones(left: number, right: number, zones: WireAllocationZone[]): WirePositionAllocation[] {
         const zoneAllocs = zones.map(zone => {
             const [from, to] = isArray(zone.from[0])
                 ? [zone.from[0] as NodeOut[], zone.to[0] as NodeIn[]]
                 : [zone.from as NodeOut[], zone.to as NodeIn[]]
-            return this.allocateColumns(from, to, zone.monotonic ?? true)
+            return this.allocateColumns(from, to, zone.alloc, zone.debugId)
         })
         const totalCompWidths = zones.reduce((acc, z) => acc + (z.after?.compWidth ?? 0), 0)
         let totalCols = 0
         for (let i = 0; i < zones.length; i++) {
             const bookings = zones[i].bookings
-            totalCols += zoneAllocs[i].numCols + (bookings?.left ?? 0) + (bookings?.right ?? 0)
+            totalCols += zoneAllocs[i].numCols + (bookings?.colsLeft ?? 0) + (bookings?.colsRight ?? 0)
         }
         const colInc = (right - left - totalCompWidths) / (totalCols + zones.length)
 
-        const positions: WirePositionAllocation[] = []
+        const positionsAllocs: WirePositionAllocation[] = []
         let posX = left
         for (let i = 0; i < zones.length; i++) {
             const zone = zones[i]
-            const bookings = zone.bookings
+            const bookings = zones[i].bookings
             const zoneLeft = posX
-            posX += (zoneAllocs[i].numCols + (bookings?.left ?? 0) + (bookings?.right ?? 0) + 1) * colInc
+            posX += (zoneAllocs[i].numCols + (bookings?.colsLeft ?? 0) + (bookings?.colsRight ?? 0) + 1) * colInc
             const zoneRight = posX
 
             if (zone.after !== undefined) {
@@ -264,14 +370,15 @@ export class XRay implements DrawableParent {
             const [froms, tos] = isArray(zone.from[0])
                 ? [zone.from as NodeOut[][], zone.to as NodeIn[][]]
                 : [[zone.from as NodeOut[]], [zone.to as NodeIn[]]]
-            const position = this.wires(froms[0], tos[0], zoneLeft, zoneRight, zoneAllocs[i], bookings)
+            const position = { left: zoneLeft, right: zoneRight }
+            const positionAlloc = this.wires(froms[0], tos[0], bookings, position, zoneAllocs[i], zone.debugId)
             // subzones (if any)
             for (let j = 1; j < froms.length; j++) {
-                this.wires(froms[j], tos[j], zoneLeft, zoneRight, zoneAllocs[i], bookings)
+                this.wires(froms[j], tos[j], bookings, position, zoneAllocs[i])
             }
-            positions.push(position)
+            positionsAllocs.push(positionAlloc)
         }
-        return positions
+        return positionsAllocs
     }
 
     public gate<G extends GateNType | Gate1Type>(validatedId: string, type: G, x: number, y: number, orient?: Orientation, bits?: G extends Gate1Type ? undefined : number): G extends Gate1Type ? Gate1 : GateN {
@@ -372,7 +479,7 @@ export class WireColumnAllocator {
     private _startSearchingAt: number = 0
 
     public constructor(
-        public readonly monotonic: boolean,
+        public readonly monotonic: boolean = true,
     ) { }
 
     public get numColumns() {
