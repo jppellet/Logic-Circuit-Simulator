@@ -156,19 +156,3 @@ export class WirePath {
     }
 
 }
-
-
-function buildPathDesc(parts: ReadonlyArray<LineCoords | BezierCoords>): string {
-    const start = parts[0]
-    const pathDescParts = [`M${start[0]} ${start[1]}`]
-    for (const part of parts) {
-        if (part.length === 4) {
-            // line
-            pathDescParts.push(`L${part[2]} ${part[3]}`)
-        } else {
-            // bezier
-            pathDescParts.push(`C${part[4]} ${part[5]},${part[6]} ${part[7]},${part[2]} ${part[3]}`)
-        }
-    }
-    return pathDescParts.join(" ")
-}

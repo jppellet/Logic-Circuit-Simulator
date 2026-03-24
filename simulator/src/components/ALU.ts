@@ -283,11 +283,9 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, scale)
         const { ins, outs, x, y, later } = this.makeXRayNodes<ALU>(xray)
 
-        const x2 = x(.1)
-        const x1 = x2 - 6 * GRID_STEP
 
         // arithmetic part
-        const adder = AdderArrayDef.makeSpawned<AdderArray>(xray, "adder", x2, y(-.4), "e", { bits })
+        const adder = AdderArrayDef.makeSpawned<AdderArray>(xray, "adder", later, y(-.4), "e", { bits })
         const adderHalfHeight = adder.unrotatedHeight / 2 + 3 * GRID_STEP
         const xorCin = gate("xorCin", "xor", later, adder.posY - adderHalfHeight, "s")
         wire(xorCin, adder.inputs.Cin, false)
@@ -295,19 +293,17 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
         const xorCout = gate("xorCout", "xor", later, adder.posY + adderHalfHeight, "s")
         wire(adder.outputs.Cout, xorCout.in[0], true)
 
-        const inv = ControlledInverterDef.makeSpawned<ControlledInverter>(xray, "inv", x1, later, "e", { bits, bottom: false })
+        const inv = ControlledInverterDef.makeSpawned<ControlledInverter>(xray, "inv", later, later, "e", { bits, bottom: false })
         xray.alignComponentOf(inv.outputs.Out[0], adder.inputs.B[0])
 
         // logic part
-        const orArray = GateArrayDef.makeSpawned<GateArray>(xray, "orArray", x1, later, "e", { type: "or", bits })
-        orArray.setPosition(x1, xorCout.outputs.Out.posY + orArray.unrotatedHeight / 2, false)
-        const andArray = GateArrayDef.makeSpawned<GateArray>(xray, "andArray", x1, y(.65), "e", { type: "and", bits })
-
-        const muxLog = MuxDef.makeSpawned<Mux>(xray, "muxLog", x(0.3), later, "e", { from: 2 * bits, to: bits, bottom: false })
-        xray.alignComponentOf(muxLog.inputs.I[0][0], orArray.outputs.S[0])
+        const andArray = GateArrayDef.makeSpawned<GateArray>(xray, "andArray", later, y(.65), "e", { type: "and", bits })
+        const gateArrayHeight = andArray.unrotatedHeight
+        const orArray = GateArrayDef.makeSpawned<GateArray>(xray, "orArray", later, andArray.posY - gateArrayHeight - GRID_STEP * Math.max(1, bits / 4), "e", { type: "or", bits })
+        const muxLog = MuxDef.makeSpawned<Mux>(xray, "muxLog", later, (andArray.posY + orArray.posY) / 2, "e", { from: 2 * bits, to: bits, bottom: false })
 
         // output
-        const muxAL = MuxDef.makeSpawned<Mux>(xray, "muxAL", x.right - 4 * GRID_STEP, 0, "e", { from: 2 * bits, to: bits, bottom: false })
+        const muxAL = MuxDef.makeSpawned<Mux>(xray, "muxAL", x.right - 4 * GRID_STEP, later, "e", { from: 2 * bits, to: bits, bottom: false })
         const norZ = gate("norZ", "nor", later, outs.Z.posY - 4 * GRID_STEP, "s", bits)
         wire(norZ, outs.Z, false)
 
@@ -344,7 +340,7 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
         xray.wires(adder.outputs.S, muxAL.inputs.I[0], undefined, allocALIn)
 
         const flagsBranchY1 = xorCout.outputs.Out.posY
-        const flagsBranchY2 = outs.Cout.posY - 3 * GRID_STEP
+        const flagsBranchY2 = outs.V.posY - GRID_STEP
         wire(xorCout, outs.Cout, "vh", [
             [allocMuxLogIn.colXAt(bits + 2), flagsBranchY1],
             [outs.Cout.posX, flagsBranchY2],

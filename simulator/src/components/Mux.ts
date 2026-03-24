@@ -213,7 +213,12 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
                             right - 1, toY,
                         )
                     } else if (wireStyleHV) {
-                        const lineX = right - (i + 1) * inc - Number(this.numSel >= 4) * GRID_STEP
+                        const shiftX = (i + 1) * inc + Number(this.numSel >= 4) * GRID_STEP
+                        const lineX = fromY <= this.posY
+                            // in the upper part, so "hv"
+                            ? right - shiftX
+                            // in the lower part, so "vh"
+                            : left + shiftX
                         g.lineTo(lineX, fromY)
                         g.lineTo(lineX, toY)
                         g.lineTo(right - 1, toY)
@@ -240,7 +245,7 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
 
     protected override makeXRay(scale: number): XRay | undefined {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, scale)
-        const { ins, outs, x, y } = this.makeXRayNodes<Mux>(xray)
+        const { ins, outs, x } = this.makeXRayNodes<Mux>(xray)
 
         const bits = this.numTo
         const groups = this.numGroups
@@ -292,15 +297,18 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
         const gateWidth = ands[0][0].outputs.Out.posX - ands[0][0].inputs.In[0].posX
         const andsFlat = ands.flat()
         const zones: WireAllocationZone[] = [{
+            // debugId: "inputs->ANDs",
             from: ins.I.flat(),
             to: andInputs,
             bookings: { colsRight: 2 * sels },
             after: { comps: andsFlat, compWidth: gateWidth },
         }, {
+            // debugId: "ANDs->ORs",
             from: ands.map(ands => ands.map(and => and.outputs.Out)),
             to: ors.map(g => g.inputs.In),
             after: { comps: ors, compWidth: gateWidth },
         }, {
+            // debugId: "ORs->outputs",
             from: ors.map(g => g.outputs.Out),
             to: outs.Z,
         }]

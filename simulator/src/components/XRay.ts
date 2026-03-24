@@ -200,9 +200,9 @@ export class XRay implements DrawableParent {
             if (someGoUp && someGoDown) {
                 const isFanOut = rightMinY < leftMinY && rightMaxY > leftMaxY
                 if (isFanOut) {
-                    order = "outside-in"
+                    order = "inside-out"
                 } else {
-                    order = "top-down"
+                    order = "outside-in"
                 }
             } else if (!someGoUp) {
                 order = "top-down"
