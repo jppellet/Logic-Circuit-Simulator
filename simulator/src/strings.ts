@@ -126,6 +126,7 @@ const Strings_fr = {
             Demux8to16: ["Démultiplexer 8-vers-16 (1 bit de contrôle)", "Demux 8-16"],
 
             LatchSR: ["Verrou SR", "Verrou SR"],
+            LatchD: ["Verrou D", "Verrou D"],
             FlipflopJK: ["Bascule JK", "Basc. JK"],
             FlipflopT: ["Bascule T", "Basc. T"],
             FlipflopD: ["Bascule D", "Basc. D"],
@@ -613,6 +614,12 @@ const Strings_fr = {
                 desc: "Stocke un bit.",
             },
         },
+        LatchD: {
+            tooltip: {
+                title: "Verrou D",
+                desc: "Stocke un bit.",
+            },
+        },
         Mux: {
             tooltip: template("Multiplexeur ${from} vers ${to}"),
         },
@@ -941,6 +948,7 @@ const Strings_en: Strings = {
             Demux8to16: ["8-to-16 Demultiplexer (1 Control Bit)", "Demux 8-16"],
 
             LatchSR: ["SR Latch", "SR Latch"],
+            LatchD: ["D Latch", "D Latch"],
             FlipflopJK: ["JK Flip-Flop", "FF-JK"],
             FlipflopT: ["T Flip-Flop", "FF-T"],
             FlipflopD: ["D Flip-Flop", "FF-D"],
@@ -1424,6 +1432,12 @@ const Strings_en: Strings = {
         LatchSR: {
             tooltip: {
                 title: "SR Latch",
+                desc: "Stores one bit.",
+            },
+        },
+        LatchD: {
+            tooltip: {
+                title: "D Latch",
                 desc: "Stores one bit.",
             },
         },

@@ -5,7 +5,7 @@ import { Node, NodeBase, WireColor } from "./components/Node"
 import { RectangleColor } from "./components/Rectangle"
 import { Waypoint } from "./components/Wire"
 import { LogicEditor } from "./LogicEditor"
-import { EdgeTrigger, FixedArray, FixedArrayAssert, InBrowser, isArray, isHighImpedance, isNumber, isString, isUnknown, LogicValue, Mode, Orientation, Unknown } from "./utils"
+import { EdgeTrigger, FixedArray, FixedArrayAssert, InBrowser, isArray, isHighImpedance, isNumber, isString, isUnknown, LogicValue, Mode, Orientation, ParentType, Unknown } from "./utils"
 
 
 //
@@ -480,10 +480,11 @@ export function strokeBezier(g: GraphicsRendering, x0: number, y0: number, ancho
 }
 
 export function whatToDrawForNode(node: Node): { drawLabel: boolean, drawLead: boolean, drawTriangle: boolean, drawHiddenMark: boolean } {
+    const isInXRay = node.parent.type === ParentType.XRAY
     const editor = node.parent.editor
     const wires = node.connectedWires
     const connected = wires.length > 0
-    if (editor.mode <= Mode.TRYOUT && !connected && !editor.options.showDisconnectedPins) {
+    if (!connected && (isInXRay || (editor.mode <= Mode.TRYOUT && !editor.options.showDisconnectedPins))) {
         return { drawLabel: false, drawLead: false, drawTriangle: false, drawHiddenMark: false }
     }
     const drawHiddenMark = connected && wires.some(w => w.isHidden)

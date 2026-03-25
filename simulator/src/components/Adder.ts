@@ -87,8 +87,8 @@ export class Adder extends ComponentBase<AdderRepr> {
         })
     }
 
-    protected override makeXRay(scale: number) {
-        const { xray, wire, gate } = this.parent.editor.newXRay(this, scale)
+    protected override makeXRay(level: number, scale: number) {
+        const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
         const { ins, outs, x, y, later } = this.makeXRayNodes<Adder>(xray)
 
         const and1 = gate("and1", "and", x(-0.5), later)

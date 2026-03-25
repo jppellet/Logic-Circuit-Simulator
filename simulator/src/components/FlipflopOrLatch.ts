@@ -2,7 +2,7 @@ import * as t from "io-ts"
 import { COLOR_BACKGROUND_INVALID, COLOR_COMPONENT_BORDER, colorForLogicValue, drawValueText } from "../drawutils"
 import { S } from "../strings"
 import { EdgeTrigger, LogicValue, LogicValueRepr, Unknown, toLogicValue, toLogicValueRepr, typeOrUndefined } from "../utils"
-import { ComponentBase, InstantiatedComponentDef, NodesIn, NodesOut, Repr, defineAbstractComponent } from "./Component"
+import { ComponentBase, InstantiatedComponentDef, NodeInDesc, NodeRec, NodesIn, NodesOut, Repr, defineAbstractComponent } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
 
 
@@ -18,12 +18,12 @@ export const FlipflopOrLatchDef =
             showContent: true,
         },
         size: () => ({ gridWidth: 5, gridHeight: 7 }),
-        makeNodes: () => {
+        makeNodes: (nodeDistX: number) => {
             const s = S.Components.Generic
             return {
                 outs: {
-                    Q: [+4, -2, "e", s.OutputQDesc],
-                    Q̅: [+4, 2, "e", s.OutputQBarDesc],
+                    Q: [nodeDistX, -2, "e", s.OutputQDesc],
+                    Q̅: [nodeDistX, 2, "e", s.OutputQBarDesc],
                 },
             }
         },
@@ -35,6 +35,14 @@ export const FlipflopOrLatchDef =
             return [state, LogicValue.invert(state)]
         },
     })
+
+export const FlipflopOrLatchDefNodeDistX = (isXRay: boolean) => isXRay ? 3 : 4
+
+export const FlipflopOrLatchDefPreClr = {
+    Pre: [0, -4, "n", S.Components.Generic.InputPresetDesc, { prefersSpike: true }],
+    Clr: [0, +4, "s", S.Components.Generic.InputClearDesc, { prefersSpike: true }],
+} as const satisfies NodeRec<NodeInDesc>
+
 
 export type FlipflopOrLatchRepr = Repr<typeof FlipflopOrLatchDef>
 export type FlipflopOrLatchValue = [LogicValue, LogicValue]
@@ -82,9 +90,11 @@ export abstract class FlipflopOrLatch<TRepr extends FlipflopOrLatchRepr> extends
                     FlipflopOrLatch.drawStoredValue(g, this.value[0], this.posX, this.posY, 26, false)
                 }
             },
+            xrayScale: this.xrayScale,
         })
     }
 
+    protected get xrayScale(): number | undefined { return undefined }
 
     public static drawStoredValueFrame(g: GraphicsRendering, x: number, y: number, width: number, height: number, swapHeightWidth: boolean) {
         if (swapHeightWidth) {
@@ -121,14 +131,13 @@ export const FlipflopBaseDef =
             trigger: EdgeTrigger.rising,
         },
         size: FlipflopOrLatchDef.size,
-        makeNodes: (clockYOffset: number) => {
-            const base = FlipflopOrLatchDef.makeNodes()
+        makeNodes: (clockYOffset: number, nodeDistX: number) => {
+            const base = FlipflopOrLatchDef.makeNodes(nodeDistX)
             const s = S.Components.Generic
             return {
                 ins: {
-                    Clock: [-4, clockYOffset, "w", s.InputClockDesc, { isClock: true }],
-                    Pre: [0, -4, "n", s.InputPresetDesc, { prefersSpike: true }],
-                    Clr: [0, +4, "s", s.InputClearDesc, { prefersSpike: true }],
+                    Clock: [-nodeDistX, clockYOffset, "w", s.InputClockDesc, { isClock: true }],
+                    ...FlipflopOrLatchDefPreClr,
                 },
                 outs: base.outs,
             }
@@ -226,6 +235,7 @@ export abstract class Flipflop<
     protected doSetTrigger(trigger: EdgeTrigger) {
         this._trigger = trigger
         this.requestRedraw({ why: "trigger changed", invalidateTests: true })
+        this.invalidateXRay()
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

@@ -450,7 +450,7 @@ export abstract class ComponentBase<
         node: new (
             component: Component,
             parent: DrawableParent,
-            isXRayMirrorNode: boolean,
+            xRayMirrorNode: Node | undefined,
             nodeSpec: InputNodeRepr | OutputNodeRepr,
             group: NodeGroup<TNode> | undefined,
             idName: string,
@@ -499,7 +499,7 @@ export abstract class ComponentBase<
                 const newNode = new node(
                     this,
                     this.parent,
-                    false,
+                    undefined,
                     spec,
                     group,
                     idName,
@@ -939,7 +939,7 @@ export abstract class ComponentBase<
         return this._showingXRay
     }
 
-    protected makeXRay(__scale: number): XRay | undefined {
+    protected makeXRay(__level: number, __scale: number): XRay | undefined {
         // override in subclasses
         return undefined
     }
@@ -961,7 +961,7 @@ export abstract class ComponentBase<
             let xray = this._cachedXRay
             if (zoomExcess > 0) {
                 if (xray === undefined) {
-                    xray = this._cachedXRay = this.makeXRay(scale)
+                    xray = this._cachedXRay = this.makeXRay(myDrawParams.xrayLevel, scale)
                 }
                 if (xray !== undefined) {
                     const composedDrawingScale = myDrawParams.currentDrawingScale * scale
@@ -971,6 +971,7 @@ export abstract class ComponentBase<
                         currentCompUnderPointer: null,
                         highlightedItems: undefined,
                         currentDrawingScale: composedDrawingScale,
+                        xrayLevel: myDrawParams.xrayLevel + 1,
                     }
                     const backgroundAlpha = 0.95 * Math.min(1, zoomExcess / fadeSpan)
                     const bk = COLORCOMP_BACKGROUND_TRANSLUCENT
@@ -1020,7 +1021,7 @@ export abstract class ComponentBase<
 
         const makeInternalNodeForInput = (input: NodeIn) => {
             const id = xray.nodeMgr.getFreeId()
-            const internalNode = new NodeOut(this, xray, true, { id }, undefined, input.idName, input.shortName, input.fullName, 0, 0, false, Orientation.invert(input.orient), 0, undefined)
+            const internalNode = new NodeOut(this, xray, input, { id }, undefined, input.idName, input.shortName, input.fullName, 0, 0, false, Orientation.invert(input.orient), 0, undefined)
             internalNode.setPositionAsXRayFor(input, xray.scale)
             internalNode.value = input.value
             if (input.xrayNode !== undefined) {
@@ -1049,7 +1050,7 @@ export abstract class ComponentBase<
 
         const makeInternalNodeForOuput = (output: NodeOut) => {
             const id = xray.nodeMgr.getFreeId()
-            const internalNode = new NodeIn(this, xray, true, { id }, undefined, output.idName, output.shortName, output.fullName, 0, 0, false, Orientation.invert(output.orient), 0, undefined)
+            const internalNode = new NodeIn(this, xray, output, { id }, undefined, output.idName, output.shortName, output.fullName, 0, 0, false, Orientation.invert(output.orient), 0, undefined)
             internalNode.setPositionAsXRayFor(output, xray.scale)
             return internalNode
         }

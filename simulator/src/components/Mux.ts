@@ -243,8 +243,8 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
         this.doDrawXRayAndOutline(g, ctx, outline, scale)
     }
 
-    protected override makeXRay(scale: number): XRay | undefined {
-        const { xray, wire, gate } = this.parent.editor.newXRay(this, scale)
+    protected override makeXRay(level: number, scale: number): XRay | undefined {
+        const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
         const { ins, outs, x } = this.makeXRayNodes<Mux>(xray)
 
         const bits = this.numTo

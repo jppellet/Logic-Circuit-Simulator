@@ -13,7 +13,7 @@ import { COLOR_COMPONENT_BORDER, COLOR_MOUSE_OVER, COLOR_MOUSE_OVER_DANGER, Colo
 import { fixedWidthInContextMenu, Modifier, ModifierObject, span } from "../htmlgen"
 import { IconName } from "../images"
 import { S } from "../strings"
-import { Expand, FixedArray, InteractionResult, Mode, Orientation, Orientations, Orientations_, PromiseOrValue, typeOrUndefined } from "../utils"
+import { Expand, FixedArray, InteractionResult, Mode, Orientation, Orientations, Orientations_, ParentType, PromiseOrValue, typeOrUndefined } from "../utils"
 import { Component, ComponentBase, InjectedParams } from "./Component"
 import { type LinkManager } from "./Wire"
 
@@ -121,6 +121,7 @@ function mult(m: DOMMatrix, x: number, y: number): [x: number, y: number] {
 
 export interface DrawableParent {
 
+    get type(): ParentType
     isMainEditor(): this is LogicEditor
     readonly editor: LogicEditor
     // nice to forward...

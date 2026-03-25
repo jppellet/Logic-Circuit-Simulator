@@ -32,6 +32,7 @@ import { Gate1Types, GateNTypes } from "./components/GateTypes"
 import { HalfAdderDef } from "./components/HalfAdder"
 import { Input, InputDef } from "./components/Input"
 import { Label, LabelDef } from "./components/Label"
+import { LatchDDef } from "./components/LatchD"
 import { LatchSRDef } from "./components/LatchSR"
 import { MuxDef } from "./components/Mux"
 import { Output, OutputDef } from "./components/Output"
@@ -97,6 +98,7 @@ const AllComponentDefs: ComponentMaker<any>[] = [
     MuxDef,
     DemuxDef,
     LatchSRDef,
+    LatchDDef,
     FlipflopJKDef,
     FlipflopTDef,
     FlipflopDDef,

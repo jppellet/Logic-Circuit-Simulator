@@ -82,6 +82,7 @@ import Input1 from '../img/Input1.svg'; // @ts-ignore
 import Input4 from '../img/Input4.svg'; // @ts-ignore
 import Input8 from '../img/Input8.svg'; // @ts-ignore
 import Label from '../img/Label.svg'; // @ts-ignore
+import LatchD from '../img/LatchD.svg'; // @ts-ignore
 import LatchSR from '../img/LatchSR.svg'; // @ts-ignore
 import Mux from '../img/Mux.svg'; // @ts-ignore
 import Output1 from '../img/Output1.svg'; // @ts-ignore
@@ -206,6 +207,7 @@ const images = {
     Rectangle,
     Label,
     LatchSR,
+    LatchD,
     Mux,
     nand,
     nand3,

@@ -272,7 +272,7 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
         this.doDrawXRayAndOutline(g, ctx, outline, scale)
     }
 
-    protected override makeXRay(scale: number): XRay | undefined {
+    protected override makeXRay(level: number, scale: number): XRay | undefined {
         if (this.usesExtendedOpcode) {
             // man, can't do that
             return undefined
@@ -280,7 +280,7 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
 
         const bits = this.numBits
 
-        const { xray, wire, gate } = this.parent.editor.newXRay(this, scale)
+        const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
         const { ins, outs, x, y, later } = this.makeXRayNodes<ALU>(xray)
 
 

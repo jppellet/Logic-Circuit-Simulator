@@ -3,20 +3,21 @@ import { S } from "../strings"
 import { LogicValue, Unknown, isHighImpedance, isUnknown } from "../utils"
 import { Repr, defineComponent } from "./Component"
 import { DrawableParent } from "./Drawable"
-import { Flipflop, FlipflopBaseDef } from "./FlipflopOrLatch"
+import { Flipflop, FlipflopBaseDef, FlipflopOrLatchDefNodeDistX } from "./FlipflopOrLatch"
 
 
 export const FlipflopTDef =
     defineComponent("ff-t", true, true, {
         idPrefix: "ff",
         ...FlipflopBaseDef,
-        makeNodes: () => {
-            const base = FlipflopBaseDef.makeNodes(2)
+        makeNodes: ({ isXRay }) => {
+            const nodeDistX = FlipflopOrLatchDefNodeDistX(isXRay)
+            const base = FlipflopBaseDef.makeNodes(2, nodeDistX)
             const s = S.Components.FlipflopT
             return {
                 ins: {
                     ...base.ins,
-                    T: [-4, -2, "w", s.InputTDesc],
+                    T: [-nodeDistX, -2, "w", s.InputTDesc],
                 },
                 outs: base.outs,
             }

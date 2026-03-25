@@ -109,10 +109,10 @@ export class AdderArray extends ParametrizedComponentBase<AdderArrayRepr> {
         })
     }
 
-    protected override makeXRay(scale: number): XRay | undefined {
+    protected override makeXRay(level: number, scale: number): XRay | undefined {
         const bits = this.numBits
 
-        const { xray, wire, gate } = this.parent.editor.newXRay(this, scale)
+        const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
         const { ins, outs, x, y, later } = this.makeXRayNodes<AdderArray>(xray)
 
         const adders = xrayWireAndLayoutAsArray<Adder>(

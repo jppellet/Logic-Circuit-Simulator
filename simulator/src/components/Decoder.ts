@@ -96,13 +96,13 @@ export class Decoder extends ParametrizedComponentBase<DecoderRepr> {
         })
     }
 
-    protected override makeXRay(scale: number): XRay | undefined {
+    protected override makeXRay(level: number, scale: number): XRay | undefined {
         const numBits = this.numFrom
         if (numBits > 5) {
             return
         }
 
-        const { xray, wire, gate } = this.parent.editor.newXRay(this, scale)
+        const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
         const { ins, outs, x, later } = this.makeXRayNodes<Decoder>(xray)
 
         const addSpace = numBits > 3 ? 20 : 0

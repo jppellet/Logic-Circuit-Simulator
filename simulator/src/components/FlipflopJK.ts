@@ -3,21 +3,22 @@ import { S } from "../strings"
 import { LogicValue } from "../utils"
 import { Repr, defineComponent } from "./Component"
 import { DrawableParent } from "./Drawable"
-import { Flipflop, FlipflopBaseDef } from "./FlipflopOrLatch"
+import { Flipflop, FlipflopBaseDef, FlipflopOrLatchDefNodeDistX } from "./FlipflopOrLatch"
 
 
 export const FlipflopJKDef =
     defineComponent("ff-jk", true, true, {
         idPrefix: "ff",
         ...FlipflopBaseDef,
-        makeNodes: () => {
-            const base = FlipflopBaseDef.makeNodes(0)
+        makeNodes: ({ isXRay }) => {
+            const nodeDistX = FlipflopOrLatchDefNodeDistX(isXRay)
+            const base = FlipflopBaseDef.makeNodes(0, nodeDistX)
             const s = S.Components.FlipflopJK
             return {
                 ins: {
                     ...base.ins,
-                    J: [-4, -2, "w", s.InputJDesc],
-                    K: [-4, 2, "w", s.InputKDesc],
+                    J: [-nodeDistX, -2, "w", s.InputJDesc],
+                    K: [-nodeDistX, 2, "w", s.InputKDesc],
                 },
                 outs: base.outs,
             }

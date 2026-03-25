@@ -849,6 +849,12 @@ export enum Mode {
     FULL,    // can additionally force output nodes to 'unset' state and draw undetermined dates
 }
 
+export enum ParentType {
+    MAIN_EDITOR,
+    CUSTOM_COMPONENT,
+    XRAY,
+}
+
 export async function copyToClipboard(textToCopy: string): Promise<boolean> {
 
     try {

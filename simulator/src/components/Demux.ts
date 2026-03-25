@@ -249,8 +249,8 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
         this.doDrawXRayAndOutline(g, ctx, outline, scale)
     }
 
-    protected override makeXRay(scale: number): XRay | undefined {
-        const { xray, wire, gate } = this.parent.editor.newXRay(this, scale)
+    protected override makeXRay(level: number, scale: number): XRay | undefined {
+        const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
         const { ins, outs, x } = this.makeXRayNodes<Demux>(xray)
 
         const bits = this.numFrom

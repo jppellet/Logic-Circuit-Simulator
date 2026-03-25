@@ -38,17 +38,8 @@ import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
 import { makeIcon } from "./images"
 import { DefaultLang, S, getLang, isLang, setLang } from "./strings"
-import { Any, InBrowser, KeysOfByType, LogicValue, Orientation, UIDisplay, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
+import { Any, InBrowser, KeysOfByType, LogicValue, Mode, Orientation, ParentType, UIDisplay, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
 
-
-
-enum Mode {
-    STATIC,  // cannot interact in any way
-    TRYOUT,  // can change inputs on predefined circuit
-    CONNECT, // can additionnally move preexisting components around and connect them
-    DESIGN,  // can additionally add components from left menu
-    FULL,    // can additionally force output nodes to 'unset' state and draw undetermined dates
-}
 
 const MIN_MODE_INDEX: number = Mode.STATIC
 const MAX_MODE_INDEX: number = Mode.FULL
@@ -154,6 +145,7 @@ export type DrawParams = {
     highlightColor: string | undefined,
     anythingMoving: boolean,
     currentDrawingScale: number,
+    xrayLevel: number,
 }
 
 export type TestSuiteRunOptions = {
@@ -197,6 +189,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     /// DrawableParent implementation ///
 
+    public get type(): ParentType { return ParentType.MAIN_EDITOR }
     public isMainEditor(): this is LogicEditor { return true }
     public get editor(): LogicEditor { return this }
 
@@ -1148,6 +1141,11 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         mkdocsThemeObserver.observe(document.body, { attributes: true })
 
         LogicEditor._globalListenersInstalled = true
+    }
+
+    public setModeFromString(modeStr: string | null | undefined, doSetFocus: boolean = false) {
+        // for compatibility reasons
+        this.setMode(modeStr, doSetFocus)
     }
 
     public setMode(modeParam: Mode | string | null | undefined, doSetFocus: boolean = false) {
@@ -2636,6 +2634,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             currentSelection: undefined,
             anythingMoving: moveMgr.areDrawablesMoving(),
             currentDrawingScale: this._userDrawingScale,
+            xrayLevel: 0,
         }
         const currentSelection = this.eventMgr.currentSelection
         drawParams.currentSelection = currentSelection
@@ -2850,8 +2849,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
     }
 
-    public newXRay(comp: Component, scale: number) {
-        const xray = new XRay(comp, scale)
+    public newXRay(comp: Component, xrayLevel: number, scale: number) {
+        const xray = new XRay(comp, xrayLevel, scale)
         const wire = xray.wire.bind(xray)
         const gate = xray.gate.bind(xray)
         return { xray, wire, gate }

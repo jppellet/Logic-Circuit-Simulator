@@ -4,7 +4,7 @@ import { DrawParams, LogicEditor } from "../LogicEditor"
 import { NodeManager } from "../NodeManager"
 import { RecalcManager } from "../RedrawRecalcManager"
 import { TestSuites } from "../TestSuite"
-import { isArray, Mode, Orientation } from "../utils"
+import { isArray, Mode, Orientation, ParentType } from "../utils"
 import { Component, InjectedParams } from "./Component"
 import { DrawableParent, GraphicsRendering } from "./Drawable"
 import { Gate1, Gate1Def, GateN, GateNDef } from "./Gate"
@@ -92,6 +92,7 @@ type NodeOutOrComp = NodeOut | Component & { outputs: { Out: NodeOut } }
 
 export class XRay implements DrawableParent {
 
+    public get type(): ParentType { return ParentType.XRAY }
     public isMainEditor(): this is LogicEditor { return false }
     public get editor() { return this.component.parent.editor }
     public get mode() { return Mode.STATIC }
@@ -112,6 +113,7 @@ export class XRay implements DrawableParent {
 
     public constructor(
         public readonly component: Component,
+        public readonly level: number,
         public readonly scale: number,
     ) {
     }
@@ -140,6 +142,11 @@ export class XRay implements DrawableParent {
         if (!(endNode instanceof NodeBase)) {
             endNode = endNode.inputs.In[0]
         }
+        const mirrorNodeDisconnected = !(startNode.xRayMirrorNode?.isConnected ?? true) || !(endNode.xRayMirrorNode?.isConnected ?? true)
+        if (mirrorNodeDisconnected && this.level > 0) {
+            // don't show xray wires for unconnected nodes
+            return
+        }
         const wire = this.linkMgr.addWire(startNode, endNode, false)
         if (wire === undefined) {
             return
@@ -155,6 +162,8 @@ export class XRay implements DrawableParent {
             } else {
                 wire.doSetStyle(styleOrAlign)
             }
+        } else {
+            wire.doSetStyle("straight")
         }
         if (via !== undefined && via.length > 0) {
             const waypoints = (Array.isArray(via[0]) ? via : [via]) as WaypointSpecCompact[]
@@ -393,7 +402,8 @@ export class XRay implements DrawableParent {
 
     public alignComponentOf(nodeToAlign: Node, referenceNode: Node) {
         const comp = nodeToAlign.component
-        const referenceComponentOrient = referenceNode.isXRayMirrorNode ? Orientation.default : referenceNode.component.orient
+        const isXRayMirrorNode = referenceNode.xRayMirrorNode !== undefined
+        const referenceComponentOrient = isXRayMirrorNode ? Orientation.default : referenceNode.component.orient
         const alignX = Orientation.isVertical(Orientation.add(referenceComponentOrient, referenceNode.orient))
         let fail: [number, string] | undefined = undefined
         if (alignX) {

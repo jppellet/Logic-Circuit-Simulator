@@ -4,12 +4,12 @@ import { S } from "../strings"
 import { LogicValue } from "../utils"
 import { Repr, defineComponent } from "./Component"
 import { DrawableParent, MenuData, MenuItems } from "./Drawable"
-import { FlipflopOrLatch, FlipflopOrLatchDef, FlipflopOrLatchDefNodeDistX } from "./FlipflopOrLatch"
-import { type XRay } from "./XRay"
+import { FlipflopOrLatch, FlipflopOrLatchDef, FlipflopOrLatchDefNodeDistX, FlipflopOrLatchDefPreClr } from "./FlipflopOrLatch"
+import { XRay } from "./XRay"
 
 
-export const LatchSRDef =
-    defineComponent("latch-sr", true, true, {
+export const LatchDDef =
+    defineComponent("latch-d", true, true, {
         idPrefix: "latch",
         ...FlipflopOrLatchDef,
         makeNodes: ({ isXRay }) => {
@@ -18,20 +18,21 @@ export const LatchSRDef =
             const s = S.Components.Generic
             return {
                 ins: {
-                    S: [-nodeDistX, -2, "w", s.InputSetDesc, { prefersSpike: true }],
-                    R: [-nodeDistX, 2, "w", s.InputResetDesc, { prefersSpike: true }],
+                    D: [-nodeDistX, -2, "w", s.InputSetDesc],
+                    E: [-nodeDistX, 2, "w", s.InputResetDesc],
+                    ...FlipflopOrLatchDefPreClr,
                 },
                 outs: base.outs,
             }
         },
     })
 
-type LatchSRRepr = Repr<typeof LatchSRDef>
+type LatchDRepr = Repr<typeof LatchDDef>
 
-export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
+export class LatchD extends FlipflopOrLatch<LatchDRepr> {
 
-    public constructor(parent: DrawableParent, saved?: LatchSRRepr) {
-        super(parent, LatchSRDef.from(parent), saved)
+    public constructor(parent: DrawableParent, saved?: LatchDRepr) {
+        super(parent, LatchDDef.from(parent), saved)
     }
 
     public toJSON() {
@@ -39,33 +40,49 @@ export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
     }
 
     public override makeTooltip() {
-        const s = S.Components.LatchSR.tooltip
+        const s = S.Components.LatchD.tooltip
         return tooltipContent(s.title, mods(
             div(s.desc) // TODO more info
         ))
     }
 
-    protected override get xrayScale(): number { return 0.5 }
+    protected override get xrayScale(): number { return 0.23 }
 
     protected override makeXRay(level: number, scale: number): XRay {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs } = this.makeXRayNodes<LatchSR>(xray)
+        const { ins, outs, x, later } = this.makeXRayNodes<LatchD>(xray)
 
-        const gateX = -GRID_STEP
-        const norQbar = gate("norQBar", "nor", gateX, outs.Q.posY, "e")
+        const norX = 4 * GRID_STEP
+        const andX = x.left + 7 * GRID_STEP
+
+        const andD = gate("andD", "and", andX, later)
+        wire(ins.D, andD.in[0], true)
+        const andDbar = gate("andDbar", "and", andX, ins.E.posY - GRID_STEP)
+
+        const notInputX = x.left + 3.5 * GRID_STEP
+        const notD = gate("notD", "not", notInputX, 0, "s")
+
+        const clockLeftLine = x.left + 0.5 * GRID_STEP
+        wire(ins.D, notD, "hv")
+        wire(notD, andDbar.in[0], "vh")
+        wire(ins.E, andDbar.in[1], "vh")
+        wire(ins.E, andD.in[1], "vh", [clockLeftLine, andDbar.in[1].posY])
+
+        const norQbar = gate("norQBar", "nor", norX, later, "e", 3)
         norQbar.outputs.Out.value = true as LogicValue // stabilize input
-        const norQ = gate("norQ", "nor", gateX, outs.Q̅.posY, "e")
+        const norQ = gate("norQ", "nor", norX, later, "e", 3)
+        wire(andD, norQbar.in[1], true)
+        wire(andDbar, norQ.in[1], true)
+        wire(ins.Pre, norQbar.in[0], "vh")
+        wire(ins.Clr, norQ.in[2], "vh")
 
         const norBackLineRight = norQ.outputs.Out.posX + GRID_STEP
-        const norBackLineLeft = norQbar.in[1].posX - 0.5 * GRID_STEP
+        const norBackLineLeft = norQbar.in[2].posX - 0.5 * GRID_STEP
         const norQBarOutY = norQ.outputs.Out.posY
         const norQBarInY = norQ.in[0].posY
         const norQOutY = norQbar.outputs.Out.posY
-        const norQInY = norQbar.in[1].posY
+        const norQInY = norQbar.in[2].posY
 
-
-        wire(ins.S, norQbar.in[0], "hv", [norBackLineLeft, norQbar.in[0].posY])
-        wire(ins.R, norQ.in[1], "hv", [norBackLineLeft, norQ.in[1].posY])
         // loopback top to bottom
         wire(norQbar, norQ.in[0], "straight", [
             [norBackLineRight, norQOutY],
@@ -74,7 +91,7 @@ export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
             [norBackLineLeft, norQBarInY],
         ])
         // loopback bottom to top
-        wire(norQ, norQbar.in[1], "straight", [
+        wire(norQ, norQbar.in[2], "straight", [
             [norBackLineRight, norQBarOutY],
             [norBackLineRight, norQBarOutY - 2 * GRID_STEP],
             [norBackLineLeft, norQInY + 2 * GRID_STEP],
@@ -95,30 +112,31 @@ export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
     }
 
     protected doRecalcValue(): [LogicValue, LogicValue] {
-        const s = this.inputs.S.value
-        const r = this.inputs.R.value
-
         // assume this state is valid
         this._isInInvalidState = false
 
-        // handle set and reset signals
-        if (s === true) {
-            if (r === true) {
+        const preset = this.inputs.Pre.value
+        const clr = this.inputs.Clr.value
+        if (preset === true) {
+            if (clr === true) {
                 this._isInInvalidState = true
                 return [false, false]
             } else {
-                // set is true, reset is false, set output to 1
+                // preset is true, clear is false, set output to 1
                 return [true, false]
             }
-        }
-        if (r === true) {
-            // set is false, reset is true, set output to 0
+        } else if (clr === true) {
+            // preset is false, clear is true, set output to 0
             return [false, true]
-        }
 
-        // no change
-        const q = this.outputs.Q.value
-        return [q, LogicValue.invert(q)]
+        } else {
+            const d = this.inputs.D.value
+            const e = this.inputs.E.value
+            const q = this.outputs.Q.value
+
+            const newQ = e === true ? d : q
+            return [newQ, LogicValue.invert(newQ)]
+        }
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {
@@ -134,4 +152,4 @@ export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
     }
 
 }
-LatchSRDef.impl = LatchSR
+LatchDDef.impl = LatchD

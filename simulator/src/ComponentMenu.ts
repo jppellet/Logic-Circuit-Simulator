@@ -29,6 +29,7 @@ import { GateArrayDef } from "./components/GateArray"
 import { HalfAdderDef } from "./components/HalfAdder"
 import { InputDef } from "./components/Input"
 import { LabelDef } from "./components/Label"
+import { LatchDDef } from "./components/LatchD"
 import { LatchSRDef } from "./components/LatchSR"
 import { MuxDef } from "./components/Mux"
 import { OutputDef } from "./components/Output"
@@ -167,6 +168,7 @@ const componentsMenu: Array<Section> = [{
         DemuxDef.button({ from: 2, to: 4, bottom: false }, "Demux"),
 
         LatchSRDef.button("LatchSR"),
+        LatchDDef.button("LatchD", {visible: withButton}),
         FlipflopJKDef.button("FlipflopJK", { compat: "flipflop-jk", visible: withButton }),
         FlipflopTDef.button("FlipflopT", { compat: "flipflop-t", visible: withButton }),
         FlipflopDDef.button("FlipflopD", { compat: "flipflop-d" }),
