@@ -232,7 +232,7 @@ export abstract class Flipflop<
 
     protected abstract doRecalcValueAfterClock(): LogicValue
 
-    protected doSetTrigger(trigger: EdgeTrigger) {
+    public doSetTrigger(trigger: EdgeTrigger) {
         this._trigger = trigger
         this.requestRedraw({ why: "trigger changed", invalidateTests: true })
         this.invalidateXRay()

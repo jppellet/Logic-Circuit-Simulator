@@ -58,10 +58,15 @@ type WirePositionAllocationOptions = {
 
 export class WirePositionAllocation {
     public constructor(
+        public readonly numCols: number,
         public readonly right: number,
         public readonly inc: number,
     ) { }
     public colXAt(i: number) {
+        if (i < 0) {
+            // index from end
+            i += this.numCols
+        }
         return this.right - i * this.inc
     }
 }
@@ -301,15 +306,16 @@ export class XRay implements DrawableParent {
         } else {
             const left = position?.left ?? startNodes[0].posX
             const right = position?.right ?? endNodeGroups[0][0].posX
+            const totalCols = numCols + bookingLeft + bookingRight
             if (num === 0) {
-                return new WirePositionAllocation(right, 0)
+                return new WirePositionAllocation(totalCols, right, 0)
             }
             let inc = position?.presetInc
             if (inc === undefined) {
-                inc = (right - left) / (numCols + bookingLeft + bookingRight + 1)
+                inc = (right - left) / (totalCols + 1)
             }
             const startX = right - inc
-            positionAlloc = new WirePositionAllocation(startX, inc)
+            positionAlloc = new WirePositionAllocation(totalCols, startX, inc)
         }
 
         for (let i = 0; i < num; i++) {

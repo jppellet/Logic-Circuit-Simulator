@@ -2,13 +2,15 @@ import * as t from "io-ts"
 import { COLOR_COMPONENT_BORDER, GRID_STEP, TextVAlign, displayValuesFromArray, fillTextVAlign, useCompact } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
-import { ArrayFillWith, EdgeTrigger, LogicValue, Orientation, Unknown, allBooleans, binaryStringRepr, hexStringRepr, isAllZeros, isHighImpedance, isUnknown, typeOrUndefined, valuesFromBinaryOrHexRepr } from "../utils"
+import { ArrayFillUsing, ArrayFillWith, EdgeTrigger, LogicValue, Orientation, Unknown, allBooleans, binaryStringRepr, hexStringRepr, isAllZeros, isHighImpedance, isUnknown, typeOrUndefined, valuesFromBinaryOrHexRepr } from "../utils"
 import { ExtractParamDefs, ExtractParams, NodesIn, NodesOut, ParametrizedComponentBase, ReadonlyGroupedNodeArray, Repr, ResolvedParams, defineAbstractParametrizedComponent, defineParametrizedComponent, groupVertical, param, paramBool } from "./Component"
 import { Counter } from "./Counter"
 import { DrawContext, DrawContextExt, DrawableParent, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
+import { FlipflopD, FlipflopDDef } from "./FlipflopD"
 import { Flipflop, FlipflopOrLatch, makeTriggerItems } from "./FlipflopOrLatch"
 import { NodeOut } from "./Node"
 import { type ShiftRegisterDef } from "./ShiftRegister"
+import { XRay } from "./XRay"
 
 
 export const RegisterBaseDef =
@@ -143,20 +145,25 @@ export abstract class RegisterBase<
         this.requestRedraw({ why: "show content changed" })
     }
 
-    protected doSetTrigger(trigger: EdgeTrigger) {
+    public doSetTrigger(trigger: EdgeTrigger) {
         this._trigger = trigger
         this.requestRedraw({ why: "trigger changed", invalidateTests: true })
     }
 
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
-        this.doDrawDefault(g, ctx, (ctx) => {
-            if (this._showContent && !this.parent.editor.options.hideMemoryContent) {
-                RegisterBase.drawStoredValues(g, ctx, this.outputs.Q, this.posX, Orientation.isVertical(this.orient))
-            } else {
-                this.doDrawGenericCaption(g)
-            }
+        this.doDrawDefault(g, ctx, {
+            drawLabels: (ctx) => {
+                if (this._showContent && !this.parent.editor.options.hideMemoryContent) {
+                    RegisterBase.drawStoredValues(g, ctx, this.outputs.Q, this.posX, Orientation.isVertical(this.orient))
+                } else {
+                    this.doDrawGenericCaption(g)
+                }
+            },
+            xrayScale: this.xrayScale,
         })
     }
+
+    protected get xrayScale(): number | undefined { return undefined }
 
     public static drawStoredValues(g: GraphicsRendering, ctx: DrawContextExt, outputs: ReadonlyGroupedNodeArray<NodeOut>, posX: number, swapHeightWidth: boolean) {
         const cellHeight = useCompact(outputs.length) ? GRID_STEP : 2 * GRID_STEP
@@ -315,6 +322,55 @@ export class Register extends RegisterBase<RegisterRepr> {
         g.font = `11px sans-serif`
         fillTextVAlign(g, TextVAlign.middle, `${this.numBits} bits`, this.posX, this.posY + 10)
     }
+
+    protected override get xrayScale(): number {
+        return this.numBits >= 16 ? 0.125 : this.numBits >= 8 ? 0.185 : this.numBits >= 4 ? 0.35 : 0.5
+    }
+
+    protected override makeXRay(level: number, scale: number): XRay | undefined {
+        if (this.hasIncDec) {
+            // can't do that... yet?
+            return undefined
+        }
+
+        const bits = this.numBits
+        const { xray, wire } = this.parent.editor.newXRay(this, level, scale)
+        const { ins, outs } = this.makeXRayNodes<Register>(xray)
+
+        const edgeTrigger = this.trigger
+        const ffds = ArrayFillUsing(i => {
+            const ffd = FlipflopDDef.makeSpawned<FlipflopD>(xray, `ffd${i}`, 0, (i - (bits - 1) / 2) * 10 * GRID_STEP)
+            ffd.doSetTrigger(edgeTrigger)
+            return ffd
+        }, bits)
+
+        const inputAlloc = xray.wires(ins.D, ffds.map(ffd => ffd.inputs.D), { colsRight: 4 })
+        const outputAlloc = xray.wires(ffds.map(ffd => ffd.outputs.Q), outs.Q, { colsLeft: 2 })
+
+        const clockLineX = inputAlloc.colXAt(2)
+        const presetLineX = inputAlloc.colXAt(0)
+        const clearLineX = outputAlloc.colXAt(-1)
+
+        // clock
+        for (let i = 0; i < bits; i++) {
+            wire(ins.Clock, ffds[i].inputs.Clock, "hv", [clockLineX, ffds[i].inputs.Clock.posY])
+        }
+
+        // preset
+        wire(ins.Pre, ffds[0].inputs.Pre)
+        for (let i = 1; i < bits; i++) {
+            wire(ins.Pre, ffds[i].inputs.Pre, "vh", [presetLineX, ffds[0].inputs.Pre.posY])
+        }
+
+        // clear
+        for (let i = 0; i < bits - 1; i++) {
+            wire(ins.Clr, ffds[i].inputs.Clr, "vh", [clearLineX, ffds[bits - 1].inputs.Clr.posY])
+        }
+        wire(ins.Clr, ffds[bits - 1].inputs.Clr)
+
+        return xray
+    }
+
 
     private doSetSaturating(saturating: boolean) {
         this._saturating = saturating

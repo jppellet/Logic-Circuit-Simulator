@@ -279,7 +279,6 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
         }
 
         const bits = this.numBits
-
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
         const { ins, outs, x, y, later } = this.makeXRayNodes<ALU>(xray)
 

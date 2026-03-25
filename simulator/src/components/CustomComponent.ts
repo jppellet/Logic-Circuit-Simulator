@@ -11,7 +11,7 @@ import { UIPermissions } from "../UIPermissions"
 import { COLOR_COMPONENT_BORDER, TextVAlign, fillTextVAlign } from "../drawutils"
 import { b, div, mods, span, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
-import { ArrayFillUsing, ArrayFillWith, InteractionResult, LogicValue, Orientation, Orientations, isArray, isString, typeOrUndefined, validateJson } from "../utils"
+import { ArrayFillUsing, ArrayFillWith, InteractionResult, LogicValue, Orientation, Orientations, ParentType, isArray, isString, typeOrUndefined, validateJson } from "../utils"
 import { Component, ComponentBase, ComponentRepr, InjectedParams, NodeDesc, NodeGroupDesc, NodeInDesc, NodeOutDesc, NodeRec, defineComponent, groupHorizontal, groupVertical } from "./Component"
 import { DrawContext, DrawableParent, EditTools, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
 import { Input, InputRepr } from "./Input"
@@ -299,6 +299,7 @@ export class CustomComponent extends ComponentBase<CustomComponentRepr, LogicVal
 
     /// DrawableParent implementation ///
 
+    public get type(): ParentType { return ParentType.CUSTOM_COMPONENT }
     public isMainEditor(): this is LogicEditor { return false }
     public get editor() { return this.parent.editor }
     public get mode() { return this.parent.mode }
