@@ -104,6 +104,7 @@ const Strings_fr = {
 
             HalfAdder: ["Demi-additionneur", "Demi-add."],
             Adder: ["Additionneur", "Addit."],
+            IncDec: ["Incrementeur/Décrementeur", "Inc/Dec"],
             AdderArray: ["Additionneur multiple", "Add. mult."],
             ALU: ["Unité arithmétique et logique", "ALU"],
 
@@ -540,6 +541,12 @@ const Strings_fr = {
                 desc: "Additionne deux bits A et B et fournit un bit de somme S et une retenue de sortie C.",
             },
         },
+        IncDec: {
+            tooltip: {
+                title: "IncDec",
+                desc: "Incrémenteur/Décrémenteur. Incrémente ou décrémente le nombre binaire d’entrée A selon la valeur de l’entrée Inc/Dec, et fournit le résultat en sortie S ainsi qu’une retenue (ou un emprunt) de sortie Cout.",
+            },
+        },
         Input: {
             tooltip: {
                 title: template("Entrée (${numBits} bit$s{numBits})"),
@@ -926,6 +933,7 @@ const Strings_en: Strings = {
 
             HalfAdder: ["Half Adder", "Half Adder"],
             Adder: ["Full Adder", "Full Adder"],
+            IncDec: ["Incrementer/Decrementer", "Inc/Dec"],
             AdderArray: ["Adder Array", "Adder Arr."],
             ALU: ["Arithmetic and Logic Unit", "ALU"],
 
@@ -1359,6 +1367,12 @@ const Strings_en: Strings = {
             tooltip: {
                 title: "Half Adder",
                 desc: "Adds two bits A and B. Outputs a sum bit S and an output carry bit C.",
+            },
+        },
+        IncDec: {
+            tooltip: {
+                title: "IncDec",
+                desc: "Incrementer/Decrementer: adds 1 to (Inc) or subtracts 1 from (Dec) the input number A, with an input carry Cin; outputs the result S and an output carry (or borrow) Cout.",
             },
         },
         Input: {

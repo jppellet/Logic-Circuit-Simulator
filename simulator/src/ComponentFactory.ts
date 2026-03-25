@@ -30,6 +30,7 @@ import { Gate1Def, GateNDef } from "./components/Gate"
 import { GateArrayDef } from "./components/GateArray"
 import { Gate1Types, GateNTypes } from "./components/GateTypes"
 import { HalfAdderDef } from "./components/HalfAdder"
+import { IncDecDef } from "./components/IncDec"
 import { Input, InputDef } from "./components/Input"
 import { Label, LabelDef } from "./components/Label"
 import { LatchDDef } from "./components/LatchD"
@@ -92,6 +93,7 @@ const AllComponentDefs: ComponentMaker<any>[] = [
     // ic
     HalfAdderDef,
     AdderDef,
+    IncDecDef,
     ComparatorDef,
     AdderArrayDef,
     ALUDef,

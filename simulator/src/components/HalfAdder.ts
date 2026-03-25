@@ -13,16 +13,17 @@ export const HalfAdderDef =
         button: { imgWidth: 50 },
         valueDefaults: {},
         size: () => ({ gridWidth: 4, gridHeight: 6 }),
-        makeNodes: () => {
+        makeNodes: ({ isXRay }) => {
+            const outX = isXRay ? 3 : 4
             const s = S.Components.Generic
             return {
                 ins: {
-                    A: [-4, -2, "w", "A", { hasTriangle: true }],
-                    B: [-4, 2, "w", "B", { hasTriangle: true }],
+                    A: [-outX, -2, "w", "A", { hasTriangle: true }],
+                    B: [-outX, 2, "w", "B", { hasTriangle: true }],
                 },
                 outs: {
-                    S: [4, -2, "e", s.OutputSumDesc, { hasTriangle: true }],
-                    C: [4, 2, "e", s.OutputCarryDesc, { hasTriangle: true }],
+                    S: [outX, -2, "e", s.OutputSumDesc, { hasTriangle: true }],
+                    C: [outX, 2, "e", s.OutputCarryDesc, { hasTriangle: true }],
                 },
             }
         },

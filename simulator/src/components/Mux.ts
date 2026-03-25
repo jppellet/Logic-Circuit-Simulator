@@ -15,7 +15,7 @@ export const MuxDemuxLimits: Array<[bits: number, maxSels: number]> = [
     [2, 3],
     [4, 2],
     [8, 2],
-    [16, 1],
+    [16, 2],
 ]
 
 export const MuxDef =
@@ -46,8 +46,8 @@ export const MuxDef =
             let numSel = Math.ceil(Math.log2(numFrom / numTo))
 
             // impose some reasonable limits
-            if (numTo >= 16 && numSel > 1) {
-                numSel = 1
+            if (numTo >= 16 && numSel > 2) {
+                numSel = 2
             } else if (numTo >= 4 && numSel > 2) {
                 numSel = 2
             } else if (numTo >= 2 && numSel > 3) {
@@ -238,6 +238,7 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
             this.numTo >= 4 && this.numSel >= 2 ||
             this.numTo >= 1 && this.numSel >= 3
         const useExtraSmallScale =
+            this.numTo >= 8 && this.numSel >= 2 ||
             this.numTo === 1 && this.numSel === 3
         const scale = useExtraSmallScale ? 0.0848 : useSmallScale ? 0.11 : 0.18
         this.doDrawXRayAndOutline(g, ctx, outline, scale)
@@ -300,7 +301,7 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
             // debugId: "inputs->ANDs",
             from: ins.I.flat(),
             to: andInputs,
-            bookings: { colsRight: 2 * sels },
+            bookings: { colsRight: 2 * sels + 1 },
             after: { comps: andsFlat, compWidth: gateWidth },
         }, {
             // debugId: "ANDs->ORs",

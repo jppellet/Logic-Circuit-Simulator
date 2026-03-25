@@ -459,7 +459,7 @@ export class Input extends InputBase<InputRepr> {
         }
     }
 
-    private doSetIsConstant(isConstant: boolean) {
+    public doSetIsConstant(isConstant: boolean) {
         this._isConstant = isConstant
         this.requestRedraw({ why: "constant changed" })
     }

@@ -1,0 +1,14 @@
+<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 100 100" style="enable-background:new 0 0 100 100;" fill="currentColor">
+  <path d="M71.1,90.1H26.8V10h44.3v80.1ZM29.8,87.1h38.3V13H29.8v74.1Z" />
+  <rect x="70.8" y="41" width="16.3" height="2" />
+  <rect x="70.8" y="54.7" width="16.3" height="2" />
+  <rect x="70.8" y="68.3" width="16.3" height="2" />
+  <rect x="70.8" y="27.6" width="16.3" height="2" />
+  <rect x="11.28" y="41" width="16.3" height="2" />
+  <rect x="11.28" y="54.7" width="16.3" height="2" />
+  <rect x="11.28" y="68.3" width="16.3" height="2" />
+  <rect x="11.28" y="27.6" width="16.3" height="2" />
+  <path d="M34.44,48.55v-2.44h6.32v-6.37h2.48v6.37h6.32v2.44h-6.32v6.35h-2.48v-6.35h-6.32Z" />
+  <path d="M34.34,56.42h15.31v2.33h-15.31v-2.33Z" />
+  <path d="M52.01,42.98v-2.43c2.29-.22,3.88-.59,4.78-1.12s1.58-1.75,2.02-3.7h2.5v25.07h-3.38v-17.82h-5.92Z" />
+</svg>

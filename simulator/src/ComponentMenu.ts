@@ -27,6 +27,7 @@ import { FlipflopTDef } from "./components/FlipflopT"
 import { Gate1Def, GateNDef, GateTypePrefix } from "./components/Gate"
 import { GateArrayDef } from "./components/GateArray"
 import { HalfAdderDef } from "./components/HalfAdder"
+import { IncDecDef } from "./components/IncDec"
 import { InputDef } from "./components/Input"
 import { LabelDef } from "./components/Label"
 import { LatchDDef } from "./components/LatchD"
@@ -158,6 +159,7 @@ const componentsMenu: Array<Section> = [{
     items: [
         HalfAdderDef.button("HalfAdder"),
         AdderDef.button("Adder"),
+        IncDecDef.button({ bits: 4 }, "IncDec", { visible: withButton }),
         ComparatorDef.button("Comparator", { compat: "comparator", visible: withButton }),
 
         AdderArrayDef.button({ bits: 4 }, "AdderArray"),
@@ -168,7 +170,7 @@ const componentsMenu: Array<Section> = [{
         DemuxDef.button({ from: 2, to: 4, bottom: false }, "Demux"),
 
         LatchSRDef.button("LatchSR"),
-        LatchDDef.button("LatchD", {visible: withButton}),
+        LatchDDef.button("LatchD", { visible: withButton }),
         FlipflopJKDef.button("FlipflopJK", { compat: "flipflop-jk", visible: withButton }),
         FlipflopTDef.button("FlipflopT", { compat: "flipflop-t", visible: withButton }),
         FlipflopDDef.button("FlipflopD", { compat: "flipflop-d" }),

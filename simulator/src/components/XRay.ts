@@ -310,10 +310,7 @@ export class XRay implements DrawableParent {
             if (num === 0) {
                 return new WirePositionAllocation(totalCols, right, 0)
             }
-            let inc = position?.presetInc
-            if (inc === undefined) {
-                inc = (right - left) / (totalCols + 1)
-            }
+            const inc = position?.presetInc ?? (right - left) / (totalCols + 1)
             const startX = right - inc
             positionAlloc = new WirePositionAllocation(totalCols, startX, inc)
         }
@@ -536,7 +533,7 @@ export class WireColumnAllocator {
     }
 
     public dump() {
-        console.log(`WireColumnAllocator dump)`)
+        console.log(`WireColumnAllocator dump:`)
         for (let i = 0; i < this.numColumns; i++) {
             const sortedSpans = [...this._usedSegmentsByColumn[i]].sort((a, b) => a[0] - b[0])
             console.log(`  Col ${i}: ${sortedSpans.map(s => s.join("-")).join(", ")}`)

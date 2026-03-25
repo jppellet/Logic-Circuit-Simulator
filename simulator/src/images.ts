@@ -78,6 +78,7 @@ import FlipflopJK from '../img/FlipflopJK.svg'; // @ts-ignore
 import FlipflopT from '../img/FlipflopT.svg'; // @ts-ignore
 import GateArray from '../img/GateArray.svg'; // @ts-ignore
 import HalfAdder from '../img/HalfAdder.svg'; // @ts-ignore
+import IncDec from '../img/IncDec.svg'; // @ts-ignore
 import Input1 from '../img/Input1.svg'; // @ts-ignore
 import Input4 from '../img/Input4.svg'; // @ts-ignore
 import Input8 from '../img/Input8.svg'; // @ts-ignore
@@ -199,6 +200,7 @@ const images = {
     FlipflopT,
     GateArray,
     HalfAdder,
+    IncDec,
     imply,
     Input1,
     Input4,

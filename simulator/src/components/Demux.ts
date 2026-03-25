@@ -42,8 +42,8 @@ export const DemuxDef =
             let numSel = Math.ceil(Math.log2(numTo / numFrom))
 
             // impose some reasonable limits
-            if (numFrom >= 16 && numSel > 1) {
-                numSel = 1
+            if (numFrom >= 16 && numSel > 2) {
+                numSel = 2
             } else if (numFrom >= 4 && numSel > 2) {
                 numSel = 2
             } else if (numFrom >= 2 && numSel > 3) {
@@ -271,7 +271,7 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
         }
 
         const linesRight = ands[0][0].inputs.In[0].posX - GRID_STEP
-        const lineSpacing = Math.min(2 * GRID_STEP, (linesRight - (x.left + 2)) / (2 * sels + bits + 1))
+        const lineSpacing = Math.min(2 * GRID_STEP, (linesRight - (x.left + 2)) / (2 * sels + bits + 2))
 
         const passShiftX = 2.5 * GRID_STEP
         const firstNotX = Math.min(linesRight - passShiftX, ins.S[0].posX)
@@ -329,7 +329,7 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
                     }
                 }
 
-                wire(in_, and.inputs.In[sels], "vh", [linesRight - (2 * sels + b) * lineSpacing, in_.posY])
+                wire(in_, and.inputs.In[sels], "vh", [linesRight - (2 * sels + b + 1) * lineSpacing, in_.posY])
             }
         }
 
