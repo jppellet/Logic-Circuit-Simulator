@@ -8,7 +8,7 @@ import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } f
 import { Gate1, GateN } from "./Gate"
 import { NodeIn } from "./Node"
 import { WireStyles } from "./Wire"
-import { WaypointSpecCompact, WireAllocationZone, XRay } from "./XRay"
+import { WaypointSpecCompact, XRay } from "./XRay"
 
 export const MuxDemuxLimits: Array<[bits: number, maxSels: number]> = [
     [1, 4],
@@ -253,8 +253,10 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
         const sels = this.numSel
 
         const nots: Gate1[] = []
+        const notOrient = this.controlPinsAtBottom ? "n" : "s"
+        const notXOffsetFactor = this.controlPinsAtBottom ? -1 : 1
         for (let s = 0; s < sels; s++) {
-            const not = gate(`not${s}`, "not", ins.S[s].posX, ins.S[s].posY + 2.5 * GRID_STEP, "s")
+            const not = gate(`not${s}`, "not", ins.S[s].posX, ins.S[s].posY + notXOffsetFactor * 2.5 * GRID_STEP, notOrient)
             wire(ins.S[s], not)
             nots.push(not)
         }
@@ -297,32 +299,32 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
         }
         const gateWidth = ands[0][0].outputs.Out.posX - ands[0][0].inputs.In[0].posX
         const andsFlat = ands.flat()
-        const zones: WireAllocationZone[] = [{
-            // debugId: "inputs->ANDs",
+        // const zones =  as const satisfies WireAllocationZone[]
+        const allocations = xray.wiresInZones(x.left + 2, x.right - 2, [{
+            id: "muxIn",
             from: ins.I.flat(),
             to: andInputs,
             bookings: { colsRight: 2 * sels + 1 },
             after: { comps: andsFlat, compWidth: gateWidth },
         }, {
-            // debugId: "ANDs->ORs",
+            id: "andToOr",
             from: ands.map(ands => ands.map(and => and.outputs.Out)),
             to: ors.map(g => g.inputs.In),
             after: { comps: ors, compWidth: gateWidth },
         }, {
-            // debugId: "ORs->outputs",
+            id: "muxOut",
             from: ors.map(g => g.outputs.Out),
             to: outs.Z,
-        }]
-        const allocations = xray.wiresInZones(x.left + 2, x.right - 2, zones)
+        }])
 
         // wire the AND gate selector lines
-        const andInputAlloc = allocations[0]
+        const andInputAlloc = allocations.muxIn
         for (let b = 0; b < bits; b++) {
             for (let g = 0; g < groups; g++) {
                 for (let s = 0; s < sels; s++) {
                     const useNot = ((g >> s) & 1) === 0
                     const lineIndex = s * 2 + Number(!useNot)
-                    const notOuputY = nots[s].outputs.Out.posY + GRID_STEP
+                    const notOuputY = nots[s].outputs.Out.posY + notXOffsetFactor * GRID_STEP
                     const lineX = andInputAlloc.colXAt(lineIndex)
 
                     if (useNot) {

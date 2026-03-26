@@ -178,12 +178,12 @@ export function xrayWireAndLayoutAsArray<C extends Component>(
     const compWidth = getCompOutput(comps[0]).posX - getCompInputTop(comps[0]).posX
 
     const allocationZones: WireAllocationZone[] = [{
-        // debugId: "inputs->comps",
+        id: "in",
         from: [...ins.A, ...ins.B],
         to: [...comps.map(getCompInputTop), ...comps.map(getCompInputBottom)],
         after: { comps, compWidth },
     }, {
-        // debugId: "comps->outputs",
+        id: "out",
         from: comps.map(getCompOutput),
         to: outs.S,
     }]

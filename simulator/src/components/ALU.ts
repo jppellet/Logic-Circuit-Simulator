@@ -10,7 +10,7 @@ import { DrawableParent, DrawContext, GraphicsRendering, MenuData, MenuItems } f
 import { GateArray, GateArrayDef } from "./GateArray"
 import { Gate1Types, Gate2toNType, Gate2toNTypes } from "./GateTypes"
 import { Mux, MuxDef } from "./Mux"
-import { WaypointSpecCompact, WireAllocationZone, XRay } from "./XRay"
+import { WaypointSpecCompact, XRay } from "./XRay"
 
 
 export const ALUDef =
@@ -311,33 +311,33 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
         const logicArrayWidth = orArray.outputs.S[0].posX - orArray.inputs.A[0].posX
         const muxWidth = muxAL.outputs.Z[0].posX - muxAL.inputs.I[0][0].posX
 
-        const zones: WireAllocationZone[] = [{
-            // debugId: "ALUin->",
+        const allocs = xray.wiresInZones(x.left, x.right, [{
+            id: "aluIn",
             from: [...ins.A, ...ins.B],
             to: [[...adder.inputs.A, ...inv.inputs.In], orArray.inputs._all, andArray.inputs._all],
             alloc: { order: "top-down" },
             after: { comps: [inv, orArray, andArray], compWidth: logicArrayWidth },
         }, {
-            // debugId: "->muxLog",
+            id: "toMuxLog",
             from: [...orArray.outputs.S, ...andArray.outputs.S],
             to: [...muxLog.inputs.I[0], ...muxLog.inputs.I[1]],
             bookings: { colsLeft: 3 },
             after: { comps: [muxLog], compWidth: muxWidth },
         }, {
-            // debugId: "->muxAL",
+            id: "toMuxAL",
             from: muxLog.outputs.Z,
             to: muxAL.inputs.I[1],
             after: { comps: [muxAL], compWidth: muxWidth },
         }, {
-            // debugId: "->ALUout",
+            id: "aluOut",
             from: muxAL.outputs.Z,
             to: outs.S,
             alloc: { order: "bottom-up", allDifferent: true },
-        }]
-        const [allocIn, allocMuxLogIn, allocALIn, allocOut] = xray.wiresInZones(x.left, x.right, zones)
+        }])
 
-        xray.wires(adder.outputs.S, muxAL.inputs.I[0], undefined, allocALIn)
+        xray.wires(adder.outputs.S, muxAL.inputs.I[0], undefined, allocs.toMuxAL)
 
+        const allocMuxLogIn = allocs.toMuxLog
         const flagsBranchY1 = xorCout.outputs.Out.posY
         const flagsBranchY2 = outs.V.posY - GRID_STEP
         wire(xorCout, outs.Cout, "vh", [
@@ -348,13 +348,14 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
             [allocMuxLogIn.colXAt(bits + 1), flagsBranchY1 + allocMuxLogIn.inc],
             [outs.V.posX, flagsBranchY2],
         ])
-        const muxLogSelInputX = allocALIn.colXAt(bits + 1)
+        const muxLogSelInputX = allocs.toMuxAL.colXAt(bits + 1)
         wire(ins.Op[0], muxLog.inputs.S[0], "vh", [[muxLogSelInputX, xorCinInOpY], [muxLogSelInputX, flagsBranchY1 + 2 * allocMuxLogIn.inc]])
         wire(ins.Op[0], inv.inputs.S, "vh", [inv.inputs.S.posX, xorCinInOpY])
         wire(ins.Op[0], xorCout.in[1], "vh", [xorCout.in[1].posX, xorCinInOpY])
         wire(ins.Op[0], xorCin.in[0], "vh", [xorCin.in[0].posX, xorCinInOpY])
         wire(ins.Mode, muxAL.inputs.S[0], "vh", [muxAL.inputs.S[0].posX, xorCinInOpY - 2 * GRID_STEP])
 
+        const allocIn = allocs.aluIn
         const cInWireWaypoints: WaypointSpecCompact[] = [[xorCin.in[1].posX, xorCinInOpY - GRID_STEP]]
         if (ins.Cin.posX < allocIn.right) {
             cInWireWaypoints.unshift([allocIn.right + 2 * allocIn.inc, ins.A[0].posY - 2 * allocIn.inc])
@@ -365,7 +366,7 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
         for (let i = 0; i < bits; i++) {
             const out = muxAL.outputs.Z[i]
             const ind = bits - 1 - i
-            wire(out, norZ.in[ind], "hv", [allocOut.colXAt(ind), norZInMinY - ind * allocOut.inc])
+            wire(out, norZ.in[ind], "hv", [allocs.aluOut.colXAt(ind), norZInMinY - ind * allocs.aluOut.inc])
         }
 
         return xray

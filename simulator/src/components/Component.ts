@@ -2222,7 +2222,7 @@ export function defineAbstractParametrizedComponent<
         params: TParamDefs,
         validateParams?: (params: TParams, jsonType: string | undefined, defaults: TParamDefs) => TResolvedParams
         size: (params: TResolvedParams) => ComponentGridSize,
-        makeNodes: (params: TResolvedParams & ComponentGridSize, valueDefaults: TValueDefaults) => TInOutRecs,
+        makeNodes: (params: TResolvedParams & ComponentGridSize & InjectedParams, valueDefaults: TValueDefaults) => TInOutRecs,
         initialValue: (saved: TRepr | undefined, params: TResolvedParams) => TValue,
     },
 ) {

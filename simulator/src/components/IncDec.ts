@@ -37,7 +37,7 @@ export const IncDecDef =
             return {
                 ins: {
                     In: groupVertical("w", -1 - gridWidth / 2, 0, numBits),
-                    Dec: [0, -gridHeight / 2 - 1, "n", { labelName: "I̅n̅c̅Dec" }],
+                    Dec: [0, -gridHeight / 2 - 1, "n", { labelName: "I̅n̅c̅Dec", labelOffset: e => e === "e" ? [0, 2] : undefined }],
                 },
                 outs: {
                     Out: groupVertical("e", gridWidth / 2 + 1, 0, numBits),

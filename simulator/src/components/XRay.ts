@@ -82,7 +82,8 @@ export type WireAllocationZone = ({
     from: ReadonlyArray<NodeOut>[],
     to: ReadonlyArray<NodeIn>[],
 }) & {
-    debugId?: string,
+    id: string,
+    debug?: boolean,
     alloc?: WireColumnAllocationOptions,
     bookings?: WireColumnBookings,
     positions?: WirePositionAllocationOptions,
@@ -91,6 +92,8 @@ export type WireAllocationZone = ({
         compWidth: number,
     },
 }
+
+type WireAllocationZoneIds<T extends readonly { id: string }[]> = T[number]["id"]
 
 
 type NodeOutOrComp = NodeOut | Component & { outputs: { Out: NodeOut } }
@@ -346,12 +349,15 @@ export class XRay implements DrawableParent {
      * It will move the X position of the middle components accordingly, but their Y
      * position is assumed to be final for the allocation to work.
      */
-    public wiresInZones(left: number, right: number, zones: WireAllocationZone[]): WirePositionAllocation[] {
+    public wiresInZones<const ZS extends readonly WireAllocationZone[]>(
+        left: number, right: number, zones: ZS
+    ): { [K in WireAllocationZoneIds<ZS>]: WirePositionAllocation } {
         const zoneAllocs = zones.map(zone => {
             const [from, to] = isArray(zone.from[0])
                 ? [zone.from[0] as NodeOut[], zone.to[0] as NodeIn[]]
                 : [zone.from as NodeOut[], zone.to as NodeIn[]]
-            return this.allocateColumns(from, to, zone.alloc, zone.debugId)
+            const debugId = (zone.debug ?? false) ? zone.id : undefined
+            return this.allocateColumns(from, to, zone.alloc, debugId)
         })
         const totalCompWidths = zones.reduce((acc, z) => acc + (z.after?.compWidth ?? 0), 0)
         let totalCols = 0
@@ -361,7 +367,7 @@ export class XRay implements DrawableParent {
         }
         const colInc = (right - left - totalCompWidths) / (totalCols + zones.length)
 
-        const positionsAllocs: WirePositionAllocation[] = []
+        const positionsAllocs: Record<string, WirePositionAllocation> = {}
         let posX = left
         for (let i = 0; i < zones.length; i++) {
             const zone = zones[i]
@@ -383,14 +389,15 @@ export class XRay implements DrawableParent {
                 ? [zone.from as NodeOut[][], zone.to as NodeIn[][]]
                 : [[zone.from as NodeOut[]], [zone.to as NodeIn[]]]
             const position = { left: zoneLeft, right: zoneRight }
-            const positionAlloc = this.wires(froms[0], tos[0], bookings, position, zoneAllocs[i], zone.debugId)
+            const debugId = (zone.debug ?? false) ? zone.id : undefined
+            const positionAlloc = this.wires(froms[0], tos[0], bookings, position, zoneAllocs[i], debugId)
             // subzones (if any)
             for (let j = 1; j < froms.length; j++) {
-                this.wires(froms[j], tos[j], bookings, position, zoneAllocs[i])
+                this.wires(froms[j], tos[j], bookings, position, zoneAllocs[i], debugId)
             }
-            positionsAllocs.push(positionAlloc)
+            positionsAllocs[zone.id] = positionAlloc
         }
-        return positionsAllocs
+        return positionsAllocs as any
     }
 
     public gate<G extends GateNType | Gate1Type>(validatedId: string, type: G, x: number, y: number, orient?: Orientation, bits?: G extends Gate1Type ? undefined : number): G extends Gate1Type ? Gate1 : GateN {
