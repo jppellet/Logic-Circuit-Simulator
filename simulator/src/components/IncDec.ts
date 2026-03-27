@@ -113,7 +113,7 @@ export class IncDec extends ParametrizedComponentBase<IncDecRepr> {
     protected override makeXRay(level: number, scale: number): XRay | undefined {
         const bits = this.numBits
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x, y, later } = this.makeXRayNodes<IncDec>(xray)
+        const { ins, outs, y, later } = this.makeXRayNodes<IncDec>(xray)
 
         const xorCout = gate("xorCout", "xor", 0, y.bottom - 2.5 * GRID_STEP, "s")
         wire(xorCout, outs.Cout)

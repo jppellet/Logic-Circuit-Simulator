@@ -151,6 +151,7 @@ export abstract class RegisterBase<
     public doSetTrigger(trigger: EdgeTrigger) {
         this._trigger = trigger
         this.requestRedraw({ why: "trigger changed", invalidateTests: true })
+        this.invalidateXRay()
     }
 
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
@@ -373,8 +374,6 @@ export class Register extends RegisterBase<RegisterRepr> {
             }
             wire(ins.Clr, ffds[bits - 1].inputs.Clr)
 
-            return xray
-
         } else {
             // with inc/dec logic
             const reg = RegisterDef.makeSpawned<Register>(xray, "reg", 5 * GRID_STEP, -7 * GRID_STEP, "e", { bits, inc: false })
@@ -442,8 +441,8 @@ export class Register extends RegisterBase<RegisterRepr> {
                 ])
             }
 
-            return xray
         }
+        return xray
     }
 
 

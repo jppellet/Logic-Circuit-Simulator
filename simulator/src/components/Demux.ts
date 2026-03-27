@@ -59,7 +59,7 @@ export const DemuxDef =
             return { numFrom, numTo, numGroups, numSel, controlPinsAtBottom: bottom }
         },
         size: ({ numFrom, numTo, numGroups, numSel }) => {
-            const gridWidth = 2 * Math.max(2, numSel)
+            const gridWidth = (numFrom === 1 && numSel === 1) ? 2 : 2 * Math.max(2, numSel)
             const spacing = useCompact(numFrom === 1 ? numTo : numFrom) ? 1 : 2
             const addByGroupSep = numFrom > 1 ? 1 : 0
             const numLeftSlots = numTo + (numGroups - 1) * addByGroupSep
@@ -74,7 +74,7 @@ export const DemuxDef =
 
             const S = groupHorizontal(controlPinsAtBottom ? "s" : "n", 0, selY, numSel, undefined, { leadLength: 0 })
             const leadLengthIncrement = 6.7
-            const leadLengthS = 12.5 + (numSel !== 1 ? 0 : leadLengthIncrement / 2)
+            const leadLengthS = 12.5 + ((numSel !== 1 || numFrom === 1) ? 0 : leadLengthIncrement / 2)
             for (let s = 0; s < numSel; s++) {
                 S[s][4]!.leadLength = leadLengthS + s * leadLengthIncrement
             }

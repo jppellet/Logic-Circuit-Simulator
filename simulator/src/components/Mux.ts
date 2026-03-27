@@ -63,7 +63,7 @@ export const MuxDef =
             return { numFrom, numTo, numGroups, numSel, controlPinsAtBottom: bottom }
         },
         size: ({ numFrom, numTo, numGroups, numSel }) => {
-            const gridWidth = 2 * Math.max(2, numSel)
+            const gridWidth = (numSel === 1 && numTo === 1) ? 2 : 2 * Math.max(2, numSel)
             const spacing = useCompact(numTo === 1 ? numFrom : numTo) ? 1 : 2
             const addByGroupSep = numTo > 1 ? 1 : 0
             const numLeftSlots = numFrom + (numGroups - 1) * addByGroupSep
@@ -78,7 +78,7 @@ export const MuxDef =
 
             const S = groupHorizontal(controlPinsAtBottom ? "s" : "n", 0, selY, numSel, undefined, { leadLength: 0 })
             const leadLengthIncrement = 6.7
-            const leadLengthS = 12.5 + (numSel !== 1 ? 0 : leadLengthIncrement / 2)
+            const leadLengthS = 12.5 + ((numSel !== 1 || numTo === 1) ? 0 : leadLengthIncrement / 2)
             for (let s = 0; s < numSel; s++) {
                 S[numSel - 1 - s][4]!.leadLength = leadLengthS + s * leadLengthIncrement
             }
@@ -236,7 +236,8 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
         const useSmallScale =
             this.numTo >= 8 ||
             this.numTo >= 4 && this.numSel >= 2 ||
-            this.numTo >= 1 && this.numSel >= 3
+            this.numTo >= 1 && this.numSel >= 3 ||
+            this.numTo === 1 && this.numSel === 1
         const useExtraSmallScale =
             this.numTo >= 8 && this.numSel >= 2 ||
             this.numTo === 1 && this.numSel === 3
