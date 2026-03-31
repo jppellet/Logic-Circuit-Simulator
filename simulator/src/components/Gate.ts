@@ -225,7 +225,7 @@ export abstract class GateBase<
         }
 
         const showAsFake = isFake && this.parent.mode >= Mode.FULL
-        const gateBorderColor: ColorString = ctx.isMouseOver ? COLOR_MOUSE_OVER : (showAsFake ? COLOR_DARK_RED : COLOR_COMPONENT_BORDER)
+        const gateBorderColor: ColorString = ctx.isPointerOver ? COLOR_MOUSE_OVER : (showAsFake ? COLOR_DARK_RED : COLOR_COMPONENT_BORDER)
         const gateFill = showAsFake ? PATTERN_STRIPED_GRAY : COLOR_BACKGROUND
 
         // inputs and output
@@ -391,7 +391,7 @@ export abstract class GateBase<
 
             case "?": {
                 const gateRightSquare = left + (bottom - top)
-                g.strokeStyle = ctx.isMouseOver ? COLOR_MOUSE_OVER : COLOR_UNKNOWN
+                g.strokeStyle = ctx.isPointerOver ? COLOR_MOUSE_OVER : COLOR_UNKNOWN
                 g.beginPath()
                 g.moveTo(left, top)
                 g.lineTo(gateRightSquare, top)
@@ -622,7 +622,7 @@ export const GateNDef =
         },
         valueDefaults: {},
         params: {
-            bits: param(2, [2, 3, 4, 5, 6, 7, 8, 12, 16, 24, 32]),
+            bits: param(2, [2, 3, 4, 5, 6, 7, 8, 10, 12, 16, 24, 32]),
             type: param("and" as GateNType),
         },
         validateParams: ({ type: paramType, bits }, jsonType, defaults) => {
@@ -710,8 +710,14 @@ export class GateN extends GateBase<GateNRepr> {
     protected override makeComponentSpecificContextMenuItems(): MenuItems {
         const s = S.Components.Generic.contextMenu
 
+        const makeSwapInputsItem = (): MenuItem =>
+            MenuData.item("swap", s.SwapInputs, () => {
+                this.parent.linkMgr.swapWires(this.inputs.In[0], this.inputs.In[1])
+            })
+
         const changeBitsItems: MenuItems = Gate2OnlyTypes.includes(this.type) ? [] : [
             this.makeChangeParamsContextMenuItem("inputs", s.ParamNumInputs, this.numBits, "bits"),
+            ["mid", makeSwapInputsItem()],
             ["mid", MenuData.sep()],
         ]
 

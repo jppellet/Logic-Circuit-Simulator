@@ -4,12 +4,13 @@ import type { ComponentKey, DefAndParams, LibraryButtonOptions, LibraryButtonPro
 import { DrawParams, LogicEditor } from "../LogicEditor"
 import { PointerDragEvent } from "../UIEventManager"
 import { UIPermissions } from "../UIPermissions"
-import { COLORCOMP_BACKGROUND_TRANSLUCENT, COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, COMPONENT_OUTLINE_THICKNESS, DrawingRect, GRID_STEP, drawClockInput, drawComponentName, drawLabel, drawWireLineToComponent, isTrivialNodeName, shouldDrawNodeLabel, useCompact } from "../drawutils"
+import { COLORCOMP_BACKGROUND_TRANSLUCENT, COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, COMPONENT_OUTLINE_THICKNESS, DrawingRect, GRID_STEP, XRayMode, XRayModes, drawClockInput, drawComponentName, drawLabel, drawWireLineToComponent, isTrivialNodeName, shouldDrawNodeLabel, useCompact } from "../drawutils"
 import { IconName, ImageName } from "../images"
 import { S, Template } from "../strings"
 import { ArrayFillUsing, ArrayOrDirect, EdgeTrigger, Expand, FixedArrayMap, HasField, HighImpedance, InteractionResult, LogicValue, LogicValueRepr, Mode, Orientation, Unknown, brand, deepArrayEquals, isArray, isBoolean, isNumber, isRecord, isString, mergeWhereDefined, toLogicValueRepr, typeOrUndefined, validateJson } from "../utils"
-import { DrawContext, DrawContextExt, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, GraphicsRendering, MenuData, MenuItem, MenuItemPlacement, MenuItems, PositionSupportRepr } from "./Drawable"
-import { DEFAULT_WIRE_COLOR, Node, NodeBase, NodeIn, NodeOut, WireColor } from "./Node"
+import { DrawContext, DrawContextExt, Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, GraphicsRendering, HasPosition, MenuData, MenuItem, MenuItemPlacement, MenuItems, PointerOverMode, PositionSupportRepr } from "./Drawable"
+import { DEFAULT_WIRE_COLOR, MirrorNode, Node, NodeBase, NodeIn, NodeOut, WireColor } from "./Node"
+import { Wire } from "./Wire"
 import { XRayNodesFor, type XRay } from "./XRay"
 
 
@@ -89,7 +90,7 @@ type NodeIDsRepr<THasIn extends boolean, THasOut extends boolean>
  * Base representation of a component: position & repr of nodes
  */
 export type ComponentRepr<THasIn extends boolean, THasOut extends boolean> =
-    { type: string } & PositionSupportRepr & NodeIDsRepr<THasIn, THasOut>
+    { type: string } & PositionSupportRepr & NodeIDsRepr<THasIn, THasOut> & Partial<{ xray: string }>
 
 export const ComponentRepr = <THasIn extends boolean, THasOut extends boolean>(hasIn: THasIn, hasOut: THasOut) =>
     t.intersection([
@@ -98,6 +99,9 @@ export const ComponentRepr = <THasIn extends boolean, THasOut extends boolean>(h
         }),
         PositionSupportRepr,
         NodeIDsRepr(hasIn, hasOut),
+        t.partial({
+            xray: t.string,
+        }),
     ], "Component")
 
 export function isNodeArray<TNode extends Node>(obj: undefined | number | Node | ReadonlyGroupedNodeArray<TNode>): obj is ReadonlyGroupedNodeArray<TNode> {
@@ -302,15 +306,22 @@ export abstract class ComponentBase<
 > extends DrawableWithDraggablePosition {
 
     public readonly def: InstantiatedComponentDef<TRepr, TValue>
-    private _anchoredDrawables: DrawableWithDraggablePosition[] = []
+
     private _width: number
     private _height: number
-    private _state!: ComponentState
+    private _state: ComponentState
     private _value: TValue
+
     public readonly inputs: TInputNodes
     public readonly outputs: TOutputNodes
     public readonly inputGroups: Map<string, NodeGroup<NodeIn>>
     public readonly outputGroups: Map<string, NodeGroup<NodeOut>>
+
+    private _anchoredDrawables: DrawableWithDraggablePosition[] = []
+
+    private _xrayMode: XRayMode | undefined = undefined
+    private _cachedXRay: XRay | undefined = undefined
+    private _showingXRay = false
 
     protected constructor(
         parent: DrawableParent,
@@ -323,6 +334,7 @@ export abstract class ComponentBase<
         this._width = def.size.gridWidth * GRID_STEP
         this._height = def.size.gridHeight * GRID_STEP
         this._value = def.initialValue(saved)
+        this._xrayMode = XRayModes.includes(saved?.xray as any) ? saved?.xray as XRayMode : undefined
 
         const ins = def.nodeRecs.ins
         const outs = def.nodeRecs.outs
@@ -359,7 +371,7 @@ export abstract class ComponentBase<
             this._state = ComponentState.SPAWNED
         } else {
             // newly placed
-            this.setSpawning()
+            this._state = this.setSpawning()
         }
 
         // build node specs either from scratch if new or from saved data
@@ -379,7 +391,7 @@ export abstract class ComponentBase<
 
         // setNeedsRecalc with a force propadation is needed:
         // * the forced propagation allows the current value (e.g. for InputBits)
-        //   to be set to the outputs, if if the "new" value is the same as the current one
+        //   to be set to the outputs, even if the "new" value is the same as the current one
         // * setNeedsRecalc schedules a recalculation (e.g. for Gates)
         if (!hasAnyPrecomputedInitialValues) {
             this.setNeedsRecalc(true)
@@ -391,6 +403,7 @@ export abstract class ComponentBase<
     public setSpawning() {
         this._state = ComponentState.SPAWNING
         this.parent.ifEditing?.moveMgr.setDrawableMoving(this)
+        return this._state
     }
 
     public setSpawned() {
@@ -435,6 +448,7 @@ export abstract class ComponentBase<
             ...typeHolder,
             ...super.toJSONBase(),
             ...this.buildNodesRepr(),
+            xray: this._xrayMode,
         }
     }
 
@@ -450,7 +464,7 @@ export abstract class ComponentBase<
         node: new (
             component: Component,
             parent: DrawableParent,
-            xRayMirrorNode: Node | undefined,
+            xRayOutsideNode: MirrorNode<TNode> | undefined,
             nodeSpec: InputNodeRepr | OutputNodeRepr,
             group: NodeGroup<TNode> | undefined,
             idName: string,
@@ -864,7 +878,6 @@ export abstract class ComponentBase<
         opts_?: ((ctx: DrawContextExt, bounds: DrawingRect) => void) | {
             drawLabels?: (ctx: DrawContextExt, bounds: DrawingRect) => void,
             drawInside?: (bounds: DrawingRect) => void,
-            xrayScale?: number,
             skipLabels?: boolean,
             labelSize?: number,
             background?: string,
@@ -929,11 +942,17 @@ export abstract class ComponentBase<
         })
 
         // xray and outline
-        this.doDrawXRayAndOutline(g, ctx, outline, opts?.xrayScale)
+        this.doDrawXRayAndOutline(g, ctx, outline)
     }
 
-    private _cachedXRay: XRay | undefined = undefined
-    private _showingXRay = false
+    protected xrayScale(): number | undefined {
+        // override in subclasses to enable xray
+        return undefined
+    }
+
+    public get canShowXRay() {
+        return this.xrayScale() !== undefined
+    }
 
     public get showingXRay() {
         return this._showingXRay
@@ -949,10 +968,11 @@ export abstract class ComponentBase<
     }
 
     protected doDrawXRayAndOutline(
-        g: GraphicsRendering, ctx: DrawContext, outline: Path2D, scale: number | undefined
+        g: GraphicsRendering, ctx: DrawContext, outline: Path2D
     ) {
         this._showingXRay = false
-        const xrayMode = this.parent.editor.options.xray
+        const xrayMode = this._xrayMode ?? this.parent.editor.options.xray
+        const scale = this.xrayScale()
         if (scale !== undefined && xrayMode !== "off") {
             const limitFactor = 0.6 // draw components starting at this fraction of their normal size
             const fadeSpan = 0.3 // span during which some transition alpha is applied
@@ -1024,10 +1044,10 @@ export abstract class ComponentBase<
             const internalNode = new NodeOut(this, xray, input, { id }, undefined, input.idName, input.shortName, input.fullName, 0, 0, false, Orientation.invert(input.orient), 0, undefined)
             internalNode.setPositionAsXRayFor(input, xray.scale)
             internalNode.value = input.value
-            if (input.xrayNode !== undefined) {
+            if (input.xrayInsideNode !== undefined) {
                 console.warn(`Unexpectedly replacing existing xray node for ${input.shortName}`)
             }
-            input.xrayNode = internalNode
+            input.xrayInsideNode = internalNode
             return internalNode
         }
 
@@ -1048,10 +1068,14 @@ export abstract class ComponentBase<
             }
         }
 
-        const makeInternalNodeForOuput = (output: NodeOut) => {
+        const makeInternalNodeForOutput = (output: NodeOut) => {
             const id = xray.nodeMgr.getFreeId()
             const internalNode = new NodeIn(this, xray, output, { id }, undefined, output.idName, output.shortName, output.fullName, 0, 0, false, Orientation.invert(output.orient), 0, undefined)
             internalNode.setPositionAsXRayFor(output, xray.scale)
+            if (output.xrayInsideNode !== undefined) {
+                console.warn(`Unexpectedly replacing existing xray node for ${output.shortName}`)
+            }
+            output.xrayInsideNode = internalNode
             return internalNode
         }
 
@@ -1060,14 +1084,14 @@ export abstract class ComponentBase<
             if (key === "_all") { continue }
             if (!isArray(nodeOrNodes)) {
                 // single node
-                outs[key] = makeInternalNodeForOuput(nodeOrNodes)
+                outs[key] = makeInternalNodeForOutput(nodeOrNodes)
             } else {
                 if (nodeOrNodes.length === 0 || !isArray(nodeOrNodes[0])) {
                     // grouped nodes
-                    outs[key] = (nodeOrNodes as NodeOut[]).map(makeInternalNodeForOuput)
+                    outs[key] = (nodeOrNodes as NodeOut[]).map(makeInternalNodeForOutput)
                 } else {
                     // array of grouped nodes (e.g., mux)
-                    outs[key] = (nodeOrNodes as NodeOut[][]).map(nodes => nodes.map(makeInternalNodeForOuput))
+                    outs[key] = (nodeOrNodes as NodeOut[][]).map(nodes => nodes.map(makeInternalNodeForOutput))
                 }
             }
         }
@@ -1140,6 +1164,13 @@ export abstract class ComponentBase<
             case "n": return [elem.posXInParentTransform, bounds.top - offset]
             case "s": return [elem.posXInParentTransform, bounds.bottom + offset]
         }
+    }
+
+    protected override shouldBeHighlightedWith(compUnderPointer: Drawable): PointerOverMode {
+        if (!(compUnderPointer instanceof Wire)) {
+            return PointerOverMode.None
+        }
+        return compUnderPointer.startNode.component === this || compUnderPointer.endNode.component === this ? PointerOverMode.RelatedComponent : PointerOverMode.None
     }
 
     protected replaceWithComponent(newComp: Component): Component {
@@ -1420,6 +1451,30 @@ export abstract class ComponentBase<
             makeNewTestCaseItems.push(["start", MenuData.sep()])
         }
 
+        const makeSetXRayModeContextMenuItem = (mode: XRayMode | undefined, caption: string): MenuItem => {
+            return MenuData.item(
+                this._xrayMode === mode ? "check" : "none",
+                caption,
+                () => {
+                    this._xrayMode = mode
+                    this.invalidateXRay()
+                    this.requestRedraw({ why: "xray mode changed" })
+                }
+            )
+        }
+
+        const xrayItems: MenuItems =
+            this.xrayScale() === undefined ? [] : [
+                ["end", MenuData.submenu("xray", s.XRayMode, [
+                    makeSetXRayModeContextMenuItem(undefined, s.XRayModeDefault),
+                    MenuData.sep(),
+                    makeSetXRayModeContextMenuItem("auto", s.XRayModeAuto),
+                    makeSetXRayModeContextMenuItem("force", s.XRayModeForce),
+                    makeSetXRayModeContextMenuItem("off", s.XRayModeOff),
+                ])],
+                ["end", MenuData.sep()],
+            ]
+
         const setRefItems: MenuItems =
             editor.mode < Mode.FULL ? [] : [
                 ["end", this.makeSetIdContextMenuItem()],
@@ -1443,6 +1498,7 @@ export abstract class ComponentBase<
             ...makeNewComponentItems,
             ...makeNewTestCaseItems,
             ...this.makeOrientationAndPosMenuItems(),
+            ...xrayItems,
             ...setRefItems,
             ...resetItem,
             ["end", deleteItem],
@@ -1900,8 +1956,10 @@ export class ComponentDef<
         return comp
     }
 
-    public makeSpawned<TComp extends Component>(parent: DrawableParent, validatedId: string, x: number, y: number, orient?: Orientation): TComp {
+    public makeSpawned<TComp extends Component>(parent: DrawableParent, validatedId: string, x: number | HasPosition, y: number | HasPosition, orient?: Orientation): TComp {
         const comp = this.make<TComp>(parent)
+        if (!isNumber(x)) { x = x.posX }
+        if (!isNumber(y)) { y = y.posY }
         comp.setPosition(x, y, false)
         comp.setSpawned()
         comp.doSetValidatedId(validatedId)
@@ -2114,8 +2172,10 @@ export class ParametrizedComponentDef<
         return comp
     }
 
-    public makeSpawned<TComp extends Component>(parent: DrawableParent, validatedId: string, x: number, y: number, orient?: Orientation, componentParams?: TParams): TComp {
+    public makeSpawned<TComp extends Component>(parent: DrawableParent, validatedId: string, x: number | HasPosition, y: number | HasPosition, orient?: Orientation, componentParams?: TParams): TComp {
         const comp = this.make<TComp>(parent, componentParams)
+        if (!isNumber(x)) { x = x.posX }
+        if (!isNumber(y)) { y = y.posY }
         comp.setPosition(x, y, false)
         comp.setSpawned()
         comp.doSetValidatedId(validatedId)

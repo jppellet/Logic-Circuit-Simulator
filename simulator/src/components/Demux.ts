@@ -66,8 +66,8 @@ export const DemuxDef =
             const gridHeight = spacing * numLeftSlots + 2
             return { gridWidth, gridHeight }
         },
-        makeNodes: ({ numFrom, numGroups, numSel, controlPinsAtBottom, isXRay, gridHeight }) => {
-            const outX = (isXRay ? 0.5 : 1) + Math.max(2, numSel)
+        makeNodes: ({ numFrom, numGroups, numSel, controlPinsAtBottom, gridHeight }) => {
+            const outX = 1 + Math.max(2, numSel)
 
             const groupOfOutputs = groupVerticalMulti("e", outX, 0, numGroups, numFrom)
             const selY = (controlPinsAtBottom ? 1 : -1) * (gridHeight / 2 + 1)
@@ -244,9 +244,12 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
         }
 
         // xray and outline
+        this.doDrawXRayAndOutline(g, ctx, outline)
+    }
+
+    protected override xrayScale(): number | undefined {
         const useSmallScale = this.numFrom === 1 && this.numSel >= 2
-        const scale = useSmallScale ? 0.11 : 0.18
-        this.doDrawXRayAndOutline(g, ctx, outline, scale)
+        return useSmallScale ? 0.11 : 0.18
     }
 
     protected override makeXRay(level: number, scale: number): XRay | undefined {
@@ -263,7 +266,7 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
             const localAnds: GateN[] = []
             for (let b = 0; b < bits; b++) {
                 const out = outs.Z[g][b]
-                const and = gate(`and${g}.${b}`, "and", x.right - 2 * GRID_STEP, out.posY, "e", sels + 1)
+                const and = gate(`and${g}.${b}`, "and", x.right - 2 * GRID_STEP, out, "e", sels + 1)
                 wire(and, out)
                 localAnds.push(and)
             }
@@ -315,21 +318,21 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
                         const waypoints: WaypointSpecCompact[] =
                             passPosX === selLineX ? [
                                 [selLineX, passPosY], // go right
-                                [selLineX, to.posY], // go down
+                                [selLineX, to], // go down
                             ] : passPosY === hSegmentY ? [
                                 [selLineX, passPosY], // go right
-                                [selLineX, to.posY], // go down
+                                [selLineX, to], // go down
                             ] : [
                                 [passPosX, passPosY], // go right
                                 [passPosX, hSegmentY], // go down
                                 [selLineX, hSegmentY], // go right
-                                [selLineX, to.posY], // go down
+                                [selLineX, to], // go down
                             ]
                         wire(from, to, "straight", waypoints)
                     }
                 }
 
-                wire(in_, and.inputs.In[sels], "vh", [linesRight - (2 * sels + b + 1) * lineSpacing, in_.posY])
+                wire(in_, and.inputs.In[sels], "vh", [linesRight - (2 * sels + b + 1) * lineSpacing, in_])
             }
         }
 

@@ -1,14 +1,15 @@
 import { ComponentList } from "../ComponentList"
-import { drawComponentIDs, DrawZIndex, GRID_STEP, WIRE_WIDTH } from "../drawutils"
+import { drawComponentIDs, DrawZIndex, fillTextVAlign, GRID_STEP, TextVAlign, WIRE_WIDTH } from "../drawutils"
 import { DrawParams, LogicEditor } from "../LogicEditor"
 import { NodeManager } from "../NodeManager"
 import { RecalcManager } from "../RedrawRecalcManager"
 import { TestSuites } from "../TestSuite"
-import { isArray, Mode, Orientation, ParentType } from "../utils"
+import { isArray, isNumber, isString, LogicValue, Mode, Orientation, ParentType } from "../utils"
 import { Component, InjectedParams } from "./Component"
-import { DrawableParent, GraphicsRendering } from "./Drawable"
+import { DrawableParent, GraphicsRendering, HasPosition } from "./Drawable"
 import { Gate1, Gate1Def, GateN, GateNDef } from "./Gate"
 import { Gate1Type, Gate1Types, GateNType } from "./GateTypes"
+import { Input, InputDef } from "./Input"
 import { Node, NodeBase, NodeIn, NodeOut } from "./Node"
 import { LinkManager, WireStyle } from "./Wire"
 
@@ -18,14 +19,16 @@ export type XRayNodesFor<T, N> =
     T extends any[] ? N[] : N
 
 
-export type WaypointSpecCompact = [x: number, y: number]
+export type WaypointSpecCompact = readonly [x: number | HasPosition, y: number | HasPosition]
 
 
 // Column allocation for wires
 
+type WireColumnAllocationOrder = "top-down" | "bottom-up" | "outside-in" | "inside-out"
+
 type WireColumnAllocationOptions = {
     /** Preset order for allocation */
-    order?: "top-down" | "bottom-up" | "outside-in" | "inside-out",
+    order?: WireColumnAllocationOrder,
     /** Whether each wire should be allocated in a different column */
     allDifferent?: boolean,
     /** Whether the allocation can reuse past columns. Doesn't make sense if allDifferent is true */
@@ -52,30 +55,40 @@ type WirePositionAllocationOptions = {
     left?: number,
     /** Stop at this right position (or at the first NodeIn) */
     right?: number,
-    /** Reuse this increment in the width distribution */
-    presetInc?: number,
+    /** Use this increment in the width distribution. If positive, align left; if negative, align right */
+    inc?: number,
 }
 
 export class WirePositionAllocation {
     public constructor(
-        public readonly numCols: number,
-        public readonly right: number,
+        public readonly first: number,
         public readonly inc: number,
+        public readonly numCols: number,
+        public readonly invertOn: number | undefined = undefined,
     ) { }
-    public colXAt(i: number) {
+
+    public at(i: number) {
         if (i < 0) {
             // index from end
             i += this.numCols
         }
-        return this.right - i * this.inc
+        if (this.invertOn !== undefined) {
+            i = this.invertOn - 1 - i
+        }
+        return this.first + i * this.inc
     }
+
+    public derive(opts: { colShift?: number, invertOn?: number }): WirePositionAllocation {
+        const colShift = opts.colShift ?? 0
+        return new WirePositionAllocation(this.first + colShift * this.inc, this.inc, this.numCols - colShift, opts.invertOn)
+    }
+
 }
 
 
 // Multi-zone allocation
 
 export type WireAllocationZone = ({
-    /** Some id if we want debug information on allocation */
     from: ReadonlyArray<NodeOut>,
     to: ReadonlyArray<NodeIn> | ReadonlyArray<NodeIn>[],
 } | {
@@ -89,14 +102,15 @@ export type WireAllocationZone = ({
     positions?: WirePositionAllocationOptions,
     after?: {
         comps: Component[],
-        compWidth: number,
-    },
+        compWidth?: number,
+    } | Component[] | Component,
 }
 
 type WireAllocationZoneIds<T extends readonly { id: string }[]> = T[number]["id"]
 
 
 type NodeOutOrComp = NodeOut | Component & { outputs: { Out: NodeOut } }
+type DebugLineSpec = [vertical: boolean, pos: number, style: string | CanvasGradient | CanvasPattern, label: string, ind?: number]
 
 export class XRay implements DrawableParent {
 
@@ -111,7 +125,8 @@ export class XRay implements DrawableParent {
     public readonly linkMgr: LinkManager = new LinkManager(this)
     public readonly recalcMgr = new RecalcManager()
 
-    private readonly _debugLines: Array<[vertical: boolean, pos: number, style: string | CanvasGradient | CanvasPattern]> = []
+    public drawDebugLines: boolean = false
+    private readonly _debugLines: DebugLineSpec[] = []
 
     public get ifEditing() { return undefined }
     public startEditingThis() { throw new Error("can't edit xray") }
@@ -150,7 +165,7 @@ export class XRay implements DrawableParent {
         if (!(endNode instanceof NodeBase)) {
             endNode = endNode.inputs.In[0]
         }
-        const mirrorNodeDisconnected = !(startNode.xRayMirrorNode?.isConnected ?? true) || !(endNode.xRayMirrorNode?.isConnected ?? true)
+        const mirrorNodeDisconnected = !(startNode.xRayOutsideNode?.isConnected ?? true) || !(endNode.xRayOutsideNode?.isConnected ?? true)
         if (mirrorNodeDisconnected && this.level > 0) {
             // don't show xray wires for unconnected nodes
             return
@@ -177,12 +192,12 @@ export class XRay implements DrawableParent {
             const waypoints = (Array.isArray(via[0]) ? via : [via]) as WaypointSpecCompact[]
             let nb = 0
             for (const [x, y] of waypoints) {
-                wire.addWaypointWith(x, y, ++nb)
+                wire.addWaypointWith(isNumber(x) ? x : x.posX, isNumber(y) ? y : y.posY, ++nb)
             }
         }
     }
 
-    public allocateColumns(startNodes: ReadonlyArray<NodeOut>, endNodeSpec: ReadonlyArray<NodeIn> | ReadonlyArray<NodeIn>[], opts?: WireColumnAllocationOptions, debugId?: string): WireColumnAllocation {
+    public allocateColumns(startNodes: ReadonlyArray<NodeOut>, endNodeSpec: ReadonlyArray<NodeIn> | ReadonlyArray<NodeIn>[], opts?: WireColumnAllocationOptions | WireColumnAllocationOrder, debugId?: string): WireColumnAllocation {
         const [num, endNodeGroups] = this._validateNodesToConnect(startNodes, endNodeSpec)
         const endNodesFor = (i: number) => endNodeGroups.map(en => en[i])
 
@@ -190,6 +205,7 @@ export class XRay implements DrawableParent {
             console.log(`Allocating '${debugId}' - ${msg}`)
         }
 
+        opts = isString(opts) ? { order: opts } : opts
         let order = opts?.order
         if (order !== undefined) {
             debug(`Using preset order ${order}`)
@@ -254,6 +270,7 @@ export class XRay implements DrawableParent {
                     break
                 case "inside-out":
                     // TODO straightest is maybe not the one in the middle
+                    // check outside wiring in e.g. Bypass
                     if (num % 2 !== 0) {
                         visitor(numHalf + 1)
                     }
@@ -288,18 +305,26 @@ export class XRay implements DrawableParent {
         }
     }
 
+    /** Workaround to avoid importing the WirePositionAllocation class directly and causing circular dependencies */
+    public newPositionAlloc(first: number, inc: number, numCols: number) {
+        return new WirePositionAllocation(first, inc, numCols)
+    }
+
     public wires(
         startNodes: ReadonlyArray<NodeOut>,
         endNodeSpec: ReadonlyArray<NodeIn> | ReadonlyArray<NodeIn>[],
-        bookings?: WireColumnBookings,
-        position?: WirePositionAllocationOptions | WirePositionAllocation,
-        allocation?: WireColumnAllocationOptions | WireColumnAllocation,
-        debugId?: string,
+        opts?: {
+            bookings?: WireColumnBookings,
+            position?: WirePositionAllocationOptions | WirePositionAllocation,
+            alloc?: WireColumnAllocationOptions | WireColumnAllocationOrder | WireColumnAllocation,
+            debugId?: string,
+        },
     ): WirePositionAllocation {
         const [num, endNodeGroups] = this._validateNodesToConnect(startNodes, endNodeSpec)
 
-        const { numCols, cols } = allocation !== undefined && "numCols" in allocation ? allocation
-            : this.allocateColumns(startNodes, endNodeGroups, allocation, debugId)
+        const { bookings, position, alloc, debugId } = opts ?? {}
+        const { numCols, cols } = (alloc !== undefined && !isString(alloc) && "numCols" in alloc) ? alloc
+            : this.allocateColumns(startNodes, endNodeGroups, alloc, debugId)
         const bookingRight = bookings?.colsRight ?? 0
         const bookingLeft = bookings?.colsLeft ?? 0
 
@@ -311,17 +336,31 @@ export class XRay implements DrawableParent {
             const right = position?.right ?? endNodeGroups[0][0].posX
             const totalCols = numCols + bookingLeft + bookingRight
             if (num === 0) {
-                return new WirePositionAllocation(totalCols, right, 0)
+                return new WirePositionAllocation(right, 0, totalCols)
             }
-            const inc = position?.presetInc ?? (right - left) / (totalCols + 1)
-            const startX = right - inc
-            positionAlloc = new WirePositionAllocation(totalCols, startX, inc)
+            let inc: number
+            let startX: number
+            if (position?.inc !== undefined) {
+                inc = position.inc
+                if (inc <= 0) {
+                    // align right and move backwards
+                    startX = right + inc
+                } else {
+                    // align left and move forwards
+                    startX = left + inc * (totalCols + 1)
+                    inc = -inc // reverse direction for allocation
+                }
+            } else {
+                inc = (left - right) / (totalCols + 1)
+                startX = right + inc
+            }
+            positionAlloc = new WirePositionAllocation(startX, inc, totalCols)
         }
 
         for (let i = 0; i < num; i++) {
-            const x = positionAlloc.colXAt(cols[i] + bookingRight)
+            const x = positionAlloc.at(cols[i] + bookingRight)
             for (const endNodes of endNodeGroups) {
-                this.wire(startNodes[i], endNodes[i], "hv", [x, endNodes[i].posY])
+                this.wire(startNodes[i], endNodes[i], "hv", [x, endNodes[i]])
             }
         }
 
@@ -359,7 +398,24 @@ export class XRay implements DrawableParent {
             const debugId = (zone.debug ?? false) ? zone.id : undefined
             return this.allocateColumns(from, to, zone.alloc, debugId)
         })
-        const totalCompWidths = zones.reduce((acc, z) => acc + (z.after?.compWidth ?? 0), 0)
+        // normalize zones' after property
+        const zoneCompWidths: number[] = []
+        let totalCompWidths = 0
+        for (const zone of zones) {
+            if (zone.after !== undefined) {
+                if (!("comps" in zone.after)) {
+                    const comps = Array.isArray(zone.after) ? zone.after : [zone.after]
+                    zone.after = { comps }
+                }
+                if (zone.after.compWidth === undefined) {
+                    zone.after.compWidth = zone.after.comps.length === 0 ? 0 : this.componentWidthWithInputs(zone.after.comps[0])
+                }
+                zoneCompWidths.push(zone.after.compWidth)
+                totalCompWidths += zone.after.compWidth
+            } else {
+                zoneCompWidths.push(0)
+            }
+        }
         let totalCols = 0
         for (let i = 0; i < zones.length; i++) {
             const bookings = zones[i].bookings
@@ -376,8 +432,8 @@ export class XRay implements DrawableParent {
             posX += (zoneAllocs[i].numCols + (bookings?.colsLeft ?? 0) + (bookings?.colsRight ?? 0) + 1) * colInc
             const zoneRight = posX
 
-            if (zone.after !== undefined) {
-                const compWidth = zone.after.compWidth
+            if (zone.after !== undefined && "comps" in zone.after) {
+                const compWidth = zoneCompWidths[i]
                 const compX = posX + compWidth / 2
                 for (const comp of zone.after.comps) {
                     comp.setPosition(compX, comp.posY, false)
@@ -390,17 +446,29 @@ export class XRay implements DrawableParent {
                 : [[zone.from as NodeOut[]], [zone.to as NodeIn[]]]
             const position = { left: zoneLeft, right: zoneRight }
             const debugId = (zone.debug ?? false) ? zone.id : undefined
-            const positionAlloc = this.wires(froms[0], tos[0], bookings, position, zoneAllocs[i], debugId)
+            const positionAlloc = this.wires(froms[0], tos[0], { bookings, position, alloc: zoneAllocs[i], debugId })
             // subzones (if any)
             for (let j = 1; j < froms.length; j++) {
-                this.wires(froms[j], tos[j], bookings, position, zoneAllocs[i], debugId)
+                this.wires(froms[j], tos[j], { bookings, position, alloc: zoneAllocs[i], debugId })
             }
             positionsAllocs[zone.id] = positionAlloc
         }
         return positionsAllocs as any
     }
 
-    public gate<G extends GateNType | Gate1Type>(validatedId: string, type: G, x: number, y: number, orient?: Orientation, bits?: G extends Gate1Type ? undefined : number): G extends Gate1Type ? Gate1 : GateN {
+    private componentWidthWithInputs(comp: Component): number {
+        const halfWidth = comp.unrotatedWidth / 2
+        let leftmost = comp.posX - halfWidth
+        let rightmost = comp.posX + halfWidth
+        for (const node of comp.allNodes()) {
+            const x = node.posX
+            if (x < leftmost) { leftmost = x }
+            if (x > rightmost) { rightmost = x }
+        }
+        return rightmost - leftmost
+    }
+
+    public gate<G extends GateNType | Gate1Type>(validatedId: string, type: G, x: number | HasPosition, y: number | HasPosition, orient?: Orientation, bits?: G extends Gate1Type ? undefined : number): G extends Gate1Type ? Gate1 : GateN {
         if (Gate1Types.includes(type)) {
             const gate1 = Gate1Def.makeSpawned<Gate1>(this, validatedId, x, y, orient, { type })
             return gate1 as any
@@ -410,9 +478,23 @@ export class XRay implements DrawableParent {
         }
     }
 
+    public constant(validatedId: string, value: LogicValue, x: number | HasPosition, y: number | HasPosition, orient?: Orientation) {
+        const input = InputDef.makeSpawned<Input>(this, validatedId, x, y, orient, { bits: 1 })
+        input.doSetIsConstant(true)
+        input.setValue([value])
+        return input
+    }
+
+    public alignXAfter(alloc: WirePositionAllocation, node: NodeIn) {
+        // this makes sure we align at the right, whether the wires are going left-to-right or right-to-left
+        const tracksEnd = Math.max(alloc.at(alloc.numCols - 1), alloc.at(0) - alloc.inc)
+        const comp = node.component
+        comp.setPosition(tracksEnd - node.gridOffsetX * GRID_STEP, comp.posY, false)
+    }
+
     public alignComponentOf(nodeToAlign: Node, referenceNode: Node) {
         const comp = nodeToAlign.component
-        const isXRayMirrorNode = referenceNode.xRayMirrorNode !== undefined
+        const isXRayMirrorNode = referenceNode.xRayOutsideNode !== undefined
         const referenceComponentOrient = isXRayMirrorNode ? Orientation.default : referenceNode.component.orient
         const alignX = Orientation.isVertical(Orientation.add(referenceComponentOrient, referenceNode.orient))
         let fail: [number, string] | undefined = undefined
@@ -436,12 +518,24 @@ export class XRay implements DrawableParent {
         }
     }
 
-    public debugVline(x: number, style?: string | CanvasGradient | CanvasPattern) {
-        this._debugLines.push([true, x, style ?? "red"])
+    public debugVLine(coord: number | WirePositionAllocation, style?: string | CanvasGradient | CanvasPattern, label?: string) {
+        this._debugLine(coord, style, true, label)
     }
 
-    public debugHline(x: number, style?: string | CanvasGradient | CanvasPattern) {
-        this._debugLines.push([false, x, style ?? "red"])
+    public debugHLine(coord: number | WirePositionAllocation, style?: string | CanvasGradient | CanvasPattern, label?: string) {
+        this._debugLine(coord, style, false, label)
+    }
+
+    private _debugLine(coord: number | WirePositionAllocation, style: string | CanvasGradient | CanvasPattern | undefined, vertical: boolean, label?: string) {
+        style ??= "red"
+        label ??= ""
+        if (isNumber(coord)) {
+            this._debugLines.push([vertical, coord, style, label])
+        } else {
+            for (let i = 0; i < coord.numCols; i++) {
+                this._debugLines.push([vertical, coord.at(i), style, label, i])
+            }
+        }
     }
 
     public doDraw(g: GraphicsRendering, drawParams: DrawParams) {
@@ -469,24 +563,49 @@ export class XRay implements DrawableParent {
                 drawComponentIDs(g, this.components.all())
             }
 
-            if (this._debugLines.length !== 0) {
-                const halfHeight = (this.component.unrotatedHeight / 2 + GRID_STEP) / this.scale
-                const halfWidth = (this.component.unrotatedWidth / 2 + GRID_STEP) / this.scale
-                for (const [vertical, pos, style] of this._debugLines) {
-                    g.lineWidth = 1
-                    g.strokeStyle = style
-                    g.beginPath()
-                    if (vertical) {
-                        g.moveTo(pos, -halfHeight)
-                        g.lineTo(pos, halfHeight)
-                    } else {
-                        g.moveTo(-halfWidth, pos)
-                        g.lineTo(halfWidth, pos)
-                    }
-                    g.stroke()
+            // debug lines
+            if (this.drawDebugLines && this._debugLines.length !== 0) {
+                this.doDrawDebugLines(g)
+            }
+
+        })
+    }
+
+    private doDrawDebugLines(g: GraphicsRendering) {
+        const halfHeight = (this.component.unrotatedHeight / 2 + GRID_STEP) / this.scale
+        const halfWidth = (this.component.unrotatedWidth / 2 + GRID_STEP) / this.scale
+        for (const [vertical, pos, style, label, i] of this._debugLines) {
+            g.lineWidth = 1
+            g.strokeStyle = style
+            g.beginPath()
+            if (vertical) {
+                g.moveTo(pos, -halfHeight)
+                g.lineTo(pos, halfHeight)
+            } else {
+                g.moveTo(-halfWidth, pos)
+                g.lineTo(halfWidth, pos)
+            }
+            g.stroke()
+
+            g.fillStyle = style
+            g.font = "10px sans-serif"
+            const [drawLabel, groupLabel] = i !== undefined ? [`${i}`, label] : [label, undefined]
+            if (vertical) {
+                fillTextVAlign(g, TextVAlign.middle, drawLabel, pos, +(halfHeight + 10))
+                fillTextVAlign(g, TextVAlign.middle, drawLabel, pos, -(halfHeight + 10))
+                if (i === 0 && groupLabel !== undefined) {
+                    fillTextVAlign(g, TextVAlign.middle, groupLabel, pos, +(halfHeight + 25))
+                    fillTextVAlign(g, TextVAlign.middle, groupLabel, pos, -(halfHeight + 25))
+                }
+            } else {
+                fillTextVAlign(g, TextVAlign.middle, drawLabel, -(halfWidth + 10), pos)
+                fillTextVAlign(g, TextVAlign.middle, drawLabel, +(halfWidth + 10), pos)
+                if (i === 0 && groupLabel !== undefined) {
+                    fillTextVAlign(g, TextVAlign.middle, groupLabel, +(halfWidth + 10), pos - 15)
+                    fillTextVAlign(g, TextVAlign.middle, groupLabel, -(halfWidth + 10), pos - 15)
                 }
             }
-        })
+        }
     }
 }
 

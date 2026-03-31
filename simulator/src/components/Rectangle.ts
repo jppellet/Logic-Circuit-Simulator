@@ -207,7 +207,7 @@ export class Rectangle extends ComponentBase<RectangleRepr> {
             fillTextVAlign(g, TextVAlign.middle, this._caption, captionX, captionY)
         }
 
-        if (ctx.isMouseOver) {
+        if (ctx.isPointerOver) {
             g.lineWidth = Math.max(3, this._strokeWidth)
             g.strokeStyle = ctx.borderColor
             g.stroke()

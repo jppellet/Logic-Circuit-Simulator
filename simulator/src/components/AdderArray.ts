@@ -8,7 +8,7 @@ import { ALUDef, doALUAdd } from "./ALU"
 import { Component, ParametrizedComponentBase, Repr, ResolvedParams, Value, defineParametrizedComponent, groupVertical, param, shiftWhenHorizontal } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
 import { NodeIn, NodeOut } from "./Node"
-import { WireAllocationZone, XRay } from "./XRay"
+import { XRay } from "./XRay"
 
 
 export const AdderArrayDef =
@@ -105,8 +105,11 @@ export class AdderArray extends ParametrizedComponentBase<AdderArrayRepr> {
                 g.textAlign = "center"
                 fillTextVAlign(g, TextVAlign.middle, "+", ...ctx.rotatePoint(this.posX - 4, this.posY - 2))
             },
-            xrayScale: getXRayScaleForArrayComponent(this.numBits),
         })
+    }
+
+    protected override xrayScale() {
+        return getXRayScaleForArrayComponent(this.numBits)
     }
 
     protected override makeXRay(level: number, scale: number): XRay | undefined {
@@ -139,7 +142,7 @@ export class AdderArray extends ParametrizedComponentBase<AdderArrayRepr> {
         const adderLeft = addersX - adders[0].unrotatedWidth / 2
 
         wire(xorV, outs.V, false)
-        wire(lastCout, outs.Cout, "vh", [[adderLeft, lastCoutOutputBranchY], [outs.Cout.posX, y.bottom - 2]])
+        wire(lastCout, outs.Cout, "vh", [[adderLeft, lastCoutOutputBranchY], [outs.Cout, y.bottom - 2]])
         wire(lastCout, xorV.in[1], "hv", [addersX, lastCoutOutputBranchY])
         wire(lastButOneCout, xorV.in[0], "hv", [addersX, lastButOneCoutY + (adders[bits - 1].inputs.Cin.posY - lastButOneCoutY) / 2])
 
@@ -177,7 +180,7 @@ export function xrayWireAndLayoutAsArray<C extends Component>(
     }, bits)
     const compWidth = getCompOutput(comps[0]).posX - getCompInputTop(comps[0]).posX
 
-    const allocationZones: WireAllocationZone[] = [{
+    xray.wiresInZones(x.left + 2, x.right - 2, [{
         id: "in",
         from: [...ins.A, ...ins.B],
         to: [...comps.map(getCompInputTop), ...comps.map(getCompInputBottom)],
@@ -186,9 +189,8 @@ export function xrayWireAndLayoutAsArray<C extends Component>(
         id: "out",
         from: comps.map(getCompOutput),
         to: outs.S,
-    }]
-
-    xray.wiresInZones(x.left + 2, x.right - 2, allocationZones)
+    }])
+    
     return comps
 }
 

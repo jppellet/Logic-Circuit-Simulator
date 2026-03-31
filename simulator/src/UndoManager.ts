@@ -54,6 +54,10 @@ export class UndoManager {
                 this._undoSnapshots[this._undoSnapshots.length - 1].repeatAction !== undefined)
     }
 
+    /**
+     * Pass an interaction result to create a snapshot only if it represents a change,
+     * otherwise, create it unconditionally.
+    */
     public takeSnapshot(interactionResult?: InteractionResult, skipStorage?: boolean) {
         const isChange = interactionResult?.isChange ?? true
         if (!isChange) {

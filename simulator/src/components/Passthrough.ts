@@ -180,7 +180,7 @@ export class Passthrough extends ParametrizedComponentBase<PassthroughRepr> {
         g.moveTo(this.posX + topShift, top)
         g.lineTo(this.posX + bottomShift, bottom)
 
-        if (ctx.isMouseOver) {
+        if (ctx.isPointerOver) {
             g.lineWidth = width + mouseoverMargin * 2
             g.strokeStyle = COLOR_NODE_MOUSE_OVER
             g.stroke()

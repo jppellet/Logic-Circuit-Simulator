@@ -5,6 +5,7 @@ import { LogicEditor } from "./LogicEditor"
 import { ALUDef } from "./components/ALU"
 import { AdderDef } from "./components/Adder"
 import { AdderArrayDef } from "./components/AdderArray"
+import { BypassDef } from "./components/Bypass"
 import { ClockDef } from "./components/Clock"
 import { ComparatorDef } from "./components/Comparator"
 import { ParamDef, ParametrizedComponentDef, ParamsFromDefs } from "./components/Component"
@@ -141,6 +142,7 @@ const componentsMenu: Array<Section> = [{
         GateNDef.button({ type: "xnor", bits: 4 }, "xnor4", { compat: "xnor4", visible: ifShowOnly }),
 
         ControlledInverterDef.button({ bits: 4, bottom: false }, "ControlledInverter", { compat: "switched-inverter", visible: withButton }),
+        BypassDef.button({ bits: 4, bottom: false }, "Bypass", { visible: withButton }),
         GateArrayDef.button({ type: "and", bits: 4 }, "GateArray", { compat: "quad-gate", visible: withButton }),
         TristateBufferArrayDef.button({ bits: 4, bottom: false }, "TristateBufferArray", { visible: withButton }),
 

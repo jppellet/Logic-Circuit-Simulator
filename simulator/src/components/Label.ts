@@ -76,7 +76,7 @@ export class Label extends ComponentBase<LabelRepr> {
         g.font = this._font
         g.lineWidth = COMPONENT_OUTLINE_THICKNESS
 
-        if (ctx.isMouseOver) {
+        if (ctx.isPointerOver) {
             if (this._cachedTextMetrics === undefined) {
                 this._cachedTextMetrics = g.measureText(this._text)
             }

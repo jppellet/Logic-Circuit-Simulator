@@ -47,17 +47,20 @@ import settings from '../img/icons/settings.icon.svg'; // @ts-ignore
 import slanted from '../img/icons/slanted.icon.svg'; // @ts-ignore
 import step from '../img/icons/step.icon.svg'; // @ts-ignore
 import strokewidth from '../img/icons/strokewidth.icon.svg'; // @ts-ignore
+import swap from '../img/icons/swap.icon.svg'; // @ts-ignore
 import testcase from '../img/icons/testcase.icon.svg'; // @ts-ignore
 import timer from '../img/icons/timer.icon.svg'; // @ts-ignore
 import trash from '../img/icons/trash.icon.svg'; // @ts-ignore
 import undo from '../img/icons/undo.icon.svg'; // @ts-ignore
 import wirestyle from '../img/icons/wirestyle.icon.svg'; // @ts-ignore
+import xray from '../img/icons/xray.icon.svg'; // @ts-ignore
 
 
 // images
 import ALU from '../img/ALU.svg'; // @ts-ignore
 import Adder from '../img/Adder.svg'; // @ts-ignore
 import AdderArray from '../img/AdderArray.svg'; // @ts-ignore
+import Bypass from '../img/Bypass.svg'; // @ts-ignore
 import Clock from '../img/Clock.svg'; // @ts-ignore
 import Comparator from '../img/Comparator.svg'; // @ts-ignore
 import ControlledInverter from '../img/ControlledInverter.svg'; // @ts-ignore
@@ -172,17 +175,20 @@ const icons = {
     slanted,
     step,
     strokewidth,
+    swap,
     testcase,
     timer,
     trash,
     undo,
     wirestyle,
+    xray,
 }
 
 const images = {
     Adder,
     AdderArray,
     ALU,
+    Bypass,
     and,
     and3,
     and4,

@@ -19,6 +19,8 @@ export const DEFAULT_WIRE_COLOR = WireColor.black
 
 export type WireColor = keyof typeof WireColor
 
+export type MirrorNode<N extends Node> = N extends NodeIn ? NodeOut : N extends NodeOut ? NodeIn : Node
+
 export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
 
     public readonly id: number
@@ -28,11 +30,12 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
     protected _initialValue: LogicValue | undefined = undefined
     protected _forceValue: LogicValue | undefined
     protected _color: WireColor = DEFAULT_WIRE_COLOR
+    public xrayInsideNode: MirrorNode<N> | undefined = undefined
 
     public constructor(
         public readonly component: Component,
         parent: DrawableParent,
-        public readonly xRayMirrorNode: Node | undefined,
+        public readonly xRayOutsideNode: MirrorNode<N> | undefined,
         nodeSpec: InputNodeRepr | OutputNodeRepr,
         public readonly group: NodeGroup<N> | undefined,
         public readonly idName: string, // the one in comp.inputs[idName]
@@ -194,7 +197,7 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         const showForcedWarning = mode >= Mode.FULL && !isUnknown(this._value) && !isUnknown(this.value) && this._value !== this.value
         const parentOrientIsVertical = Orientation.isVertical(this.component.orient)
         const neutral = this.parent.editor.options.hideWireColors
-        drawWaypoint(g, this.posX, this.posY, this.nodeDisplayStyle, this.currentDrawValue, ctx.isMouseOver, neutral, showForced, showForcedWarning ? [ctx, parentOrientIsVertical] : false)
+        drawWaypoint(g, this.posX, this.posY, this.nodeDisplayStyle, this.currentDrawValue, ctx.pointerOver, neutral, showForced, showForcedWarning ? [ctx, parentOrientIsVertical] : false)
     }
 
     protected abstract get nodeDisplayStyle(): NodeStyle
@@ -213,6 +216,10 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
         const oldVisibleValue = this.value
         if (val !== this._value) {
             this._value = val
+            // TODO do something of the sort to check that the nodes are the same
+            // if (!this.isOutput() && this.xRayOutsideNode !== undefined && this.xRayOutsideNode.value !== val) {
+            //     console.error(`X-ray desync on node ${this.fullName}: inside node value is ${val} but outside node value is ${this.xRayOutsideNode.value}`)
+            // }
             this.propagateNewValueIfNeeded(oldVisibleValue)
         }
     }
@@ -344,6 +351,7 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
 
 }
 
+
 export class NodeIn extends NodeBase<NodeIn> {
 
     public readonly _tag = "_nodein"
@@ -351,7 +359,6 @@ export class NodeIn extends NodeBase<NodeIn> {
     private _incomingWire: Wire | null = null
     public prefersSpike = false
     public isClock = false
-    public xrayNode: NodeOut | undefined = undefined
 
     public get incomingWire() {
         return this._incomingWire
@@ -398,8 +405,8 @@ export class NodeIn extends NodeBase<NodeIn> {
 
     protected propagateNewValue(newValue: LogicValue) {
         this.component.setNeedsRecalc()
-        if (this.xrayNode !== undefined) {
-            this.xrayNode.value = newValue
+        if (this.xrayInsideNode !== undefined) {
+            this.xrayInsideNode.value = newValue
         }
     }
 

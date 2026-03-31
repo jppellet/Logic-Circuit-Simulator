@@ -81,21 +81,24 @@ export class HalfAdder extends ComponentBase<HalfAdderRepr> {
                 g.textAlign = "center"
                 fillTextVAlign(g, TextVAlign.middle, "+", this.posX, this.posY - 2)
             },
-            xrayScale: 0.40,
         })
+    }
+
+    protected override xrayScale() {
+        return 0.40
     }
 
     protected override makeXRay(level: number, scale: number): XRay {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
         const { ins, outs, x, later } = this.makeXRayNodes<HalfAdder>(xray)
 
-        const xor = gate("xor", "xor", x(0.3), later)
+        const xor = gate("xor", "or", x(0.3), later)
         const and = gate("and", "and", x(0.3), later)
 
         wire(ins.B, and.in[1], true)
         wire(ins.A, xor.in[0], true)
-        wire(ins.A, and.in[0], "vh", [x(-0.7), ins.A.posY])
-        wire(ins.B, xor.in[1], "vh", [x(-0.4), ins.B.posY])
+        wire(ins.A, and.in[0], "vh", [x(-0.7), ins.A])
+        wire(ins.B, xor.in[1], "vh", [x(-0.4), ins.B])
         wire(and, outs.C, "vh")
         wire(xor, outs.S, "vh")
 

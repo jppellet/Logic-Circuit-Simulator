@@ -1,6 +1,6 @@
 import { Component, ComponentBase, ComponentName, isNodeArray, ReadonlyGroupedNodeArray } from "./components/Component"
 import { LedColor } from "./components/DisplayBar"
-import { DrawableWithPosition, DrawContext, DrawContextExt, GraphicsRendering, HasPosition } from "./components/Drawable"
+import { DrawableWithPosition, DrawContext, DrawContextExt, GraphicsRendering, HasPosition, PointerOverMode } from "./components/Drawable"
 import { Node, NodeBase, WireColor } from "./components/Node"
 import { RectangleColor } from "./components/Rectangle"
 import { Waypoint } from "./components/Wire"
@@ -113,6 +113,8 @@ export let COLOR_GROUP_SPAN: ColorString
 export let COLOR_WIRE_BORDER: ColorString
 export let COLOR_MOUSE_OVER: ColorString
 export let COLOR_MOUSE_OVER_NORMAL: ColorString
+export let COLOR_MOUSE_OVER_SAME_ORIGIN: ColorString
+export let COLOR_MOUSE_OVER_RELATED: ColorString
 export let COLOR_MOUSE_OVER_DANGER: ColorString
 export let COLOR_NODE_MOUSE_OVER: ColorString
 export let COLORCOMPS_FULL: ColorComponentsRGB
@@ -177,6 +179,8 @@ function doSetColors(darkMode: boolean) {
         COLOR_WIRE_BORDER = ColorString(80)
         COLOR_MOUSE_OVER_NORMAL = ColorString([0, 0x7B, 0xFF])
         COLOR_MOUSE_OVER_DANGER = ColorString([194, 34, 14])
+        COLOR_MOUSE_OVER_SAME_ORIGIN = ColorString([117, 192, 255])
+        COLOR_MOUSE_OVER_RELATED = ColorString([0, 89, 176])
         COLOR_NODE_MOUSE_OVER = ColorString([128, 128, 128, 0.5])
         COLORCOMPS_FULL = [255, 193, 7]
         COLOR_DARK_RED = ColorString([180, 0, 0])
@@ -218,6 +222,8 @@ function doSetColors(darkMode: boolean) {
         COLOR_WIRE_BORDER = ColorString(175)
         COLOR_MOUSE_OVER_NORMAL = ColorString([0, 0x7B, 0xFF])
         COLOR_MOUSE_OVER_DANGER = ColorString([194, 34, 14])
+        COLOR_MOUSE_OVER_SAME_ORIGIN = ColorString([117, 192, 255])
+        COLOR_MOUSE_OVER_RELATED = ColorString([0, 89, 176])
         COLOR_NODE_MOUSE_OVER = ColorString([128, 128, 128, 0.5])
         COLORCOMPS_FULL = [255, 193, 7]
         COLOR_DARK_RED = ColorString([180, 0, 0])
@@ -436,7 +442,8 @@ export function isTrivialNodeName(name: string | undefined): boolean {
 // DRAWING
 //
 
-export type XRayMode = "auto" | "force" | "off"
+export const XRayModes = ["auto", "force", "off"] as const
+export type XRayMode = typeof XRayModes[number]
 
 export const COMPONENT_OUTLINE_THICKNESS = 3
 
@@ -576,7 +583,7 @@ export function drawStraightWireLine(g: GraphicsRendering, x0: number, y0: numbe
 
 
 export function strokeWireOutlineAndSingleValue(g: GraphicsRendering, value: LogicValue, color: WireColor, neutral: boolean, timeFraction: number | undefined, thinnerBy: number) {
-    strokeWireOutline(g, color, false, thinnerBy)
+    strokeWireOutline(g, color, undefined, thinnerBy)
     strokeWireValue(g, value, undefined, neutral, timeFraction, thinnerBy * 0.5)
 }
 
@@ -613,15 +620,15 @@ export function setWireWidthFactor(f: number) {
  * Draws the outline of a wire.
  * @param isMouseOver determines whether the border color is thicker with the mouse-over color
  */
-export function strokeWireOutline(g: GraphicsRendering, color: WireColor, isMouseOver: boolean, thinnerBy: number
+export function strokeWireOutline(g: GraphicsRendering, color: WireColor, colorIfPointerOver: string | undefined, thinnerBy: number
 ) {
     const oldLineCap = g.lineCap
     g.lineCap = "butt"
 
     const mainStrokeWidth = WIRE_WIDTH / 2 - thinnerBy
-    if (isMouseOver) {
+    if (colorIfPointerOver !== undefined) {
         g.lineWidth = (mainStrokeWidth + 2) * _wireWidthFactor
-        g.strokeStyle = COLOR_MOUSE_OVER
+        g.strokeStyle = colorIfPointerOver
     } else {
         g.lineWidth = mainStrokeWidth * _wireWidthFactor
         g.strokeStyle = COLOR_WIRE[color]
@@ -718,7 +725,7 @@ export enum NodeStyle {
     BRANCH_POINT,
 }
 
-export function drawWaypoint(g: GraphicsRendering, x: number, y: number, style: NodeStyle, value: LogicValue, isMouseOver: boolean, neutral: boolean, showForced: boolean, showForcedWarning: false | [ctx: DrawContext, parentOrientIsVertical: boolean]) {
+export function drawWaypoint(g: GraphicsRendering, x: number, y: number, style: NodeStyle, value: LogicValue, pointerOver: PointerOverMode, neutral: boolean, showForced: boolean, showForcedWarning: false | [ctx: DrawContext, parentOrientIsVertical: boolean]) {
 
     const [circleColor, thickness] =
         showForced
@@ -735,7 +742,7 @@ export function drawWaypoint(g: GraphicsRendering, x: number, y: number, style: 
     g.fill()
     g.stroke()
 
-    if (isMouseOver) {
+    if (pointerOver !== PointerOverMode.None) {
         g.fillStyle = COLOR_NODE_MOUSE_OVER
         g.beginPath()
         drawShape(g, x, y, WAYPOINT_DIAMETER * 2)

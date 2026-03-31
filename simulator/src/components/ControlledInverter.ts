@@ -126,8 +126,11 @@ export class ControlledInverter extends ParametrizedComponentBase<ControlledInve
                 circle(g, right - 10, this.posY, 5)
                 g.stroke()
             },
-            xrayScale: useCompact(this.numBits) ? 0.18 : 0.36,
         })
+    }
+
+    protected override xrayScale() {
+        return useCompact(this.numBits) ? 0.18 : 0.36
     }
 
     protected override makeXRay(level: number, scale: number) {
@@ -143,10 +146,10 @@ export class ControlledInverter extends ParametrizedComponentBase<ControlledInve
         for (let i = bits - 1; i >= 0; i--) {
             const xor = gate(`xor${i}`, "xor", 0, later)
             wire(xor, outs.Out[i], false)
-            wire(ins.In[i], xor.in[1], "hv", [xIn, xor.in[1].posY])
+            wire(ins.In[i], xor.in[1], "hv", [xIn, xor.in[1]])
             wire(ins.S, xor.in[0], "hv", [
                 [0, xorInTop],
-                [xor.in[0].posX - xorInDist, xor.in[0].posY],
+                [xor.in[0].posX - xorInDist, xor.in[0]],
             ])
         }
 

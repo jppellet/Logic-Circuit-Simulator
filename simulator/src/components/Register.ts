@@ -163,11 +163,8 @@ export abstract class RegisterBase<
                     this.doDrawGenericCaption(g)
                 }
             },
-            xrayScale: this.xrayScale,
         })
     }
-
-    protected get xrayScale(): number | undefined { return undefined }
 
     public static drawStoredValues(g: GraphicsRendering, ctx: DrawContextExt, outputs: ReadonlyGroupedNodeArray<NodeOut>, posX: number, swapHeightWidth: boolean) {
         const cellHeight = useCompact(outputs.length) ? GRID_STEP : 2 * GRID_STEP
@@ -328,7 +325,7 @@ export class Register extends RegisterBase<RegisterRepr> {
         fillTextVAlign(g, TextVAlign.middle, `${this.numBits} bits`, this.posX, this.posY + 10)
     }
 
-    protected override get xrayScale(): number {
+    protected override xrayScale(): number {
         if (!this.hasIncDec) {
             return this.numBits >= 16 ? 0.125 : this.numBits >= 8 ? 0.185 : this.numBits >= 4 ? 0.35 : 0.5
         } else {
@@ -350,34 +347,38 @@ export class Register extends RegisterBase<RegisterRepr> {
                 return ffd
             }, bits)
 
-            const inputAlloc = xray.wires(ins.D, ffds.map(ffd => ffd.inputs.D), { colsRight: 4 })
-            const outputAlloc = xray.wires(ffds.map(ffd => ffd.outputs.Q), outs.Q, { colsLeft: 2 })
+            const inputAlloc = xray.wires(ins.D, ffds.map(ffd => ffd.inputs.D), {
+                bookings: { colsRight: 4 },
+            })
+            const outputAlloc = xray.wires(ffds.map(ffd => ffd.outputs.Q), outs.Q, {
+                bookings: { colsLeft: 2 },
+            })
 
-            const clockLineX = inputAlloc.colXAt(2)
-            const presetLineX = inputAlloc.colXAt(0)
-            const clearLineX = outputAlloc.colXAt(-1)
+            const clockLineX = inputAlloc.at(2)
+            const presetLineX = inputAlloc.at(0)
+            const clearLineX = outputAlloc.at(-1)
 
             // clock
             for (let i = 0; i < bits; i++) {
-                wire(ins.Clock, ffds[i].inputs.Clock, "hv", [clockLineX, ffds[i].inputs.Clock.posY])
+                wire(ins.Clock, ffds[i].inputs.Clock, "hv", [clockLineX, ffds[i].inputs.Clock])
             }
 
             // preset
             wire(ins.Pre, ffds[0].inputs.Pre)
             for (let i = 1; i < bits; i++) {
-                wire(ins.Pre, ffds[i].inputs.Pre, "vh", [presetLineX, ffds[0].inputs.Pre.posY])
+                wire(ins.Pre, ffds[i].inputs.Pre, "vh", [presetLineX, ffds[0].inputs.Pre])
             }
 
             // clear
             for (let i = 0; i < bits - 1; i++) {
-                wire(ins.Clr, ffds[i].inputs.Clr, "vh", [clearLineX, ffds[bits - 1].inputs.Clr.posY])
+                wire(ins.Clr, ffds[i].inputs.Clr, "vh", [clearLineX, ffds[bits - 1].inputs.Clr])
             }
             wire(ins.Clr, ffds[bits - 1].inputs.Clr)
 
         } else {
             // with inc/dec logic
             const reg = RegisterDef.makeSpawned<Register>(xray, "reg", 5 * GRID_STEP, -7 * GRID_STEP, "e", { bits, inc: false })
-            const mux = MuxDef.makeSpawned<Mux>(xray, "mux", reg.posX - 7 * GRID_STEP, reg.posY, "e", { from: 2 * bits, to: bits, bottom: true })
+            const mux = MuxDef.makeSpawned<Mux>(xray, "mux", reg.posX - 7 * GRID_STEP, reg, "e", { from: 2 * bits, to: bits, bottom: true })
 
             const incDecY = (mux.inputs.I[0][0].posY + mux.inputs.I[0][bits - 1].posY) / 2
             const incDec = IncDecDef.makeSpawned<IncDec>(xray, "incdec", mux.posX - 5 * GRID_STEP, incDecY, "e", { bits })
@@ -406,10 +407,10 @@ export class Register extends RegisterBase<RegisterRepr> {
                 alloc: { allDifferent: true, order: "top-down" },
             }])
 
-            wire(ins.Pre, reg.inputs.Pre, "hv", [ins.Pre.posX, y.top + 2])
-            wire(ins.Clr, reg.inputs.Clr, "vh", [reg.inputs.Clr.posX, y.bottom - 2 - GRID_STEP])
+            wire(ins.Pre, reg.inputs.Pre, "hv", [ins.Pre, y.top + 2])
+            wire(ins.Clr, reg.inputs.Clr, "vh", [reg.inputs.Clr, y.bottom - 2 - GRID_STEP])
 
-            const clockAnd = gate("clockAnd", "and", reg.inputs.Clock.posX, mux.posY + mux.unrotatedHeight / 2 + GRID_STEP, "n")
+            const clockAnd = gate("clockAnd", "and", reg.inputs.Clock, mux.posY + mux.unrotatedHeight / 2 + GRID_STEP, "n")
             wire(clockAnd, reg.inputs.Clock)
 
             const norSel = gate("norSel", "nor", mux.inputs.S[0].posX - 3 * GRID_STEP, mux.inputs.S[0].posY + 2 * GRID_STEP)
@@ -425,7 +426,7 @@ export class Register extends RegisterBase<RegisterRepr> {
                 wire(andIncDec, clockAnd.in[0], "hv")
             } else {
                 const norSat = gate("norSat", "nor", clockAnd.in[0].posX - 0.5 * GRID_STEP, andIncDec.outputs.Out.posY - 6 * GRID_STEP, "n")
-                wire(incDec.outputs.Cout, norSat.in[0], "hv", [norSel.in[1].posX, norSat.in[1].posY + 0.5 * GRID_STEP])
+                wire(incDec.outputs.Cout, norSat.in[0], "hv", [norSel.in[1], norSat.in[1].posY + 0.5 * GRID_STEP])
                 wire(andIncDec, norSat.in[1], "hv")
                 wire(norSat, clockAnd.in[0], "vh")
             }
@@ -433,11 +434,11 @@ export class Register extends RegisterBase<RegisterRepr> {
 
             const loopbackLineBottomY = incDec.inputs.Dec.posY - 2 * GRID_STEP
             const loopbackLineInc = allocs.regOut.inc
-            const loopbackLineLeftX = allocs.inToMux.colXAt(2)
+            const loopbackLineLeftX = allocs.inToMux.at(2)
             for (let i = 0; i < bits; i++) {
                 wire(reg.outputs.Q[i], incDec.inputs.In[i], "hv", [
-                    [allocs.regOut.colXAt(i), loopbackLineBottomY - i * loopbackLineInc],
-                    [loopbackLineLeftX - i * loopbackLineInc, incDec.inputs.In[i].posY],
+                    [allocs.regOut.at(i), loopbackLineBottomY + i * loopbackLineInc],
+                    [loopbackLineLeftX - i * loopbackLineInc, incDec.inputs.In[i]],
                 ])
             }
 

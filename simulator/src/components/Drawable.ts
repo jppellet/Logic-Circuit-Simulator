@@ -9,7 +9,7 @@ import { TestSuites } from "../TestSuite"
 import { TestsPalette } from "../TestsPalette"
 import { PointerDragEvent } from "../UIEventManager"
 import { UndoManager } from "../UndoManager"
-import { COLOR_COMPONENT_BORDER, COLOR_MOUSE_OVER, COLOR_MOUSE_OVER_DANGER, ColorString, DrawZIndex, GRID_STEP, inRect } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, COLOR_MOUSE_OVER, COLOR_MOUSE_OVER_DANGER, COLOR_MOUSE_OVER_RELATED, COLOR_MOUSE_OVER_SAME_ORIGIN, ColorString, DrawZIndex, GRID_STEP, inRect } from "../drawutils"
 import { fixedWidthInContextMenu, Modifier, ModifierObject, span } from "../htmlgen"
 import { IconName } from "../images"
 import { S } from "../strings"
@@ -28,7 +28,8 @@ export type GraphicsRendering =
 export interface DrawContext {
     g: GraphicsRendering
     drawParams: DrawParams
-    isMouseOver: boolean
+    pointerOver: PointerOverMode
+    isPointerOver: boolean
     borderColor: ColorString
     inNonTransformedFrame(f: (ctx: DrawContextExt) => unknown): void
 }
@@ -77,6 +78,13 @@ export const MenuData = {
 export type MenuItemPlacement = "start" | "mid" | "end" // where to insert items created by components
 export type MenuItems = Array<[MenuItemPlacement, MenuItem]>
 
+export enum PointerOverMode {
+    None,
+    PointerOver,
+    WireSameOrigin,
+    RelatedComponent,
+}
+
 class _DrawContextImpl implements DrawContext, DrawContextExt {
 
     private readonly entranceTransform: DOMMatrix
@@ -87,13 +95,17 @@ class _DrawContextImpl implements DrawContext, DrawContextExt {
         comp: Drawable,
         public readonly g: GraphicsRendering,
         public readonly drawParams: DrawParams,
-        public readonly isMouseOver: boolean,
+        public readonly pointerOver: PointerOverMode,
         public readonly borderColor: ColorString,
     ) {
         this.entranceTransform = g.getTransform()
         this.entranceTransformInv = this.entranceTransform.inverse()
         comp.applyDrawTransform(g)
         this.componentTransform = g.getTransform()
+    }
+
+    public get isPointerOver() {
+        return this.pointerOver === PointerOverMode.PointerOver
     }
 
     public exit() {
@@ -186,19 +198,38 @@ export abstract class Drawable {
 
     public draw(g: GraphicsRendering, drawParams: DrawParams): void {
         const inSelectionRect = drawParams.currentSelection?.isSelected(this) ?? false
-        const isPointerOver = this === drawParams.currentCompUnderPointer || inSelectionRect
-        const borderColor = !isPointerOver
-            ? COLOR_COMPONENT_BORDER
-            : drawParams.anythingMoving && this.lockPos
-                ? COLOR_MOUSE_OVER_DANGER
-                : COLOR_MOUSE_OVER
+        const compUnderPointer = drawParams.currentCompUnderPointer
+        const pointerOverMode =
+            this === compUnderPointer || inSelectionRect ? PointerOverMode.PointerOver
+                : compUnderPointer !== null ? this.shouldBeHighlightedWith(compUnderPointer)
+                    : PointerOverMode.None
 
-        const ctx = new _DrawContextImpl(this, g, drawParams, isPointerOver, borderColor)
+        const borderColor = (() => {
+            switch (pointerOverMode) {
+                case PointerOverMode.PointerOver:
+                    if (drawParams.anythingMoving && this.lockPos) {
+                        return COLOR_MOUSE_OVER_DANGER
+                    }
+                    return COLOR_MOUSE_OVER
+                case PointerOverMode.WireSameOrigin:
+                    return COLOR_MOUSE_OVER_SAME_ORIGIN
+                case PointerOverMode.RelatedComponent:
+                    return COLOR_MOUSE_OVER_RELATED
+                case PointerOverMode.None:
+                    return COLOR_COMPONENT_BORDER
+            }
+        })()
+
+        const ctx = new _DrawContextImpl(this, g, drawParams, pointerOverMode, borderColor)
         try {
             this.doDraw(g, ctx)
         } finally {
             ctx.exit()
         }
+    }
+
+    protected shouldBeHighlightedWith(__compUnderPointer: Drawable): PointerOverMode {
+        return PointerOverMode.None
     }
 
     public applyDrawTransform(__g: GraphicsRendering) {

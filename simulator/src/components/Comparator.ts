@@ -79,8 +79,11 @@ export class Comparator extends ComponentBase<ComparatorRepr> {
                 g.textAlign = "center"
                 fillTextVAlign(g, TextVAlign.middle, "CMP", this.posX, this.posY)
             },
-            xrayScale: 0.25,
         })
+    }
+
+    protected override xrayScale() {
+        return 0.25
     }
 
     protected override makeXRay(level: number, scale: number) {
@@ -98,13 +101,13 @@ export class Comparator extends ComponentBase<ComparatorRepr> {
         wire(notB, andG.in[1], false)
 
         wire(ins.B, xnor.in[1], true)
-        wire(ins.A, andG.in[0], "vh", [-3 * GRID_STEP, ins.A.posY])
-        wire(ins.A, xnor.in[0], "vh", [x.left + 1.25 * GRID_STEP, ins.A.posY])
-        wire(ins.B, notB, "vh", [x.left + GRID_STEP / 2, ins.B.posY])
+        wire(ins.A, andG.in[0], "vh", [-3 * GRID_STEP, ins.A])
+        wire(ins.A, xnor.in[0], "vh", [x.left + 1.25 * GRID_STEP, ins.A])
+        wire(ins.B, notB, "vh", [x.left + GRID_STEP / 2, ins.B])
 
         wire(xnor, andEq.in[0], "hv")
-        wire(ins.E, andG.in[2], "vh", [andEq.in[1].posX, andG.in[2].posY])
-        wire(ins.E, andEq.in[1], "vh", [andEq.in[1].posX, andG.in[2].posY])
+        wire(ins.E, andG.in[2], "vh", [andEq.in[1], andG.in[2]])
+        wire(ins.E, andEq.in[1], "vh", [andEq.in[1], andG.in[2]])
 
         return xray
     }

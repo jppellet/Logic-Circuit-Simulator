@@ -106,8 +106,11 @@ export class IncDec extends ParametrizedComponentBase<IncDecRepr> {
                     fillTextVAlign(g, TextVAlign.middle, title, this.posX + 2, this.posY)
                 })
             },
-            xrayScale: this.numBits >= 8 ? 0.12 : 0.21,
         })
+    }
+
+    protected override xrayScale() {
+        return this.numBits >= 8 ? 0.12 : 0.21
     }
 
     protected override makeXRay(level: number, scale: number): XRay | undefined {
@@ -121,7 +124,7 @@ export class IncDec extends ParametrizedComponentBase<IncDecRepr> {
         const adderShiftY = -3 * GRID_STEP
         const adderSpacingY = 8 * GRID_STEP
         const headAdder = HalfAdderDef.makeSpawned<HalfAdder>(xray, "headAdder", 0, adderShiftY + (- (bits - 1) / 2) * adderSpacingY)
-        const const1 = InputDef.makeSpawned<Input>(xray, `const1`, headAdder.inputs.A.posX - 1 * GRID_STEP, later)
+        const const1 = InputDef.makeSpawned<Input>(xray, `const1`, headAdder.inputs.A.posX - GRID_STEP, later)
         const1.setValue([true])
         const1.doSetIsConstant(true)
         wire(const1.outputs.Out[0], headAdder.inputs.A, false)
@@ -130,11 +133,15 @@ export class IncDec extends ParametrizedComponentBase<IncDecRepr> {
             AdderDef.makeSpawned<Adder>(xray, `tailAdders${i}`, 0, adderShiftY + (i + 1 - (bits - 1) / 2) * adderSpacingY), bits - 1)
 
         const adders = [headAdder, ...tailAdders]
-        const allocIn = xray.wires(ins.In, adders.map(adder => adder.inputs.B), { colsRight: 1 })
-        xray.wires(adders.map(adder => adder.outputs.S), outs.Out, { colsLeft: 1 })
+        const allocIn = xray.wires(ins.In, adders.map(adder => adder.inputs.B), {
+            bookings: { colsRight: 1 },
+        })
+        xray.wires(adders.map(adder => adder.outputs.S), outs.Out, {
+            bookings: { colsLeft: 1 },
+        })
 
-        const adderInAX = allocIn.colXAt(0)
-        wire(headAdder.outputs.C, tailAdders[0].inputs.Cin, "hv", [headAdder.outputs.C.posX, headAdder.outputs.C.posY + 1.75 * GRID_STEP])
+        const adderInAX = allocIn.at(0)
+        wire(headAdder.outputs.C, tailAdders[0].inputs.Cin, "hv", [headAdder.outputs.C, headAdder.outputs.C.posY + 1.75 * GRID_STEP])
         for (let i = 0; i < bits - 1; i++) {
             wire(ins.Dec, tailAdders[i].inputs.A, "vh", [adderInAX, y.top + GRID_STEP])
             if (i > 0) {
@@ -145,7 +152,7 @@ export class IncDec extends ParametrizedComponentBase<IncDecRepr> {
         wire(tailAdders[bits - 2].outputs.Cout, xorCout.in[0], "hv")
         wire(ins.Dec, xorCout.in[1], "vh", [
             [adderInAX, y.top + GRID_STEP],
-            [xorCout.in[1].posX, tailAdders[bits - 2].outputs.Cout.posY + GRID_STEP],
+            [xorCout.in[1], tailAdders[bits - 2].outputs.Cout.posY + GRID_STEP],
         ])
 
         return xray

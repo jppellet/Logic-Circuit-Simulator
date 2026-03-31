@@ -6,6 +6,7 @@ import { TestCaseCombinational, TestCaseCombinationalRepr } from "./TestSuite"
 import { ALUDef } from "./components/ALU"
 import { AdderDef } from "./components/Adder"
 import { AdderArrayDef } from "./components/AdderArray"
+import { BypassDef } from "./components/Bypass"
 import { Clock, ClockDef } from "./components/Clock"
 import { ComparatorDef } from "./components/Comparator"
 import { Component, ComponentBase, ComponentRepr } from "./components/Component"
@@ -84,6 +85,7 @@ const AllComponentDefs: ComponentMaker<any>[] = [
     TristateBufferDef,
     TristateBufferArrayDef,
     ControlledInverterDef,
+    BypassDef,
 
     // labels & layout
     LabelDef,

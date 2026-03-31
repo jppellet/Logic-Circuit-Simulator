@@ -121,8 +121,11 @@ export class TristateBufferArray extends ParametrizedComponentBase<TristateBuffe
                 g.closePath()
                 g.stroke()
             },
-            xrayScale: useCompact(this.numBits) ? 0.18 : 0.36,
         })
+    }
+
+    protected override xrayScale() {
+        return useCompact(this.numBits) ? 0.18 : 0.36
     }
 
     protected override makeXRay(level: number, scale: number) {
@@ -139,7 +142,7 @@ export class TristateBufferArray extends ParametrizedComponentBase<TristateBuffe
             const tri = TristateBufferDef.makeSpawned<TristateBuffer>(xray, `tri${i}`, 0, later, "e", { bottom: true })
 
             wire(tri, outs.Out[i], false)
-            wire(ins.In[i], tri.inputs.In, "hv", [xIn, tri.inputs.In.posY])
+            wire(ins.In[i], tri.inputs.In, "hv", [xIn, tri.inputs.In])
             wire(ins.E, tri.inputs.E, "hv", [
                 [0, triInTop],
                 [triInX, tri.inputs.E.posY + 4],

@@ -99,6 +99,7 @@ const Strings_fr = {
             xnor4: ["Porte NON-OU-X à 4 entrées", "NON-OU-X (4)"],
 
             ControlledInverter: ["Inverseur commuté", "Inv. comm."],
+            Bypass: ["Bypass", "Bypass"],
             GateArray: ["Porte multiple", "Porte mult."],
             TristateBufferArray: ["Sortie à 3 états multiple", "3 états mult."],
 
@@ -286,6 +287,8 @@ const Strings_fr = {
                 LockPosition: "Verrouiller la position",
                 ShowAsUnknown: "Afficher comme inconnu",
 
+                SwapInputs: "Permuter les entrées",
+
                 ForceOutputSingle: "Forcer la sortie",
                 ForceOutputMultiple: "Forcer une sortie",
                 Output: "Sortie",
@@ -307,6 +310,11 @@ const Strings_fr = {
                 TriggerFallingEdge: "flanc descendant",
 
                 ShowContent: "Montrer le contenu",
+                XRayMode: "Mode rayons X",
+                XRayModeDefault: "Par défaut",
+                XRayModeAuto: "Montrer si zoomé",
+                XRayModeForce: "Toujours montrer",
+                XRayModeOff: "Toujours cacher",
 
                 ParamControlBitAtBottom: "Bit de contrôle en bas",
                 ParamControlBitsAtBottom: "Bits de contrôle en bas",
@@ -410,6 +418,12 @@ const Strings_fr = {
             contextMenu: {
                 toggleShowOp: "Afficher l’opération",
                 ParamUseExtendedOpcode: "Utiliser opérations étendues",
+            },
+        },
+        Bypass: {
+            tooltip: {
+                title: "Bypass",
+                desc: "Ignore ses entrées normales lorsque le signal de contrôle est actif.",
             },
         },
         Clock: {
@@ -928,6 +942,7 @@ const Strings_en: Strings = {
             xnor4: ["4-Input AND Gate", "XNOR (4)"],
 
             ControlledInverter: ["Switched Inverter", "Switched Inv."],
+            Bypass: ["Bypass", "Bypass"],
             GateArray: ["Gate Array", "Gate Array"],
             TristateBufferArray: ["Tristate Buffer Array", "Tristate Arr."],
 
@@ -1115,6 +1130,8 @@ const Strings_en: Strings = {
                 LockPosition: "Lock Position",
                 ShowAsUnknown: "Show As Unknown",
 
+                SwapInputs: "Swap Inputs",
+
                 ForceOutputSingle: "Force Output",
                 ForceOutputMultiple: "Force an Output",
                 Output: "Output",
@@ -1136,6 +1153,11 @@ const Strings_en: Strings = {
                 TriggerFallingEdge: "Fallling Edge",
 
                 ShowContent: "Show Content",
+                XRayMode: "X-Ray Mode",
+                XRayModeDefault: "Default",
+                XRayModeAuto: "Show When Zoomed",
+                XRayModeForce: "Always Show",
+                XRayModeOff: "Never Show",
 
                 ParamControlBitAtBottom: "Control Bit at Bottom",
                 ParamControlBitsAtBottom: "Control Bits at Bottom",
@@ -1239,6 +1261,12 @@ const Strings_en: Strings = {
             contextMenu: {
                 toggleShowOp: "Show Operation",
                 ParamUseExtendedOpcode: "Use Extended Opcode",
+            },
+        },
+        Bypass: {
+            tooltip: {
+                title: "Bypass",
+                desc: "Ignores its normal inputs when the control signal is active.",
             },
         },
         Clock: {

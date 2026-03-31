@@ -90,11 +90,8 @@ export abstract class FlipflopOrLatch<TRepr extends FlipflopOrLatchRepr> extends
                     FlipflopOrLatch.drawStoredValue(g, this.value[0], this.posX, this.posY, 26, false)
                 }
             },
-            xrayScale: this.xrayScale,
         })
     }
-
-    protected get xrayScale(): number | undefined { return undefined }
 
     public static drawStoredValueFrame(g: GraphicsRendering, x: number, y: number, width: number, height: number, swapHeightWidth: boolean) {
         if (swapHeightWidth) {

@@ -229,8 +229,11 @@ export class GateArray extends ParametrizedComponentBase<GateArrayRepr> {
                     }
                 }
             },
-            xrayScale: getXRayScaleForArrayComponent(this.numBits),
         })
+    }
+
+    protected override xrayScale() {
+        return getXRayScaleForArrayComponent(this.numBits)
     }
 
     protected override makeXRay(level: number, scale: number): XRay | undefined {

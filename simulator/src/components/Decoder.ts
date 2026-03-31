@@ -92,8 +92,11 @@ export class Decoder extends ParametrizedComponentBase<DecoderRepr> {
                 g.textAlign = "center"
                 fillTextVAlign(g, TextVAlign.middle, "Dec.", this.posX, this.posY)
             },
-            xrayScale: [0.25, 0.18, 0.10, 0.10][this.numFrom - 2],
         })
+    }
+
+    protected override xrayScale() {
+        return [0.25, 0.18, 0.10, 0.10][this.numFrom - 2]
     }
 
     protected override makeXRay(level: number, scale: number): XRay | undefined {
@@ -129,7 +132,7 @@ export class Decoder extends ParametrizedComponentBase<DecoderRepr> {
                 const targetNode = and.inputs.In[j]
                 const colIndex = (Number(!invert) * numBits + j) // first all 0s, then all 1s
                 const xPosBranch = xPosWireBranchLeftmost + colIndex * wireStep
-                wire(sourceNode, targetNode, "hv", [xPosBranch, targetNode.posY])
+                wire(sourceNode, targetNode, "hv", [xPosBranch, targetNode])
             }
         })
 

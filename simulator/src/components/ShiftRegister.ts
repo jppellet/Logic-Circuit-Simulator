@@ -70,7 +70,7 @@ export class ShiftRegister extends RegisterBase<ShiftRegisterRepr> {
         fillTextVAlign(g, TextVAlign.middle, `${this.numBits} bits`, this.posX, this.posY + 10)
     }
 
-    protected override get xrayScale(): number {
+    protected override xrayScale(): number {
         return this.numBits >= 16 ? 0.105 : this.numBits >= 8 ? 0.15 : 0.3
     }
 
@@ -95,25 +95,27 @@ export class ShiftRegister extends RegisterBase<ShiftRegisterRepr> {
         }
 
         // D to top and bottom muxes
-        wire(ins.D, muxes[0].inputs.I[0][0], "vh", [x.left + 2 * GRID_STEP, ins.D.posY])
-        wire(ins.D, muxes[bits - 1].inputs.I[1][0], "vh", [x.left + 2 * GRID_STEP, ins.D.posY])
+        wire(ins.D, muxes[0].inputs.I[0][0], "vh", [x.left + 2 * GRID_STEP, ins.D])
+        wire(ins.D, muxes[bits - 1].inputs.I[1][0], "vh", [x.left + 2 * GRID_STEP, ins.D])
 
         // LR to all muxes
         for (let i = 0; i < bits; i++) {
-            wire(ins.L̅R, muxes[i].inputs.S[0], "vh", [x.left + 1 * GRID_STEP, ins.L̅R.posY])
+            wire(ins.L̅R, muxes[i].inputs.S[0], "vh", [x.left + 1 * GRID_STEP, ins.L̅R])
         }
 
-        const allocOut = xray.wires(ffds.map(ffd => ffd.outputs.Q), outs.Q, { colsLeft: 3 })
+        const allocOut = xray.wires(ffds.map(ffd => ffd.outputs.Q), outs.Q, {
+            bookings: { colsLeft: 3 },
+        })
 
         // loop FFs and muxes together
         for (let i = 0; i < bits; i++) {
             if (i > 0) {
                 // first mux input from previous FF
-                wire(ffds[i - 1].outputs.Q, muxes[i].inputs.I[0][0], "hv", [allocOut.colXAt(-2), ffds[i - 1].posY + 6 * GRID_STEP])
+                wire(ffds[i - 1].outputs.Q, muxes[i].inputs.I[0][0], "hv", [allocOut.at(-2), ffds[i - 1].posY + 6 * GRID_STEP])
             }
             if (i < bits - 1) {
                 // second mux input from next FF
-                wire(ffds[i + 1].outputs.Q, muxes[i].inputs.I[1][0], "hv", [allocOut.colXAt(-3), ffds[i + 1].posY - 7 * GRID_STEP])
+                wire(ffds[i + 1].outputs.Q, muxes[i].inputs.I[1][0], "hv", [allocOut.at(-3), ffds[i + 1].posY - 7 * GRID_STEP])
             }
         }
 
@@ -124,7 +126,7 @@ export class ShiftRegister extends RegisterBase<ShiftRegisterRepr> {
         for (let i = 0; i < bits; i++) {
             wire(ins.Clock, ffds[i].inputs.Clock, "hv", [
                 ...initialWaypoints,
-                [clockLineX, ffds[i].inputs.Clock.posY],
+                [clockLineX, ffds[i].inputs.Clock],
             ])
         }
 
@@ -135,7 +137,7 @@ export class ShiftRegister extends RegisterBase<ShiftRegisterRepr> {
         }
 
         // clear
-        const clearLineX = allocOut.colXAt(-1)
+        const clearLineX = allocOut.at(-1)
         for (let i = 0; i < bits; i++) {
             wire(ins.Clr, ffds[i].inputs.Clr, "vh", [clearLineX, y.bottom - GRID_STEP])
         }

@@ -8,7 +8,7 @@ import { Timestamp } from "../Timeline"
 import { PointerDragEvent } from "../UIEventManager"
 import { InteractionResult, LogicValue, Mode, Orientation, Orientations_, isArray, isString, toLogicValueRepr, typeOrNull, typeOrUndefined } from "../utils"
 import { Component, NodeGroup } from "./Component"
-import { DrawContext, Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, GraphicsRendering, MenuData, PositionSupportRepr } from "./Drawable"
+import { DrawContext, Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, GraphicsRendering, MenuData, PointerOverMode, PositionSupportRepr } from "./Drawable"
 import { BranchPoint, Node, NodeIn, NodeOut, WireColor, tryMakeRepeatableNodeAction } from "./Node"
 import { Passthrough, PassthroughDef } from "./Passthrough"
 import { WirePath } from "./WirePath"
@@ -136,8 +136,12 @@ export class Waypoint extends DrawableWithDraggablePosition {
             g.globalAlpha = OPACITY_HIDDEN_ITEMS * normalAlpha
         }
         const neutral = this.parent.editor.options.hideWireColors
-        drawWaypoint(g, this.posX, this.posY, NodeStyle.WAYPOINT, this.drawValue, ctx.isMouseOver, neutral, false, false)
+        drawWaypoint(g, this.posX, this.posY, NodeStyle.WAYPOINT, this.drawValue, ctx.pointerOver, neutral, false, false)
         g.globalAlpha = normalAlpha
+    }
+
+    protected override shouldBeHighlightedWith(compUnderPointer: Drawable): PointerOverMode {
+        return compUnderPointer instanceof Wire && compUnderPointer === this.wire ? PointerOverMode.RelatedComponent : PointerOverMode.None
     }
 
     public get drawValue(): LogicValue {
@@ -577,7 +581,9 @@ export class Wire extends Drawable {
 
         // outline
         const color = this._startNode.color
-        strokeWireOutline(g, color, ctx.isMouseOver, 0)
+        const pointerOverColor = ctx.pointerOver === PointerOverMode.PointerOver || ctx.pointerOver === PointerOverMode.WireSameOrigin
+            ? ctx.borderColor : undefined
+        strokeWireOutline(g, color, pointerOverColor, 0)
 
         const numValues = this._propagatingValues.length
         this._lastDrawnWireValues.length = numValues
@@ -615,6 +621,13 @@ export class Wire extends Drawable {
         if (isAnimating && !this.parent.editor.timeline.isPaused) {
             this.requestRedraw({ why: "propagating value", isPropagation: true })
         }
+    }
+
+    protected override shouldBeHighlightedWith(compUnderPointer: Drawable): PointerOverMode {
+        if (!(compUnderPointer instanceof Wire)) {
+            return PointerOverMode.None
+        }
+        return compUnderPointer.startNode === this.startNode ? PointerOverMode.WireSameOrigin : PointerOverMode.None
     }
 
     public drawnValueAt(frac: number): LogicValue {
@@ -839,10 +852,10 @@ export class Ribbon extends Drawable {
         for (let i = this._startGroupStartIndex; i <= this._startGroupEndIndex; i++) {
             values.push(this.startNodeGroup.nodes[i].value)
         }
-        this.strokeWireBezier(g, b, values, WireColor.black, ctx.isMouseOver, false)
+        this.strokeWireBezier(g, b, values, WireColor.black, ctx.pointerOver, false)
     }
 
-    private strokeWireBezier(g: GraphicsRendering, b: Bezier, values: LogicValue[], color: WireColor, isMouseOver: boolean, neutral: boolean) {
+    private strokeWireBezier(g: GraphicsRendering, b: Bezier, values: LogicValue[], color: WireColor, pointerOver: PointerOverMode, neutral: boolean) {
         const numWires = values.length
 
         const WIRE_MARGIN_OUTER = (numWires === 1) ? 1 : (numWires <= 4 || numWires > 8) ? 2 : 3
@@ -881,7 +894,7 @@ export class Ribbon extends Drawable {
         g.lineCap = "butt"
 
         // margin
-        if (isMouseOver) {
+        if (pointerOver === PointerOverMode.PointerOver) {
             g.lineWidth = totalWidth + 2
             g.strokeStyle = COLOR_MOUSE_OVER
             drawBezier(b)
@@ -1017,7 +1030,7 @@ export class LinkManager {
             for (const [x, y, frac, wire] of branchPoints) {
                 const drawValue = wire.drawnValueAt(frac)
                 // console.log(`waypoint at ${x}, ${y}, frac=${frac} of wire to ${wire.endNode.component.ref}`)
-                drawWaypoint(g, x, y, NodeStyle.BRANCH_POINT, drawValue, false, neutral, false, false)
+                drawWaypoint(g, x, y, NodeStyle.BRANCH_POINT, drawValue, PointerOverMode.None, neutral, false, false)
             }
         }
 
@@ -1296,6 +1309,24 @@ export class LinkManager {
 
 
         // const wireAfter = findWire(startGroup, indexStart + 1, endGroup, indexEnd + 1)
+    }
+
+    public swapWires(in0: NodeIn, in1: NodeIn) {
+        const wire0 = in0.incomingWire
+        const wire1 = in1.incomingWire
+        in0.incomingWire = null
+        in1.incomingWire = null
+        if (wire1 !== null) {
+            wire1.setEndNode(in0)
+        }
+        if (wire0 !== null) {
+            wire0.setEndNode(in1)
+        }
+        // yes... we need this a second time, as the incomingWire ref is nullified in the meantime
+        if (wire1 !== null) {
+            wire1.setEndNode(in0)
+        }
+        this.parent.ifEditing?.redrawMgr.requestRedraw({ why: "inputs swapped" })
     }
 
     public deleteWire(wire: Wire): InteractionResult {

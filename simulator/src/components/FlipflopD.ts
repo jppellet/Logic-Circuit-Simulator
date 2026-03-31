@@ -50,7 +50,7 @@ export class FlipflopD extends Flipflop<FlipflopDRepr> {
         return LogicValue.filterHighZ(this.inputs.D.value)
     }
 
-    protected override get xrayScale(): number { return 0.3 }
+    protected override xrayScale(): number { return 0.3 }
 
     protected override makeXRay(level: number, scale: number): XRay {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
@@ -62,8 +62,8 @@ export class FlipflopD extends Flipflop<FlipflopDRepr> {
         wire(slave.outputs.Q, outs.Q, false)
         wire(master.outputs.Q, slave.inputs.D, false)
         wire(slave.outputs.Q̅, outs.Q̅, "vh")
-        wire(ins.Pre, slave.inputs.Pre, "vh", [slave.inputs.Pre.posX, y.top + GRID_STEP])
-        wire(ins.Clr, slave.inputs.Clr, "vh", [slave.inputs.Clr.posX, y.bottom - GRID_STEP])
+        wire(ins.Pre, slave.inputs.Pre, "vh", [slave.inputs.Pre, y.top + GRID_STEP])
+        wire(ins.Clr, slave.inputs.Clr, "vh", [slave.inputs.Clr, y.bottom - GRID_STEP])
         wire(ins.D, master.inputs.D)
 
         const isFallingTrigger = this.trigger === EdgeTrigger.falling

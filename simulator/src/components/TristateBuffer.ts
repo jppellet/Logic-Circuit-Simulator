@@ -1,5 +1,5 @@
 import * as t from "io-ts"
-import { COLOR_BACKGROUND, COLOR_COMPONENT_BORDER, COLOR_MOUSE_OVER, COMPONENT_OUTLINE_THICKNESS, drawWireLineToComponent, GRID_STEP } from "../drawutils"
+import { COLOR_BACKGROUND, COMPONENT_OUTLINE_THICKNESS, drawWireLineToComponent, GRID_STEP } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { HighImpedance, isHighImpedance, isUnknown, LogicValue, typeOrUndefined, Unknown } from "../utils"
@@ -97,7 +97,7 @@ export class TristateBuffer extends ParametrizedComponentBase<TristateBufferRepr
         const gateLeft = this.posX - gateWidth / 2
         const gateRight = this.posX + gateWidth / 2
         g.fillStyle = COLOR_BACKGROUND
-        g.strokeStyle = ctx.isMouseOver ? COLOR_MOUSE_OVER : COLOR_COMPONENT_BORDER
+        g.strokeStyle = ctx.borderColor
         g.lineWidth = COMPONENT_OUTLINE_THICKNESS
 
         g.beginPath()

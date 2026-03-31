@@ -45,16 +45,16 @@ export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
         ))
     }
 
-    protected override get xrayScale(): number { return 0.5 }
+    protected override xrayScale(): number { return 0.5 }
 
     protected override makeXRay(level: number, scale: number): XRay {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
         const { ins, outs } = this.makeXRayNodes<LatchSR>(xray)
 
         const gateX = -GRID_STEP
-        const norQbar = gate("norQBar", "nor", gateX, outs.Q.posY, "e")
+        const norQbar = gate("norQBar", "nor", gateX, outs.Q, "e")
         norQbar.outputs.Out.value = true as LogicValue // stabilize input
-        const norQ = gate("norQ", "nor", gateX, outs.Q̅.posY, "e")
+        const norQ = gate("norQ", "nor", gateX, outs.Q̅, "e")
 
         const norBackLineRight = norQ.outputs.Out.posX + GRID_STEP
         const norBackLineLeft = norQbar.in[1].posX - 0.5 * GRID_STEP
@@ -64,8 +64,8 @@ export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
         const norQInY = norQbar.in[1].posY
 
 
-        wire(ins.S, norQbar.in[0], "hv", [norBackLineLeft, norQbar.in[0].posY])
-        wire(ins.R, norQ.in[1], "hv", [norBackLineLeft, norQ.in[1].posY])
+        wire(ins.S, norQbar.in[0], "hv", [norBackLineLeft, norQbar.in[0]])
+        wire(ins.R, norQ.in[1], "hv", [norBackLineLeft, norQ.in[1]])
         // loopback top to bottom
         wire(norQbar, norQ.in[0], "straight", [
             [norBackLineRight, norQOutY],

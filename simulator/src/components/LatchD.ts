@@ -46,7 +46,7 @@ export class LatchD extends FlipflopOrLatch<LatchDRepr> {
         ))
     }
 
-    protected override get xrayScale(): number { return 0.23 }
+    protected override xrayScale(): number { return 0.23 }
 
     protected override makeXRay(level: number, scale: number): XRay {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
@@ -66,7 +66,7 @@ export class LatchD extends FlipflopOrLatch<LatchDRepr> {
         wire(ins.D, notD, "hv")
         wire(notD, andDbar.in[0], "vh")
         wire(ins.E, andDbar.in[1], "vh")
-        wire(ins.E, andD.in[1], "vh", [clockLeftLine, andDbar.in[1].posY])
+        wire(ins.E, andD.in[1], "vh", [clockLeftLine, andDbar.in[1]])
 
         const norQbar = gate("norQBar", "nor", norX, later, "e", 3)
         norQbar.outputs.Out.value = true as LogicValue // stabilize input

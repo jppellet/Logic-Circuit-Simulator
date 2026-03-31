@@ -70,8 +70,8 @@ export const MuxDef =
             const gridHeight = 2 + spacing * numLeftSlots
             return { gridWidth, gridHeight }
         },
-        makeNodes: ({ numTo, numGroups, numSel, controlPinsAtBottom, isXRay, gridHeight }) => {
-            const outX = (isXRay ? 0 : 1) + Math.max(2, numSel)
+        makeNodes: ({ numTo, numGroups, numSel, controlPinsAtBottom, gridHeight }) => {
+            const outX = 1 + Math.max(2, numSel)
 
             const groupOfInputs = groupVerticalMulti("w", -outX, 0, numGroups, numTo)
             const selY = (controlPinsAtBottom ? 1 : -1) * (gridHeight / 2 + 1)
@@ -233,6 +233,10 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
         }
 
         // xray and outline
+        this.doDrawXRayAndOutline(g, ctx, outline)
+    }
+
+    protected override xrayScale(): number | undefined {
         const useSmallScale =
             this.numTo >= 8 ||
             this.numTo >= 4 && this.numSel >= 2 ||
@@ -241,8 +245,7 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
         const useExtraSmallScale =
             this.numTo >= 8 && this.numSel >= 2 ||
             this.numTo === 1 && this.numSel === 3
-        const scale = useExtraSmallScale ? 0.0848 : useSmallScale ? 0.11 : 0.18
-        this.doDrawXRayAndOutline(g, ctx, outline, scale)
+        return useExtraSmallScale ? 0.0848 : useSmallScale ? 0.11 : 0.18
     }
 
     protected override makeXRay(level: number, scale: number): XRay | undefined {
@@ -257,7 +260,7 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
         const notOrient = this.controlPinsAtBottom ? "n" : "s"
         const notXOffsetFactor = this.controlPinsAtBottom ? -1 : 1
         for (let s = 0; s < sels; s++) {
-            const not = gate(`not${s}`, "not", ins.S[s].posX, ins.S[s].posY + notXOffsetFactor * 2.5 * GRID_STEP, notOrient)
+            const not = gate(`not${s}`, "not", ins.S[s], ins.S[s].posY + notXOffsetFactor * 2.5 * GRID_STEP, notOrient)
             wire(ins.S[s], not)
             nots.push(not)
         }
@@ -300,7 +303,6 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
         }
         const gateWidth = ands[0][0].outputs.Out.posX - ands[0][0].inputs.In[0].posX
         const andsFlat = ands.flat()
-        // const zones =  as const satisfies WireAllocationZone[]
         const allocations = xray.wiresInZones(x.left + 2, x.right - 2, [{
             id: "muxIn",
             from: ins.I.flat(),
@@ -326,21 +328,21 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
                     const useNot = ((g >> s) & 1) === 0
                     const lineIndex = s * 2 + Number(!useNot)
                     const notOuputY = nots[s].outputs.Out.posY + notXOffsetFactor * GRID_STEP
-                    const lineX = andInputAlloc.colXAt(lineIndex)
+                    const lineX = andInputAlloc.at(lineIndex)
 
                     if (useNot) {
                         const andIn = ands[b][g].inputs.In[s]
                         wire(nots[s], andIn, "hv", [
-                            [nots[s].posX, notOuputY],
-                            [lineX, andIn.posY],
+                            [nots[s], notOuputY],
+                            [lineX, andIn],
                         ])
                     } else {
                         const in_ = ins.S[s]
                         const inPosX = in_.posX - 2.5 * GRID_STEP
                         const dir = inPosX < lineX ? 1 : -1
                         const waypoints: WaypointSpecCompact[] = [
-                            [inPosX, in_.posY],
-                            [lineX, notOuputY + dir * andInputAlloc.inc],
+                            [inPosX, in_],
+                            [lineX, notOuputY - dir * andInputAlloc.inc],
                         ]
                         wire(in_, ands[b][g].inputs.In[s], "vh", waypoints)
                     }
