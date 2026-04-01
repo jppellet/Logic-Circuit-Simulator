@@ -7,8 +7,6 @@ import { Adder, AdderDef } from "./Adder"
 import { doALUAdd, doALUSub } from "./ALU"
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupVertical, param } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
-import { HalfAdder, HalfAdderDef } from "./HalfAdder"
-import { Input, InputDef } from "./Input"
 import { XRay } from "./XRay"
 
 
@@ -123,25 +121,22 @@ export class IncDec extends ParametrizedComponentBase<IncDecRepr> {
 
         const adderShiftY = -3 * GRID_STEP
         const adderSpacingY = 8 * GRID_STEP
-        const headAdder = HalfAdderDef.makeSpawned<HalfAdder>(xray, "headAdder", 0, adderShiftY + (- (bits - 1) / 2) * adderSpacingY)
-        const const1 = InputDef.makeSpawned<Input>(xray, `const1`, headAdder.inputs.A.posX - GRID_STEP, later)
-        const1.setValue([true])
-        const1.doSetIsConstant(true)
-        wire(const1.outputs.Out[0], headAdder.inputs.A, false)
+
+        const not = gate("not", "not", 0, adderShiftY + (- (bits - 1) / 2) * adderSpacingY)
 
         const tailAdders = ArrayFillUsing(i =>
             AdderDef.makeSpawned<Adder>(xray, `tailAdders${i}`, 0, adderShiftY + (i + 1 - (bits - 1) / 2) * adderSpacingY), bits - 1)
 
-        const adders = [headAdder, ...tailAdders]
-        const allocIn = xray.wires(ins.In, adders.map(adder => adder.inputs.B), {
+        const allocIn = xray.wires(ins.In,
+            [not.inputs.In[0], ...tailAdders.map(adder => adder.inputs.B)], {
             bookings: { colsRight: 1 },
         })
-        xray.wires(adders.map(adder => adder.outputs.S), outs.Out, {
+        xray.wires([not.outputs.Out, ...tailAdders.map(adder => adder.outputs.S)], outs.Out, {
             bookings: { colsLeft: 1 },
         })
 
         const adderInAX = allocIn.at(0)
-        wire(headAdder.outputs.C, tailAdders[0].inputs.Cin, "hv", [headAdder.outputs.C, headAdder.outputs.C.posY + 1.75 * GRID_STEP])
+        wire(ins.In[0], tailAdders[0].inputs.Cin, "hv", [[allocIn.at(1), not], [not.inputs.In[0].posX - GRID_STEP, tailAdders[0].inputs.Cin.posY - GRID_STEP]])
         for (let i = 0; i < bits - 1; i++) {
             wire(ins.Dec, tailAdders[i].inputs.A, "vh", [adderInAX, y.top + GRID_STEP])
             if (i > 0) {

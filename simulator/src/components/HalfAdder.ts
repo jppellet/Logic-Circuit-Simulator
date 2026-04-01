@@ -92,7 +92,7 @@ export class HalfAdder extends ComponentBase<HalfAdderRepr> {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
         const { ins, outs, x, later } = this.makeXRayNodes<HalfAdder>(xray)
 
-        const xor = gate("xor", "or", x(0.3), later)
+        const xor = gate("xor", "xor", x(0.3), later)
         const and = gate("and", "and", x(0.3), later)
 
         wire(ins.B, and.in[1], true)
