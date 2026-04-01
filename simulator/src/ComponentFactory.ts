@@ -36,6 +36,7 @@ import { Input, InputDef } from "./components/Input"
 import { Label, LabelDef } from "./components/Label"
 import { LatchDDef } from "./components/LatchD"
 import { LatchSRDef } from "./components/LatchSR"
+import { LatchSRGatedDef } from "./components/LatchSRGated"
 import { MuxDef } from "./components/Mux"
 import { Output, OutputDef } from "./components/Output"
 import { PassthroughDef } from "./components/Passthrough"
@@ -102,6 +103,7 @@ const AllComponentDefs: ComponentMaker<any>[] = [
     MuxDef,
     DemuxDef,
     LatchSRDef,
+    LatchSRGatedDef,
     LatchDDef,
     FlipflopJKDef,
     FlipflopTDef,

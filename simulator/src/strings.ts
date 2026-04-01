@@ -128,6 +128,7 @@ const Strings_fr = {
             Demux8to16: ["Démultiplexer 8-vers-16 (1 bit de contrôle)", "Demux 8-16"],
 
             LatchSR: ["Verrou SR", "Verrou SR"],
+            LatchSRGated: ["Verrou SR avec activation", "Verrou SR-E"],
             LatchD: ["Verrou D", "Verrou D"],
             FlipflopJK: ["Bascule JK", "Basc. JK"],
             FlipflopT: ["Bascule T", "Basc. T"],
@@ -331,6 +332,7 @@ const Strings_fr = {
             InputSetDesc: "S (Set, mise à 1)",
             InputResetDesc: "R (Reset, mise à 0)",
             InputDataDesc: "D (Données)",
+            InputEnableDesc: "E (Enable, activation)",
             InputWriteEnableDesc: "WE (écriture activée)",
 
             OutputSumDesc: "S (somme)",
@@ -632,6 +634,12 @@ const Strings_fr = {
         LatchSR: {
             tooltip: {
                 title: "Verrou SR",
+                desc: "Stocke un bit.",
+            },
+        },
+        LatchSRGated: {
+            tooltip: {
+                title: "Verrou SR avec Enable",
                 desc: "Stocke un bit.",
             },
         },
@@ -971,6 +979,7 @@ const Strings_en: Strings = {
             Demux8to16: ["8-to-16 Demultiplexer (1 Control Bit)", "Demux 8-16"],
 
             LatchSR: ["SR Latch", "SR Latch"],
+            LatchSRGated: ["SR Latch with Enable", "SR-E Latch"],
             LatchD: ["D Latch", "D Latch"],
             FlipflopJK: ["JK Flip-Flop", "FF-JK"],
             FlipflopT: ["T Flip-Flop", "FF-T"],
@@ -1174,6 +1183,7 @@ const Strings_en: Strings = {
             InputSetDesc: "S (Set, set to 1)",
             InputResetDesc: "R (Reset, set to 0)",
             InputDataDesc: "D (Data)",
+            InputEnableDesc: "E (Enable)",
             InputWriteEnableDesc: "WE (Write Enable)",
 
             OutputSumDesc: "S (Sum)",
@@ -1474,6 +1484,12 @@ const Strings_en: Strings = {
         LatchSR: {
             tooltip: {
                 title: "SR Latch",
+                desc: "Stores one bit.",
+            },
+        },
+        LatchSRGated: {
+            tooltip: {
+                title: "SR Latch with Enable",
                 desc: "Stores one bit.",
             },
         },

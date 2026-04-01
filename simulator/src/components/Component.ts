@@ -1931,7 +1931,7 @@ export class ComponentDef<
         return this._initialValue(saved, this.aults)
     }
 
-    public button(visual: ComponentKey & ImageName | [ComponentKey, ImageName], options?: LibraryButtonOptions): LibraryItem {
+    public button(visual: (ComponentKey & ImageName) | [ComponentKey, ImageName], options?: LibraryButtonOptions): LibraryItem {
         return {
             type: this.type,
             visual,
@@ -2116,7 +2116,7 @@ export class ParametrizedComponentDef<
         public readonly paramDefs: TParamDefs,
         public readonly size: (params: TResolvedParams & InjectedParams) => ComponentGridSize,
         private readonly _makeNodes: (params: TResolvedParams & InjectedParams & ComponentGridSize, valueDefaults: TValueDefaults) => TInOutRecs,
-        private readonly _initialValue: (saved: TRepr | undefined, params: TResolvedParams & InjectedParams) => TValue,
+        private readonly _initialValue: (saved: TRepr | undefined, params: TResolvedParams & InjectedParams, defaults: TValueDefaults) => TValue,
         private readonly _validateParams: (params: TParams, jsonType: string | undefined, defaults: TParamDefs) => TResolvedParams,
     ) {
         this.defaultParams = paramDefaults(paramDefs) as TParams
@@ -2136,7 +2136,7 @@ export class ParametrizedComponentDef<
             idPrefix: this.idPrefix,
             size,
             nodeRecs: nodes,
-            initialValue: (saved: TRepr | undefined) => this._initialValue(saved, params),
+            initialValue: (saved: TRepr | undefined) => this._initialValue(saved, params, this.aults),
             makeFromJSON: this.makeFromJSON.bind(this),
         }, this]
     }
@@ -2249,7 +2249,7 @@ export function defineParametrizedComponent<
         validateParams?: (params: TParams, jsonType: string | undefined, defaults: TParamDefs) => TResolvedParams,
         size: (params: TResolvedParams & InjectedParams) => ComponentGridSize,
         makeNodes: (params: TResolvedParams & InjectedParams & ComponentGridSize, valueDefaults: TValueDefaults) => TInOutRecs,
-        initialValue: (saved: TRepr | undefined, params: TResolvedParams & InjectedParams) => TValue,
+        initialValue: (saved: TRepr | undefined, params: TResolvedParams & InjectedParams, defaults: TValueDefaults) => TValue,
     },
 ) {
     return new ParametrizedComponentDef(type, idPrefix, hasIn, hasOut, variantName, button, repr, valueDefaults, params, size, makeNodes, initialValue, validateParams ?? ((params: TParams) => params as unknown as TResolvedParams))
@@ -2283,7 +2283,7 @@ export function defineAbstractParametrizedComponent<
         validateParams?: (params: TParams, jsonType: string | undefined, defaults: TParamDefs) => TResolvedParams
         size: (params: TResolvedParams) => ComponentGridSize,
         makeNodes: (params: TResolvedParams & ComponentGridSize & InjectedParams, valueDefaults: TValueDefaults) => TInOutRecs,
-        initialValue: (saved: TRepr | undefined, params: TResolvedParams) => TValue,
+        initialValue: (saved: TRepr | undefined, params: TResolvedParams, defaults: TValueDefaults) => TValue,
     },
 ) {
     return items

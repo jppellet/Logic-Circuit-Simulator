@@ -3,7 +3,7 @@ import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { LogicValue } from "../utils"
 import { Repr, defineComponent } from "./Component"
-import { DrawableParent, MenuData, MenuItems } from "./Drawable"
+import { DrawableParent, MenuItems } from "./Drawable"
 import { FlipflopOrLatch, FlipflopOrLatchDef, FlipflopOrLatchDefNodeDistX, FlipflopOrLatchDefPreClr } from "./FlipflopOrLatch"
 import { XRay } from "./XRay"
 
@@ -44,6 +44,41 @@ export class LatchD extends FlipflopOrLatch<LatchDRepr> {
         return tooltipContent(s.title, mods(
             div(s.desc) // TODO more info
         ))
+    }
+
+    protected doRecalcValue(): [LogicValue, LogicValue] {
+        // assume this state is valid
+        this._isInInvalidState = false
+
+        const preset = this.inputs.Pre.value
+        const clr = this.inputs.Clr.value
+        if (preset === true) {
+            if (clr === true) {
+                this._isInInvalidState = true
+                return [false, false]
+            } else {
+                // preset is true, clear is false, set output to 1
+                return [true, false]
+            }
+        } else if (clr === true) {
+            // preset is false, clear is true, set output to 0
+            return [false, true]
+
+        }
+
+        const d = this.inputs.D.value
+        const e = this.inputs.E.value
+        const q = this.outputs.Q.value
+
+        const newQ = e === true ? d : q
+        return [newQ, LogicValue.invert(newQ)]
+    }
+
+    protected override makeComponentSpecificContextMenuItems(): MenuItems {
+        return [
+            ...this.makeSetShowContentContextMenuItem(),
+            ...this.makeForceOutputsContextMenuItem(true),
+        ]
     }
 
     protected override xrayScale(): number { return 0.23 }
@@ -100,55 +135,15 @@ export class LatchD extends FlipflopOrLatch<LatchDRepr> {
         // out from top gate to bottom output
         wire(norQbar, outs.Q̅, "straight", [
             [norBackLineRight + GRID_STEP, norQOutY],
-            [outs.Q̅.posX - 0.5 * GRID_STEP, norQBarOutY],
+            [outs.Q̅.posX - 0.5 * GRID_STEP, outs.Q̅.posY],
         ])
         // out from bottom gate to top output
         wire(norQ, outs.Q, "straight", [
             [norBackLineRight + GRID_STEP, norQBarOutY],
-            [outs.Q.posX - 0.5 * GRID_STEP, norQOutY],
+            [outs.Q.posX - 0.5 * GRID_STEP, outs.Q.posY],
         ])
 
         return xray
-    }
-
-    protected doRecalcValue(): [LogicValue, LogicValue] {
-        // assume this state is valid
-        this._isInInvalidState = false
-
-        const preset = this.inputs.Pre.value
-        const clr = this.inputs.Clr.value
-        if (preset === true) {
-            if (clr === true) {
-                this._isInInvalidState = true
-                return [false, false]
-            } else {
-                // preset is true, clear is false, set output to 1
-                return [true, false]
-            }
-        } else if (clr === true) {
-            // preset is false, clear is true, set output to 0
-            return [false, true]
-
-        } else {
-            const d = this.inputs.D.value
-            const e = this.inputs.E.value
-            const q = this.outputs.Q.value
-
-            const newQ = e === true ? d : q
-            return [newQ, LogicValue.invert(newQ)]
-        }
-    }
-
-    protected override makeComponentSpecificContextMenuItems(): MenuItems {
-        const icon = this._showContent ? "check" : "none"
-        const toggleShowContentItem = MenuData.item(icon, S.Components.Generic.contextMenu.ShowContent, () => {
-            this.doSetShowContent(!this._showContent)
-        })
-
-        return [
-            ["mid", toggleShowContentItem],
-            ...this.makeForceOutputsContextMenuItem(true),
-        ]
     }
 
 }

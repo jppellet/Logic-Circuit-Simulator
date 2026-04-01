@@ -4,12 +4,12 @@ import { S } from "../strings"
 import { LogicValue } from "../utils"
 import { Repr, defineComponent } from "./Component"
 import { DrawableParent, MenuItems } from "./Drawable"
-import { FlipflopOrLatch, FlipflopOrLatchDef, FlipflopOrLatchDefNodeDistX } from "./FlipflopOrLatch"
+import { FlipflopOrLatch, FlipflopOrLatchDef, FlipflopOrLatchDefNodeDistX, FlipflopOrLatchDefPreClr } from "./FlipflopOrLatch"
 import { type XRay } from "./XRay"
 
 
-export const LatchSRDef =
-    defineComponent("latch-sr", true, true, {
+export const LatchSRGatedDef =
+    defineComponent("latch-sr-en", true, true, {
         idPrefix: "latch",
         ...FlipflopOrLatchDef,
         makeNodes: ({ isXRay }) => {
@@ -20,18 +20,20 @@ export const LatchSRDef =
                 ins: {
                     S: [-nodeDistX, -2, "w", s.InputSetDesc, { prefersSpike: true }],
                     R: [-nodeDistX, 2, "w", s.InputResetDesc, { prefersSpike: true }],
+                    E: [-nodeDistX, 0, "w", s.InputEnableDesc],
+                    ...FlipflopOrLatchDefPreClr,
                 },
                 outs: base.outs,
             }
         },
     })
 
-type LatchSRRepr = Repr<typeof LatchSRDef>
+type LatchSRGatedRepr = Repr<typeof LatchSRGatedDef>
 
-export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
+export class LatchSRGated extends FlipflopOrLatch<LatchSRGatedRepr> {
 
-    public constructor(parent: DrawableParent, saved?: LatchSRRepr) {
-        super(parent, LatchSRDef.from(parent), saved)
+    public constructor(parent: DrawableParent, saved?: LatchSRGatedRepr) {
+        super(parent, LatchSRGatedDef.from(parent), saved)
     }
 
     public toJSON() {
@@ -39,32 +41,49 @@ export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
     }
 
     public override makeTooltip() {
-        const s = S.Components.LatchSR.tooltip
+        const s = S.Components.LatchSRGated.tooltip
         return tooltipContent(s.title, mods(
             div(s.desc) // TODO more info
         ))
     }
 
     protected doRecalcValue(): [LogicValue, LogicValue] {
-        const s = this.inputs.S.value
-        const r = this.inputs.R.value
-
         // assume this state is valid
         this._isInInvalidState = false
 
-        // handle set and reset signals
-        if (s === true) {
-            if (r === true) {
+        const preset = this.inputs.Pre.value
+        const clr = this.inputs.Clr.value
+        if (preset === true) {
+            if (clr === true) {
                 this._isInInvalidState = true
                 return [false, false]
             } else {
-                // set is true, reset is false, set output to 1
+                // preset is true, clear is false, set output to 1
                 return [true, false]
             }
-        }
-        if (r === true) {
-            // set is false, reset is true, set output to 0
+        } else if (clr === true) {
+            // preset is false, clear is true, set output to 0
             return [false, true]
+        }
+
+        // handle set and reset signals
+        const enable = this.inputs.E.value
+        if (enable === true) {
+            const s = this.inputs.S.value
+            const r = this.inputs.R.value
+            if (s === true) {
+                if (r === true) {
+                    this._isInInvalidState = true
+                    return [false, false]
+                } else {
+                    // set is true, reset is false, set output to 1
+                    return [true, false]
+                }
+            }
+            if (r === true) {
+                // set is false, reset is true, set output to 0
+                return [false, true]
+            }
         }
 
         // no change
@@ -79,27 +98,39 @@ export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
         ]
     }
 
-    protected override xrayScale(): number { return 0.5 }
+    protected override xrayScale(): number { return 0.3 }
 
     protected override makeXRay(level: number, scale: number): XRay {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs } = this.makeXRayNodes<LatchSR>(xray)
+        const { ins, outs, x, later } = this.makeXRayNodes<LatchSRGated>(xray)
 
-        const gateX = -GRID_STEP
-        const norQbar = gate("norQBar", "nor", gateX, outs.Q, "e")
+        const andGateX = -4 * GRID_STEP
+
+        const andS = gate("andS", "and", andGateX, later)
+        wire(ins.S, andS.in[0], true)
+        const andR = gate("andR", "and", andGateX, later)
+        wire(ins.R, andR.in[1], true)
+        const branch = [x.left + GRID_STEP / 2, ins.E] as const
+        wire(ins.E, andS.in[1], "vh", branch)
+        wire(ins.E, andR.in[0], "vh", branch)
+
+        const norGateX = 2.5 * GRID_STEP
+        const norQbar = gate("norQBar", "nor", norGateX, later, "e", 3)
         norQbar.outputs.Out.value = true as LogicValue // stabilize input
-        const norQ = gate("norQ", "nor", gateX, outs.Q̅, "e")
+        const norQ = gate("norQ", "nor", norGateX, later, "e", 3)
+
+        wire(andS, norQbar.in[1], true)
+        wire(andR, norQ.in[1], true)
+        wire(ins.Pre, norQbar.in[0], "vh")
+        wire(ins.Clr, norQ.in[2], "vh")
 
         const norBackLineRight = norQ.outputs.Out.posX + GRID_STEP
-        const norBackLineLeft = norQbar.in[1].posX - 0.5 * GRID_STEP
+        const norBackLineLeft = norQbar.in[2].posX - 0.5 * GRID_STEP
         const norQBarOutY = norQ.outputs.Out.posY
         const norQBarInY = norQ.in[0].posY
         const norQOutY = norQbar.outputs.Out.posY
-        const norQInY = norQbar.in[1].posY
+        const norQInY = norQbar.in[2].posY
 
-
-        wire(ins.S, norQbar.in[0], "hv", [norBackLineLeft, norQbar.in[0]])
-        wire(ins.R, norQ.in[1], "hv", [norBackLineLeft, norQ.in[1]])
         // loopback top to bottom
         wire(norQbar, norQ.in[0], "straight", [
             [norBackLineRight, norQOutY],
@@ -108,7 +139,7 @@ export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
             [norBackLineLeft, norQBarInY],
         ])
         // loopback bottom to top
-        wire(norQ, norQbar.in[1], "straight", [
+        wire(norQ, norQbar.in[2], "straight", [
             [norBackLineRight, norQBarOutY],
             [norBackLineRight, norQBarOutY - 2 * GRID_STEP],
             [norBackLineLeft, norQInY + 2 * GRID_STEP],
@@ -117,16 +148,16 @@ export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
         // out from top gate to bottom output
         wire(norQbar, outs.Q̅, "straight", [
             [norBackLineRight + GRID_STEP, norQOutY],
-            [outs.Q̅.posX - 0.5 * GRID_STEP, norQBarOutY],
+            [outs.Q̅.posX - 0.5 * GRID_STEP, outs.Q̅.posY],
         ])
         // out from bottom gate to top output
         wire(norQ, outs.Q, "straight", [
             [norBackLineRight + GRID_STEP, norQBarOutY],
-            [outs.Q.posX - 0.5 * GRID_STEP, norQOutY],
+            [outs.Q.posX - 0.5 * GRID_STEP, outs.Q.posY],
         ])
 
         return xray
     }
 
 }
-LatchSRDef.impl = LatchSR
+LatchSRGatedDef.impl = LatchSRGated

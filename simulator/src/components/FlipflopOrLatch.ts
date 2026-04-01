@@ -111,6 +111,14 @@ export abstract class FlipflopOrLatch<TRepr extends FlipflopOrLatchRepr> extends
         drawValueText(g, value, x, y, { small: cellHeight < 18 })
     }
 
+    protected makeSetShowContentContextMenuItem(): MenuItems {
+        const icon = this._showContent ? "check" : "none"
+        return [
+            ["mid", MenuData.item(icon, S.Components.Generic.contextMenu.ShowContent,
+                () => this.doSetShowContent(!this._showContent))],
+        ]
+    }
+
 }
 
 
@@ -236,15 +244,10 @@ export abstract class Flipflop<
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {
-
-        const icon = this._showContent ? "check" : "none"
-        const toggleShowContentItem = MenuData.item(icon, S.Components.Generic.contextMenu.ShowContent,
-            () => this.doSetShowContent(!this._showContent))
-
         return [
             ...makeTriggerItems(this._trigger, this.doSetTrigger.bind(this)),
             ["mid", MenuData.sep()],
-            ["mid", toggleShowContentItem],
+            ...this.makeSetShowContentContextMenuItem(),
             ...this.makeForceOutputsContextMenuItem(true),
         ]
     }
