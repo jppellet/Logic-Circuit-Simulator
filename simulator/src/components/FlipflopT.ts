@@ -1,9 +1,13 @@
+import { GRID_STEP } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { LogicValue, Unknown, isHighImpedance, isUnknown } from "../utils"
 import { Repr, defineComponent } from "./Component"
 import { DrawableParent } from "./Drawable"
+import { FlipflopD, FlipflopDDef } from "./FlipflopD"
 import { Flipflop, FlipflopBaseDef, FlipflopOrLatchDefNodeDistX } from "./FlipflopOrLatch"
+import { Mux, MuxDef } from "./Mux"
+import { XRay } from "./XRay"
 
 
 export const FlipflopTDef =
@@ -50,6 +54,31 @@ export class FlipflopT extends Flipflop<FlipflopTRepr> {
         }
         const q = this.outputs.Q.value
         return t ? LogicValue.invert(q) : q
+    }
+
+    protected override xrayScale(): number { return 0.35 }
+
+    protected override makeXRay(level: number, scale: number): XRay {
+        const { xray, wire } = this.parent.editor.newXRay(this, level, scale)
+        const { ins, outs, y, later } = this.makeXRayNodes<FlipflopT>(xray)
+
+        const ffd = FlipflopDDef.makeSpawned<FlipflopD>(xray, "ffd", GRID_STEP, later)
+        xray.alignComponentOf(ffd.outputs.Q̅, outs.Q̅)
+
+        const allocOut = xray.wires([ffd.outputs.Q, ffd.outputs.Q̅], [outs.Q, outs.Q̅], {
+            alloc: { allDifferent: true, order: "bottom-up" },
+        })
+        wire(ins.Pre, ffd.inputs.Pre, "vh", [ffd.inputs.Pre, y.top + GRID_STEP / 2])
+        wire(ins.Clr, ffd.inputs.Clr, "vh", [ffd.inputs.Clr, y.bottom - GRID_STEP / 2])
+        wire(ins.Clock, ffd.inputs.Clock, "hv", [ffd.inputs.Clock.posX - GRID_STEP, ffd.inputs.Clock])
+
+        const mux = MuxDef.makeSpawned<Mux>(xray, "mux", -2.5 * GRID_STEP, ins.T.posY + 2 * GRID_STEP, "s", { from: 2, to: 1, bottom: true })
+        wire(mux.outputs.Z[0], ffd.inputs.D, "vh")
+        wire(ins.T, mux.inputs.S[0], "hv")
+        wire(ffd.outputs.Q, mux.inputs.I[0][0], "vh", [allocOut.at(1), ffd.outputs.Q])
+        wire(ffd.outputs.Q̅, mux.inputs.I[1][0], "vh", [[allocOut.at(0), ffd.outputs.Q̅], [mux.inputs.I[1][0], mux.inputs.I[1][0].posY - GRID_STEP]])
+
+        return xray
     }
 
 }
