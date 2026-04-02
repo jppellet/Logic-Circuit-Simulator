@@ -1632,7 +1632,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             return false
         }
 
-        const newGroup = RectangleDef.make<Rectangle>(this)
+        const newGroup = RectangleDef.make(this)
         newGroup.setSpawned()
 
         if (newGroup instanceof Rectangle) {

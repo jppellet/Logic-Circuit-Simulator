@@ -3,55 +3,105 @@ import JSON5 from "json5"
 import { LogicEditor } from "./LogicEditor"
 import { Serialization } from "./Serialization"
 import { TestCaseCombinational, TestCaseCombinationalRepr } from "./TestSuite"
-import { ALUDef } from "./components/ALU"
-import { AdderDef } from "./components/Adder"
-import { AdderArrayDef } from "./components/AdderArray"
-import { BypassDef } from "./components/Bypass"
+import { ALU, ALUDef } from "./components/ALU"
+import { Adder, AdderDef } from "./components/Adder"
+import { AdderArray, AdderArrayDef } from "./components/AdderArray"
+import { Bypass, BypassDef } from "./components/Bypass"
 import { Clock, ClockDef } from "./components/Clock"
-import { ComparatorDef } from "./components/Comparator"
+import { Comparator, ComparatorDef } from "./components/Comparator"
 import { Component, ComponentBase, ComponentRepr } from "./components/Component"
-import { ControlledInverterDef } from "./components/ControlledInverter"
-import { CounterDef } from "./components/Counter"
+import { ControlledInverter, ControlledInverterDef } from "./components/ControlledInverter"
+import { Counter, CounterDef } from "./components/Counter"
 import { CustomComponent, CustomComponentDef, CustomComponentDefRepr, CustomComponentPrefix } from "./components/CustomComponent"
-import { DecoderDef } from "./components/Decoder"
-import { Decoder16SegDef } from "./components/Decoder16Seg"
-import { Decoder7SegDef } from "./components/Decoder7Seg"
-import { DecoderBCDDef } from "./components/DecoderBCD"
-import { DemuxDef } from "./components/Demux"
-import { DisplayDef } from "./components/Display"
-import { Display16SegDef } from "./components/Display16Seg"
-import { Display7SegDef } from "./components/Display7Seg"
-import { DisplayAsciiDef } from "./components/DisplayAscii"
-import { DisplayBarDef } from "./components/DisplayBar"
+import { Decoder, DecoderDef } from "./components/Decoder"
+import { Decoder16Seg, Decoder16SegDef } from "./components/Decoder16Seg"
+import { Decoder7Seg, Decoder7SegDef } from "./components/Decoder7Seg"
+import { DecoderBCD, DecoderBCDDef } from "./components/DecoderBCD"
+import { Demux, DemuxDef } from "./components/Demux"
+import { Display, DisplayDef } from "./components/Display"
+import { Display16Seg, Display16SegDef } from "./components/Display16Seg"
+import { Display7Seg, Display7SegDef } from "./components/Display7Seg"
+import { DisplayAscii, DisplayAsciiDef } from "./components/DisplayAscii"
+import { DisplayBar, DisplayBarDef } from "./components/DisplayBar"
 import { DrawableParent, MenuData } from "./components/Drawable"
-import { FlipflopDDef } from "./components/FlipflopD"
-import { FlipflopJKDef } from "./components/FlipflopJK"
-import { FlipflopTDef } from "./components/FlipflopT"
-import { Gate1Def, GateNDef } from "./components/Gate"
-import { GateArrayDef } from "./components/GateArray"
+import { FlipflopD, FlipflopDDef } from "./components/FlipflopD"
+import { FlipflopJK, FlipflopJKDef } from "./components/FlipflopJK"
+import { FlipflopT, FlipflopTDef } from "./components/FlipflopT"
+import { Gate1, Gate1Def, GateN, GateNDef } from "./components/Gate"
+import { GateArray, GateArrayDef } from "./components/GateArray"
 import { Gate1Types, GateNTypes } from "./components/GateTypes"
-import { HalfAdderDef } from "./components/HalfAdder"
-import { IncDecDef } from "./components/IncDec"
+import { HalfAdder, HalfAdderDef } from "./components/HalfAdder"
+import { IncDec, IncDecDef } from "./components/IncDec"
 import { Input, InputDef } from "./components/Input"
 import { Label, LabelDef } from "./components/Label"
-import { LatchDDef } from "./components/LatchD"
-import { LatchSRDef } from "./components/LatchSR"
-import { LatchSRGatedDef } from "./components/LatchSRGated"
-import { MuxDef } from "./components/Mux"
+import { LatchD, LatchDDef } from "./components/LatchD"
+import { LatchSR, LatchSRDef } from "./components/LatchSR"
+import { LatchSRGated, LatchSRGatedDef } from "./components/LatchSRGated"
+import { Mux, MuxDef } from "./components/Mux"
 import { Output, OutputDef } from "./components/Output"
-import { PassthroughDef } from "./components/Passthrough"
-import { PixelDef } from "./components/Pixel"
-import { RAMDef } from "./components/RAM"
-import { ROMDef } from "./components/ROM"
-import { RandomDef } from "./components/Random"
-import { RectangleDef } from "./components/Rectangle"
-import { RegisterDef } from "./components/Register"
-import { ShiftDisplayDef } from "./components/ShiftDisplay"
-import { ShiftRegisterDef } from "./components/ShiftRegister"
-import { TristateBufferDef } from "./components/TristateBuffer"
-import { TristateBufferArrayDef } from "./components/TristateBufferArray"
+import { Passthrough, PassthroughDef } from "./components/Passthrough"
+import { Pixel, PixelDef } from "./components/Pixel"
+import { RAM, RAMDef } from "./components/RAM"
+import { ROM, ROMDef } from "./components/ROM"
+import { Random, RandomDef } from "./components/Random"
+import { Rectangle, RectangleDef } from "./components/Rectangle"
+import { Register, RegisterDef } from "./components/Register"
+import { ShiftDisplay, ShiftDisplayDef } from "./components/ShiftDisplay"
+import { ShiftRegister, ShiftRegisterDef } from "./components/ShiftRegister"
+import { TristateBuffer, TristateBufferDef } from "./components/TristateBuffer"
+import { TristateBufferArray, TristateBufferArrayDef } from "./components/TristateBufferArray"
 import { S } from "./strings"
 import { binaryStringRepr, isArray, isRecord, isString, validateJson, valuesReprForTest } from "./utils"
+
+
+export type ComponentForDef<TDef> = Component & (
+    TDef extends typeof ALUDef ? ALU :
+    TDef extends typeof AdderDef ? Adder :
+    TDef extends typeof AdderArrayDef ? AdderArray :
+    TDef extends typeof BypassDef ? Bypass :
+    TDef extends typeof ClockDef ? Clock :
+    TDef extends typeof ComparatorDef ? Comparator :
+    TDef extends typeof ControlledInverterDef ? ControlledInverter :
+    TDef extends typeof CounterDef ? Counter :
+    TDef extends typeof Decoder16SegDef ? Decoder16Seg :
+    TDef extends typeof Decoder7SegDef ? Decoder7Seg :
+    TDef extends typeof DecoderDef ? Decoder :
+    TDef extends typeof DecoderBCDDef ? DecoderBCD :
+    TDef extends typeof DemuxDef ? Demux :
+    TDef extends typeof DisplayDef ? Display :
+    TDef extends typeof Display16SegDef ? Display16Seg :
+    TDef extends typeof Display7SegDef ? Display7Seg :
+    TDef extends typeof DisplayAsciiDef ? DisplayAscii :
+    TDef extends typeof DisplayBarDef ? DisplayBar :
+    TDef extends typeof FlipflopDDef ? FlipflopD :
+    TDef extends typeof FlipflopJKDef ? FlipflopJK :
+    TDef extends typeof FlipflopTDef ? FlipflopT :
+    TDef extends typeof Gate1Def ? Gate1 :
+    TDef extends typeof GateNDef ? GateN :
+    TDef extends typeof GateArrayDef ? GateArray :
+    TDef extends typeof HalfAdderDef ? HalfAdder :
+    TDef extends typeof IncDecDef ? IncDec :
+    TDef extends typeof InputDef ? Input :
+    TDef extends typeof LabelDef ? Label :
+    TDef extends typeof LatchDDef ? LatchD :
+    TDef extends typeof LatchSRDef ? LatchSR :
+    TDef extends typeof LatchSRGatedDef ? LatchSRGated :
+    TDef extends typeof MuxDef ? Mux :
+    TDef extends typeof OutputDef ? Output :
+    TDef extends typeof PassthroughDef ? Passthrough :
+    TDef extends typeof PixelDef ? Pixel :
+    TDef extends typeof RAMDef ? RAM :
+    TDef extends typeof ROMDef ? ROM :
+    TDef extends typeof RandomDef ? Random :
+    TDef extends typeof RectangleDef ? Rectangle :
+    TDef extends typeof RegisterDef ? Register :
+    TDef extends typeof ShiftDisplayDef ? ShiftDisplay :
+    TDef extends typeof ShiftRegisterDef ? ShiftRegister :
+    TDef extends typeof TristateBufferDef ? TristateBuffer :
+    TDef extends typeof TristateBufferArrayDef ? TristateBufferArray :
+    Component
+)
+
 
 // Generic interface to instantiate components from scratch (possibly with params) or from JSON
 type ComponentMaker<TParams extends Record<string, unknown>> = {

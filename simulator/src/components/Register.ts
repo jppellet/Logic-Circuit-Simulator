@@ -6,10 +6,10 @@ import { ArrayFillUsing, ArrayFillWith, EdgeTrigger, LogicValue, Orientation, Un
 import { ExtractParamDefs, ExtractParams, NodesIn, NodesOut, ParametrizedComponentBase, ReadonlyGroupedNodeArray, Repr, ResolvedParams, defineAbstractParametrizedComponent, defineParametrizedComponent, groupVertical, param, paramBool } from "./Component"
 import { Counter } from "./Counter"
 import { DrawContext, DrawContextExt, DrawableParent, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
-import { FlipflopD, FlipflopDDef } from "./FlipflopD"
+import { FlipflopDDef } from "./FlipflopD"
 import { Flipflop, FlipflopOrLatch, makeTriggerItems } from "./FlipflopOrLatch"
-import { IncDec, IncDecDef } from "./IncDec"
-import { Mux, MuxDef } from "./Mux"
+import { IncDecDef } from "./IncDec"
+import { MuxDef } from "./Mux"
 import { NodeOut } from "./Node"
 import { type ShiftRegisterDef } from "./ShiftRegister"
 import { XRay } from "./XRay"
@@ -342,7 +342,7 @@ export class Register extends RegisterBase<RegisterRepr> {
         if (!this.hasIncDec) {
             // simple register made of D flip-flops
             const ffds = ArrayFillUsing(i => {
-                const ffd = FlipflopDDef.makeSpawned<FlipflopD>(xray, `ffd${i}`, 0, (i - (bits - 1) / 2) * 10 * GRID_STEP)
+                const ffd = FlipflopDDef.makeSpawned(xray, `ffd${i}`, 0, (i - (bits - 1) / 2) * 10 * GRID_STEP)
                 ffd.doSetTrigger(edgeTrigger)
                 return ffd
             }, bits)
@@ -377,11 +377,11 @@ export class Register extends RegisterBase<RegisterRepr> {
 
         } else {
             // with inc/dec logic
-            const reg = RegisterDef.makeSpawned<Register>(xray, "reg", 5 * GRID_STEP, -7 * GRID_STEP, "e", { bits, inc: false })
-            const mux = MuxDef.makeSpawned<Mux>(xray, "mux", reg.posX - 7 * GRID_STEP, reg, "e", { from: 2 * bits, to: bits, bottom: true })
+            const reg = RegisterDef.makeSpawned(xray, "reg", 5 * GRID_STEP, -7 * GRID_STEP, "e", { bits, inc: false })
+            const mux = MuxDef.makeSpawned(xray, "mux", reg.posX - 7 * GRID_STEP, reg, "e", { from: 2 * bits, to: bits, bottom: true })
 
             const incDecY = (mux.inputs.I[0][0].posY + mux.inputs.I[0][bits - 1].posY) / 2
-            const incDec = IncDecDef.makeSpawned<IncDec>(xray, "incdec", mux.posX - 5 * GRID_STEP, incDecY, "e", { bits })
+            const incDec = IncDecDef.makeSpawned(xray, "incdec", mux.posX - 5 * GRID_STEP, incDecY, "e", { bits })
 
             const allocs = xray.wiresInZones(p.left, p.right, [{
                 id: "inToMux",

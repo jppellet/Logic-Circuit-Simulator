@@ -445,7 +445,7 @@ export class Wire extends Drawable {
         const [x, y] = parent.editor.offsetXYForContextMenu(e, true)
         const endNode = this.endNode
 
-        const passthrough = PassthroughDef.make<Passthrough>(parent, { bits: 1 })
+        const passthrough = PassthroughDef.make(parent, { bits: 1 })
         passthrough.setSpawned()
         passthrough.setPosition(x, y, false)
         // passthrough.anchor = this.startNode.component // this is too intrusive

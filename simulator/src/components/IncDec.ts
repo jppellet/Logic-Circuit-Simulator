@@ -3,7 +3,7 @@ import { COLOR_COMPONENT_BORDER, GRID_STEP, TextVAlign, fillTextVAlign } from ".
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillUsing, ArrayFillWith, HighImpedance, LogicValue, Unknown, typeOrUndefined } from "../utils"
-import { Adder, AdderDef } from "./Adder"
+import { AdderDef } from "./Adder"
 import { doALUAdd, doALUSub } from "./ALU"
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupVertical, param } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
@@ -125,7 +125,7 @@ export class IncDec extends ParametrizedComponentBase<IncDecRepr> {
         const not = gate("not", "not", 0, adderShiftY + (- (bits - 1) / 2) * adderSpacingY)
 
         const tailAdders = ArrayFillUsing(i =>
-            AdderDef.makeSpawned<Adder>(xray, `tailAdders${i}`, 0, adderShiftY + (i + 1 - (bits - 1) / 2) * adderSpacingY), bits - 1)
+            AdderDef.makeSpawned(xray, `tailAdders${i}`, 0, adderShiftY + (i + 1 - (bits - 1) / 2) * adderSpacingY), bits - 1)
 
         const allocIn = xray.wires(ins.In,
             [not.inputs.In[0], ...tailAdders.map(adder => adder.inputs.B)], {

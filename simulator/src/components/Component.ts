@@ -1,5 +1,6 @@
 import * as t from "io-ts"
 import JSON5 from "json5"
+import type { ComponentForDef } from "../ComponentFactory"
 import type { ComponentKey, DefAndParams, LibraryButtonOptions, LibraryButtonProps, LibraryItem } from "../ComponentMenu"
 import { DrawParams, LogicEditor } from "../LogicEditor"
 import { PointerDragEvent } from "../UIEventManager"
@@ -1938,24 +1939,24 @@ export class ComponentDef<
         }
     }
 
-    public make<TComp extends Component>(parent: DrawableParent): TComp {
-        const comp = new this.impl(parent)
-        parent.components.add(comp)
-        return comp as TComp
-    }
-
-    public makeFromJSON(parent: DrawableParent, data: Record<string, unknown>): Component | undefined {
-        const validated = validateJson(data, this.repr, this.impl!.name ?? "component")
-        if (validated === undefined) {
-            return undefined
-        }
-        const comp = new this.impl(parent, validated)
+    public make(parent: DrawableParent): ComponentForDef<this> {
+        const comp = new this.impl(parent) as ComponentForDef<this>
         parent.components.add(comp)
         return comp
     }
 
-    public makeSpawned<TComp extends Component>(parent: DrawableParent, validatedId: string, x: number | HasPosition, y: number | HasPosition, orient?: Orientation): TComp {
-        const comp = this.make<TComp>(parent)
+    public makeFromJSON(parent: DrawableParent, data: Record<string, unknown>): ComponentForDef<this> | undefined {
+        const validated = validateJson(data, this.repr, this.impl!.name ?? "component")
+        if (validated === undefined) {
+            return undefined
+        }
+        const comp = new this.impl(parent, validated) as ComponentForDef<this>
+        parent.components.add(comp)
+        return comp
+    }
+
+    public makeSpawned(parent: DrawableParent, validatedId: string, x: number | HasPosition, y: number | HasPosition, orient?: Orientation): ComponentForDef<this> {
+        const comp = this.make(parent)
         if (!isNumber(x)) { x = x.posX }
         if (!isNumber(y)) { y = y.posY }
         comp.setPosition(x, y, false)
@@ -2149,29 +2150,29 @@ export class ParametrizedComponentDef<
         }
     }
 
-    public make<TComp extends Component>(parent: DrawableParent, componentParams?: TParams): TComp {
+    public make(parent: DrawableParent, componentParams?: TParams): ComponentForDef<this> {
         const fullParams = componentParams === undefined ? this.defaultParams : mergeWhereDefined(this.defaultParams, componentParams)
         const injectedParams = parent.componentCreationParams
         const resolvedParams = this.doValidate(fullParams, injectedParams, undefined)
-        const comp = new this.impl(parent, resolvedParams)
+        const comp = new this.impl(parent, resolvedParams) as unknown as ComponentForDef<this>
         parent.components.add(comp)
-        return comp as unknown as TComp
+        return comp
     }
 
-    public makeFromJSON(parent: DrawableParent, data: Record<string, unknown>): Component | undefined {
+    public makeFromJSON(parent: DrawableParent, data: Record<string, unknown>): ComponentForDef<this> | undefined {
         const validated = validateJson(data, this.repr, this.impl!.name ?? "component")
         if (validated === undefined) {
             return undefined
         }
         const fullParams = mergeWhereDefined(this.defaultParams, validated)
         const resolvedParams = this.doValidate(fullParams, { isXRay: false }, validated.type)
-        const comp = new this.impl(parent, resolvedParams, validated)
+        const comp = new this.impl(parent, resolvedParams, validated) as unknown as ComponentForDef<this>
         parent.components.add(comp)
         return comp
     }
 
-    public makeSpawned<TComp extends Component>(parent: DrawableParent, validatedId: string, x: number | HasPosition, y: number | HasPosition, orient?: Orientation, componentParams?: TParams): TComp {
-        const comp = this.make<TComp>(parent, componentParams)
+    public makeSpawned(parent: DrawableParent, validatedId: string, x: number | HasPosition, y: number | HasPosition, orient?: Orientation, componentParams?: TParams): ComponentForDef<this> {
+        const comp = this.make(parent, componentParams)
         if (!isNumber(x)) { x = x.posX }
         if (!isNumber(y)) { y = y.posY }
         comp.setPosition(x, y, false)

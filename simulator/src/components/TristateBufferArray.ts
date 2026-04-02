@@ -6,7 +6,7 @@ import { ArrayFillWith, HighImpedance, LogicValue, Unknown, isHighImpedance, isU
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupVertical, param, paramBool } from "./Component"
 import { ControlledInverterDef } from "./ControlledInverter"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
-import { TristateBuffer, TristateBufferDef } from "./TristateBuffer"
+import { TristateBufferDef } from "./TristateBuffer"
 
 
 export const TristateBufferArrayDef =
@@ -139,7 +139,7 @@ export class TristateBufferArray extends ParametrizedComponentBase<TristateBuffe
         const triInTop = bits < 4 ? p.y(-0.7)
             : p.top - (useCompact(bits) ? 1.5 : 1) / scale
         for (let i = bits - 1; i >= 0; i--) {
-            const tri = TristateBufferDef.makeSpawned<TristateBuffer>(xray, `tri${i}`, 0, p.later, "e", { bottom: true })
+            const tri = TristateBufferDef.makeSpawned(xray, `tri${i}`, 0, p.later, "e", { bottom: true })
 
             wire(tri, outs.Out[i], false)
             wire(ins.In[i], tri.inputs.In, "hv", [xIn, tri.inputs.In])

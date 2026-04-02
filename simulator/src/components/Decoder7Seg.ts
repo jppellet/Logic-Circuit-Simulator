@@ -3,7 +3,7 @@ import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, FixedArray, FixedArrayFillWith, LogicValue, Unknown, isUnknown } from "../utils"
 import { ComponentBase, Repr, defineComponent, group } from "./Component"
-import { Decoder, DecoderDef } from "./Decoder"
+import { DecoderDef } from "./Decoder"
 import { DrawableParent, MenuItems } from "./Drawable"
 import { GateNDef } from "./Gate"
 
@@ -87,7 +87,7 @@ export class Decoder7Seg extends ComponentBase<Decoder7SegRepr> {
         const { xray, wire } = this.parent.editor.newXRay(this, level, scale)
         const { ins, outs, p } = this.makeXRayNodes(xray)
 
-        const dec = DecoderDef.makeSpawned<Decoder>(xray, "dec", p.left + 10 * GRID_STEP, 0, "e", { bits: 4 })
+        const dec = DecoderDef.makeSpawned(xray, "dec", p.left + 10 * GRID_STEP, 0, "e", { bits: 4 })
 
         const bits = ArrayFillWith(0, 7)
         for (let n = 0; n < 16; n++) {

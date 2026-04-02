@@ -5,9 +5,9 @@ import { S } from "../strings"
 import { ArrayFillUsing, ArrayFillWith, EdgeTrigger, LogicValue, Unknown, isUnknown, typeOrNull, typeOrUndefined } from "../utils"
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupVertical, param } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
-import { FlipflopD, FlipflopDDef } from "./FlipflopD"
+import { FlipflopDDef } from "./FlipflopD"
 import { Flipflop, FlipflopOrLatch, makeTriggerItems } from "./FlipflopOrLatch"
-import { HalfAdder, HalfAdderDef } from "./HalfAdder"
+import { HalfAdderDef } from "./HalfAdder"
 import { XRay } from "./XRay"
 
 
@@ -217,7 +217,7 @@ export class Counter extends ParametrizedComponentBase<CounterRepr> {
         const bits = this.numBits
 
         const ffds = ArrayFillUsing(i =>
-            FlipflopDDef.makeSpawned<FlipflopD>(xray, `ffd${i === bits ? "V" : i}`, 3 * GRID_STEP, (i - bits / 2) * 10 * GRID_STEP),
+            FlipflopDDef.makeSpawned(xray, `ffd${i === bits ? "V" : i}`, 3 * GRID_STEP, (i - bits / 2) * 10 * GRID_STEP),
             bits + 1
         )
 
@@ -239,7 +239,7 @@ export class Counter extends ParametrizedComponentBase<CounterRepr> {
 
         const adders = ArrayFillUsing(i => {
             const i1 = i + 1
-            const adder = HalfAdderDef.makeSpawned<HalfAdder>(xray, `adder${i1}`, -6 * GRID_STEP, ((i1 - bits / 2) * 10 - 1.5) * GRID_STEP, "s")
+            const adder = HalfAdderDef.makeSpawned(xray, `adder${i1}`, -6 * GRID_STEP, ((i1 - bits / 2) * 10 - 1.5) * GRID_STEP, "s")
             wire(ffds[i1].outputs.Q, adder.inputs.A, "hv", [allocOutLeft.at(0), adder.inputs.A])
             wire(adder.outputs.S, ffds[i1].inputs.D, "hv", [ffds[i1].inputs.D.posX - 1.5 * GRID_STEP, ffds[i1].inputs.D])
             return adder

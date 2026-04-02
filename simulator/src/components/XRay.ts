@@ -9,7 +9,7 @@ import { Component, InjectedParams } from "./Component"
 import { DrawableParent, GraphicsRendering, HasPosition } from "./Drawable"
 import { Gate1, Gate1Def, GateN, GateNDef } from "./Gate"
 import { Gate1Type, Gate1Types, GateNType } from "./GateTypes"
-import { Input, InputDef } from "./Input"
+import { InputDef } from "./Input"
 import { Node, NodeBase, NodeIn, NodeOut } from "./Node"
 import { LinkManager, WireStyle } from "./Wire"
 
@@ -506,16 +506,16 @@ export class XRay implements DrawableParent {
 
     public gate<G extends GateNType | Gate1Type>(validatedId: string, type: G, x: number | HasPosition, y: number | HasPosition, orient?: Orientation, bits?: G extends Gate1Type ? undefined : number): G extends Gate1Type ? Gate1 : GateN {
         if (Gate1Types.includes(type)) {
-            const gate1 = Gate1Def.makeSpawned<Gate1>(this, validatedId, x, y, orient, { type })
+            const gate1 = Gate1Def.makeSpawned(this, validatedId, x, y, orient, { type })
             return gate1 as any
         } else {
-            const gateN = GateNDef.makeSpawned<GateN>(this, validatedId, x, y, orient, { type, bits: bits ?? 2 })
+            const gateN = GateNDef.makeSpawned(this, validatedId, x, y, orient, { type, bits: bits ?? 2 })
             return gateN as any
         }
     }
 
     public constant(validatedId: string, value: LogicValue, x: number | HasPosition, y: number | HasPosition, orient?: Orientation) {
-        const input = InputDef.makeSpawned<Input>(this, validatedId, x, y, orient, { bits: 1 })
+        const input = InputDef.makeSpawned(this, validatedId, x, y, orient, { bits: 1 })
         input.doSetIsConstant(true)
         input.setValue([value])
         return input

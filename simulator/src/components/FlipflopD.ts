@@ -5,7 +5,7 @@ import { EdgeTrigger, LogicValue } from "../utils"
 import { Repr, defineComponent } from "./Component"
 import { DrawableParent } from "./Drawable"
 import { Flipflop, FlipflopBaseDef, FlipflopOrLatchDefNodeDistX } from "./FlipflopOrLatch"
-import { LatchD, LatchDDef } from "./LatchD"
+import { LatchDDef } from "./LatchD"
 import { XRay } from "./XRay"
 
 
@@ -56,8 +56,8 @@ export class FlipflopD extends Flipflop<FlipflopDRepr> {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
         const { ins, outs, p } = this.makeXRayNodes(xray)
 
-        const master = LatchDDef.makeSpawned<LatchD>(xray, "master", p.right - 10 * GRID_STEP, p.later)
-        const slave = LatchDDef.makeSpawned<LatchD>(xray, "slave", p.right - 3 * GRID_STEP, p.later)
+        const master = LatchDDef.makeSpawned(xray, "master", p.right - 10 * GRID_STEP, p.later)
+        const slave = LatchDDef.makeSpawned(xray, "slave", p.right - 3 * GRID_STEP, p.later)
 
         wire(slave.outputs.Q, outs.Q, false)
         wire(master.outputs.Q, slave.inputs.D, false)

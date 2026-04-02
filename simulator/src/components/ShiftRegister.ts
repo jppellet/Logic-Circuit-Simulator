@@ -84,11 +84,11 @@ export class ShiftRegister extends RegisterBase<ShiftRegisterRepr> {
         const muxes: Mux[] = []
 
         for (let i = 0; i < bits; i++) {
-            const ffd = FlipflopDDef.makeSpawned<FlipflopD>(xray, `ffd${i}`, 2 * GRID_STEP, (i - (bits - 1) / 2) * 12 * GRID_STEP)
+            const ffd = FlipflopDDef.makeSpawned(xray, `ffd${i}`, 2 * GRID_STEP, (i - (bits - 1) / 2) * 12 * GRID_STEP)
             ffd.doSetTrigger(edgeTrigger)
             ffds.push(ffd)
 
-            const mux = MuxDef.makeSpawned<Mux>(xray, `mux${i}`, p.left + 5 * GRID_STEP, p.later, "e", { from: 2, to: 1, bottom: true })
+            const mux = MuxDef.makeSpawned(xray, `mux${i}`, p.left + 5 * GRID_STEP, p.later, "e", { from: 2, to: 1, bottom: true })
             wire(mux.outputs.Z[0], ffd.inputs.D, false)
             muxes.push(mux)
 

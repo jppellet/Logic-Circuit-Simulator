@@ -4,9 +4,9 @@ import { S } from "../strings"
 import { LogicValue, Unknown, isHighImpedance, isUnknown } from "../utils"
 import { Repr, defineComponent } from "./Component"
 import { DrawableParent } from "./Drawable"
-import { FlipflopD, FlipflopDDef } from "./FlipflopD"
+import { FlipflopDDef } from "./FlipflopD"
 import { Flipflop, FlipflopBaseDef, FlipflopOrLatchDefNodeDistX } from "./FlipflopOrLatch"
-import { Mux, MuxDef } from "./Mux"
+import { MuxDef } from "./Mux"
 import { XRay } from "./XRay"
 
 
@@ -62,7 +62,7 @@ export class FlipflopT extends Flipflop<FlipflopTRepr> {
         const { xray, wire } = this.parent.editor.newXRay(this, level, scale)
         const { ins, outs, p } = this.makeXRayNodes(xray)
 
-        const ffd = FlipflopDDef.makeSpawned<FlipflopD>(xray, "ffd", GRID_STEP, p.later)
+        const ffd = FlipflopDDef.makeSpawned(xray, "ffd", GRID_STEP, p.later)
         xray.alignComponentOf(ffd.outputs.Q̅, outs.Q̅)
 
         const allocOut = xray.wires([ffd.outputs.Q, ffd.outputs.Q̅], [outs.Q, outs.Q̅], {
@@ -72,7 +72,7 @@ export class FlipflopT extends Flipflop<FlipflopTRepr> {
         wire(ins.Clr, ffd.inputs.Clr, "vh", [ffd.inputs.Clr, p.bottom - GRID_STEP / 2])
         wire(ins.Clock, ffd.inputs.Clock, "hv", [ffd.inputs.Clock.posX - GRID_STEP, ffd.inputs.Clock])
 
-        const mux = MuxDef.makeSpawned<Mux>(xray, "mux", -2.5 * GRID_STEP, ins.T.posY + 2 * GRID_STEP, "s", { from: 2, to: 1, bottom: true })
+        const mux = MuxDef.makeSpawned(xray, "mux", -2.5 * GRID_STEP, ins.T.posY + 2 * GRID_STEP, "s", { from: 2, to: 1, bottom: true })
         wire(mux.outputs.Z[0], ffd.inputs.D, "vh")
         wire(ins.T, mux.inputs.S[0], "hv")
         wire(ffd.outputs.Q, mux.inputs.I[0][0], "vh", [allocOut.at(1), ffd.outputs.Q])
