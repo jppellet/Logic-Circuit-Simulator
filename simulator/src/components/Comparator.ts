@@ -88,12 +88,12 @@ export class Comparator extends ComponentBase<ComparatorRepr> {
 
     protected override makeXRay(level: number, scale: number) {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x, y, later } = this.makeXRayNodes<Comparator>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
-        const andEq = gate("andEq", "and", later, y.top + 2.5 * GRID_STEP, "n")
-        const andG = gate("andG", "and", x.right - 2.5 * GRID_STEP, later, "e", 3)
-        const xnor = gate("xnor", "xnor", x.left + 4.5 * GRID_STEP, later)
-        const notB = gate("notB", "not", x.left + 4.5 * GRID_STEP, later)
+        const andEq = gate("andEq", "and", p.later, p.top + 2.5 * GRID_STEP, "n")
+        const andG = gate("andG", "and", p.right - 2.5 * GRID_STEP, p.later, "e", 3)
+        const xnor = gate("xnor", "xnor", p.left + 4.5 * GRID_STEP, p.later)
+        const notB = gate("notB", "not", p.left + 4.5 * GRID_STEP, p.later)
 
         wire(andEq, outs.Eq, false)
         wire(andG, outs.G, false)
@@ -102,8 +102,8 @@ export class Comparator extends ComponentBase<ComparatorRepr> {
 
         wire(ins.B, xnor.in[1], true)
         wire(ins.A, andG.in[0], "vh", [-3 * GRID_STEP, ins.A])
-        wire(ins.A, xnor.in[0], "vh", [x.left + 1.25 * GRID_STEP, ins.A])
-        wire(ins.B, notB, "vh", [x.left + GRID_STEP / 2, ins.B])
+        wire(ins.A, xnor.in[0], "vh", [p.left + 1.25 * GRID_STEP, ins.A])
+        wire(ins.B, notB, "vh", [p.left + GRID_STEP / 2, ins.B])
 
         wire(xnor, andEq.in[0], "hv")
         wire(ins.E, andG.in[2], "vh", [andEq.in[1], andG.in[2]])

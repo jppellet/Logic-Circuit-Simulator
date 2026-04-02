@@ -1,11 +1,14 @@
 import * as t from "io-ts"
-import { COLOR_EMPTY, COLOR_LABEL_OFF, TextVAlign, displayValuesFromArray, fillTextVAlign, formatWithRadix, useCompact } from "../drawutils"
+import { COLOR_EMPTY, COLOR_LABEL_OFF, GRID_STEP, TextVAlign, displayValuesFromArray, fillTextVAlign, formatWithRadix, useCompact } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
-import { ArrayFillWith, EdgeTrigger, LogicValue, Unknown, isUnknown, typeOrNull, typeOrUndefined } from "../utils"
+import { ArrayFillUsing, ArrayFillWith, EdgeTrigger, LogicValue, Unknown, isUnknown, typeOrNull, typeOrUndefined } from "../utils"
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupVertical, param } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
+import { FlipflopD, FlipflopDDef } from "./FlipflopD"
 import { Flipflop, FlipflopOrLatch, makeTriggerItems } from "./FlipflopOrLatch"
+import { HalfAdder, HalfAdderDef } from "./HalfAdder"
+import { XRay } from "./XRay"
 
 
 export const CounterDef =
@@ -183,7 +186,6 @@ export class Counter extends ParametrizedComponentBase<CounterRepr> {
 
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {
-
         const s = S.Components.Counter.contextMenu
         const makeItemShowRadix = (displayRadix: number | undefined, desc: string) => {
             const icon = this._displayRadix === displayRadix ? "check" : "none"
@@ -202,6 +204,69 @@ export class Counter extends ParametrizedComponentBase<CounterRepr> {
             this.makeChangeParamsContextMenuItem("outputs", S.Components.Generic.contextMenu.ParamNumBits, this.numBits, "bits"),
             ...this.makeForceOutputsContextMenuItem(true),
         ]
+    }
+
+    protected override xrayScale(): number {
+        return useCompact(this.numBits) ? (this.numBits >= 16 ? 0.1 : 0.115) : 0.205
+    }
+
+    protected override makeXRay(level: number, scale: number): XRay {
+        const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
+
+        const bits = this.numBits
+
+        const ffds = ArrayFillUsing(i =>
+            FlipflopDDef.makeSpawned<FlipflopD>(xray, `ffd${i === bits ? "V" : i}`, 3 * GRID_STEP, (i - bits / 2) * 10 * GRID_STEP),
+            bits + 1
+        )
+
+        const ffdV = ffds.pop()! // the last one is just for overflow
+        ffdV.doSetTrigger(EdgeTrigger.falling)
+        ffdV.setPosition(-2 * GRID_STEP, ffdV.posY, false)
+
+
+        const allocOut = xray.wires(ffds.map(ffd => ffd.outputs.Q), outs.Q, {
+            position: { right: p.right - 2 },
+            bookings: { colsLeft: 4 },
+        })
+        const allocOutLeft = allocOut.derive({ invertOn: allocOut.numCols })
+
+        for (let i = 0; i < bits; i++) {
+            wire(ins.Clr, ffds[i].inputs.Clr, "vh", [[allocOutLeft.at(1), p.bottom - 2]])
+        }
+        wire(ins.Clr, ffdV.inputs.Clr, "vh", [ffdV.inputs.Clr, p.bottom - 2])
+
+        const adders = ArrayFillUsing(i => {
+            const i1 = i + 1
+            const adder = HalfAdderDef.makeSpawned<HalfAdder>(xray, `adder${i1}`, -6 * GRID_STEP, ((i1 - bits / 2) * 10 - 1.5) * GRID_STEP, "s")
+            wire(ffds[i1].outputs.Q, adder.inputs.A, "hv", [allocOutLeft.at(0), adder.inputs.A])
+            wire(adder.outputs.S, ffds[i1].inputs.D, "hv", [ffds[i1].inputs.D.posX - 1.5 * GRID_STEP, ffds[i1].inputs.D])
+            return adder
+        }, bits - 1)
+
+        for (let i = 1; i < adders.length; i++) {
+            wire(adders[i - 1].outputs.Cout, adders[i].inputs.B)
+        }
+        wire(adders[adders.length - 1].outputs.Cout, ffdV.inputs.D, "vh")
+
+        // loopback for first ff
+        wire(ffds[0].outputs.Q̅, ffds[0].inputs.D, "hv", [allocOutLeft.at(0), ffds[0].posY - 4.5 * GRID_STEP])
+        wire(ffds[0].outputs.Q, adders[0].inputs.B, "hv", [allocOutLeft.at(1), ffds[0].posY - 5.5 * GRID_STEP])
+
+        const andV = gate("andV", "and", 5 * GRID_STEP, p.later)
+        wire(ffdV.outputs.Q, andV.inputs.In[1], true)
+        wire(andV, outs.V, "hv", [allocOut.at(0), outs.V.posY])
+
+        // wire clock
+        const clockWaypoint = [ffdV.inputs.Clock, ffdV.posY - 4.5 * GRID_STEP] as const
+        for (let i = 0; i < bits; i++) {
+            wire(ins.Clock, ffds[i].inputs.Clock, "hv", clockWaypoint)
+        }
+        wire(ins.Clock, ffdV.inputs.Clock, "hv")
+        wire(ins.Clock, andV.inputs.In[0], "hv", [clockWaypoint, p.leftBy(1, andV.inputs.In[0])])
+
+        return xray
     }
 
 }

@@ -254,7 +254,7 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
 
     protected override makeXRay(level: number, scale: number): XRay | undefined {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x } = this.makeXRayNodes<Demux>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
         const bits = this.numFrom
         const groups = this.numGroups
@@ -266,7 +266,7 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
             const localAnds: GateN[] = []
             for (let b = 0; b < bits; b++) {
                 const out = outs.Z[g][b]
-                const and = gate(`and${g}.${b}`, "and", x.right - 2 * GRID_STEP, out, "e", sels + 1)
+                const and = gate(`and${g}.${b}`, "and", p.right - 2 * GRID_STEP, out, "e", sels + 1)
                 wire(and, out)
                 localAnds.push(and)
             }
@@ -274,7 +274,7 @@ export class Demux extends ParametrizedComponentBase<DemuxRepr> {
         }
 
         const linesRight = ands[0][0].inputs.In[0].posX - GRID_STEP
-        const lineSpacing = Math.min(2 * GRID_STEP, (linesRight - (x.left + 2)) / (2 * sels + bits + 2))
+        const lineSpacing = Math.min(2 * GRID_STEP, (linesRight - (p.left + 2)) / (2 * sels + bits + 2))
 
         const passShiftX = 2.5 * GRID_STEP
         const firstNotX = Math.min(linesRight - passShiftX, ins.S[0].posX)

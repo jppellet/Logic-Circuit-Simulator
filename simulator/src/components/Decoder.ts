@@ -106,24 +106,24 @@ export class Decoder extends ParametrizedComponentBase<DecoderRepr> {
         }
 
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x, later } = this.makeXRayNodes<Decoder>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
         const addSpace = numBits > 3 ? 20 : 0
-        const xPosNot = x.left + 3 * GRID_STEP + addSpace
-        const xPosAnd = x.right - 2 * GRID_STEP - addSpace
+        const xPosNot = p.left + 3 * GRID_STEP + addSpace
+        const xPosAnd = p.right - 2 * GRID_STEP - addSpace
         const xPosWireBranchLeftmost = xPosNot + 3.5 * GRID_STEP + addSpace
         const xPosWireBranchRightmost = xPosAnd - 3 * GRID_STEP - addSpace
         const wireStep = (xPosWireBranchRightmost - xPosWireBranchLeftmost) / (2 * numBits - 1)
 
         const inNots = ins.In.map((in_, i) => {
-            const not = gate(`not${i}`, "not", xPosNot, later)
+            const not = gate(`not${i}`, "not", xPosNot, p.later)
             wire(in_, not, true)
             not.setPosition(not.posX, not.posY - 3.3 * GRID_STEP, false) // grid factor set to mostly avoid touching other wires visually
             return not
         })
 
         outs.Out.forEach((out, i) => {
-            const and = gate(`and${i}`, "and", xPosAnd, later, "e", numBits)
+            const and = gate(`and${i}`, "and", xPosAnd, p.later, "e", numBits)
             wire(and, out, false)
 
             for (let j = 0; j < numBits; j++) {

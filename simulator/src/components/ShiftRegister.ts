@@ -78,7 +78,7 @@ export class ShiftRegister extends RegisterBase<ShiftRegisterRepr> {
         const bits = this.numBits
         const edgeTrigger = this.trigger
         const { xray, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x, y, later } = this.makeXRayNodes<ShiftRegister>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
         const ffds: FlipflopD[] = []
         const muxes: Mux[] = []
@@ -88,19 +88,19 @@ export class ShiftRegister extends RegisterBase<ShiftRegisterRepr> {
             ffd.doSetTrigger(edgeTrigger)
             ffds.push(ffd)
 
-            const mux = MuxDef.makeSpawned<Mux>(xray, `mux${i}`, x.left + 5 * GRID_STEP, later, "e", { from: 2, to: 1, bottom: true })
+            const mux = MuxDef.makeSpawned<Mux>(xray, `mux${i}`, p.left + 5 * GRID_STEP, p.later, "e", { from: 2, to: 1, bottom: true })
             wire(mux.outputs.Z[0], ffd.inputs.D, false)
             muxes.push(mux)
 
         }
 
         // D to top and bottom muxes
-        wire(ins.D, muxes[0].inputs.I[0][0], "vh", [x.left + 2 * GRID_STEP, ins.D])
-        wire(ins.D, muxes[bits - 1].inputs.I[1][0], "vh", [x.left + 2 * GRID_STEP, ins.D])
+        wire(ins.D, muxes[0].inputs.I[0][0], "vh", [p.left + 2 * GRID_STEP, ins.D])
+        wire(ins.D, muxes[bits - 1].inputs.I[1][0], "vh", [p.left + 2 * GRID_STEP, ins.D])
 
         // LR to all muxes
         for (let i = 0; i < bits; i++) {
-            wire(ins.L̅R, muxes[i].inputs.S[0], "vh", [x.left + 1 * GRID_STEP, ins.L̅R])
+            wire(ins.L̅R, muxes[i].inputs.S[0], "vh", [p.left + 1 * GRID_STEP, ins.L̅R])
         }
 
         const allocOut = xray.wires(ffds.map(ffd => ffd.outputs.Q), outs.Q, {
@@ -122,7 +122,7 @@ export class ShiftRegister extends RegisterBase<ShiftRegisterRepr> {
         // clock
         const clockLineX = ffds[0].inputs.Clock.posX - 2 * GRID_STEP
         const lastMuxBottomY = muxes[bits - 1].inputs.S[0].posY + 2 * GRID_STEP
-        const initialWaypoints: WaypointSpecCompact[] = lastMuxBottomY > ins.Clock.posY ? [[x.left + 2, lastMuxBottomY]] : []
+        const initialWaypoints: WaypointSpecCompact[] = lastMuxBottomY > ins.Clock.posY ? [[p.left + 2, lastMuxBottomY]] : []
         for (let i = 0; i < bits; i++) {
             wire(ins.Clock, ffds[i].inputs.Clock, "hv", [
                 ...initialWaypoints,
@@ -133,13 +133,13 @@ export class ShiftRegister extends RegisterBase<ShiftRegisterRepr> {
         // preset
         const presetLineX = ffds[0].inputs.Clock.posX - 1 * GRID_STEP
         for (let i = 0; i < bits; i++) {
-            wire(ins.Pre, ffds[i].inputs.Pre, "vh", [presetLineX, y.top + GRID_STEP])
+            wire(ins.Pre, ffds[i].inputs.Pre, "vh", [presetLineX, p.top + GRID_STEP])
         }
 
         // clear
         const clearLineX = allocOut.at(-1)
         for (let i = 0; i < bits; i++) {
-            wire(ins.Clr, ffds[i].inputs.Clr, "vh", [clearLineX, y.bottom - GRID_STEP])
+            wire(ins.Clr, ffds[i].inputs.Clr, "vh", [clearLineX, p.bottom - GRID_STEP])
         }
 
         return xray

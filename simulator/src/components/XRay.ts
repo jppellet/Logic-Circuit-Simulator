@@ -4,7 +4,7 @@ import { DrawParams, LogicEditor } from "../LogicEditor"
 import { NodeManager } from "../NodeManager"
 import { RecalcManager } from "../RedrawRecalcManager"
 import { TestSuites } from "../TestSuite"
-import { isArray, isNumber, isString, LogicValue, Mode, Orientation, ParentType } from "../utils"
+import { isArray, isBoolean, isNumber, isString, LogicValue, Mode, Orientation, ParentType } from "../utils"
 import { Component, InjectedParams } from "./Component"
 import { DrawableParent, GraphicsRendering, HasPosition } from "./Drawable"
 import { Gate1, Gate1Def, GateN, GateNDef } from "./Gate"
@@ -18,8 +18,51 @@ export type XRayNodesFor<T, N> =
     T extends any[][] ? N[][] :
     T extends any[] ? N[] : N
 
-
 export type WaypointSpecCompact = readonly [x: number | HasPosition, y: number | HasPosition]
+
+export class XRayPosMaker {
+
+    public readonly left: number
+    public readonly right: number
+    public readonly top: number
+    public readonly bottom: number
+    public readonly later = 0
+
+
+    public constructor(
+        public readonly halfWidth: number,
+        public readonly halfHeight: number) {
+        this.left = -halfWidth
+        this.right = halfWidth
+        this.top = -halfHeight
+        this.bottom = halfHeight
+    }
+
+    public x(f: number): number {
+        return f * this.halfWidth
+    }
+
+    public y(f: number): number {
+        return f * this.halfHeight
+    }
+
+    public leftBy(d: number, obj: HasPosition): WaypointSpecCompact {
+        return [obj.posX - d * GRID_STEP, obj.posY]
+    }
+
+    public rightBy(d: number, obj: HasPosition): WaypointSpecCompact {
+        return [obj.posX + d * GRID_STEP, obj.posY]
+    }
+
+    public upBy(d: number, obj: HasPosition): WaypointSpecCompact {
+        return [obj.posX, obj.posY - d * GRID_STEP]
+    }
+
+    public downBy(d: number, obj: HasPosition): WaypointSpecCompact {
+        return [obj.posX, obj.posY + d * GRID_STEP]
+    }
+
+}
 
 
 // Column allocation for wires
@@ -165,34 +208,31 @@ export class XRay implements DrawableParent {
         if (!(endNode instanceof NodeBase)) {
             endNode = endNode.inputs.In[0]
         }
-        const mirrorNodeDisconnected = !(startNode.xRayOutsideNode?.isConnected ?? true) || !(endNode.xRayOutsideNode?.isConnected ?? true)
-        if (mirrorNodeDisconnected && this.level > 0) {
-            // don't show xray wires for unconnected nodes
-            return
-        }
-        const wire = this.linkMgr.addWire(startNode, endNode, false)
-        if (wire === undefined) {
-            return
-        }
-        wire.customPropagationDelay = 0
-        if (styleOrAlign !== undefined) {
+        try {
+            const mirrorNodeDisconnected = !(startNode.xRayOutsideNode?.isConnected ?? true) || !(endNode.xRayOutsideNode?.isConnected ?? true)
+            if (mirrorNodeDisconnected && this.level > 0) {
+                // don't show xray wires for unconnected nodes
+                return
+            }
+            const wire = this.linkMgr.addWire(startNode, endNode, false)
+            if (wire === undefined) {
+                return
+            }
+            wire.customPropagationDelay = 0
+            const wireStyle = isString(styleOrAlign) ? styleOrAlign : isBoolean(styleOrAlign) ? "hv" : "straight"
+            wire.doSetStyle(wireStyle)
+            if (via !== undefined && via.length > 0) {
+                const waypoints = (Array.isArray(via[0]) ? via : [via]) as WaypointSpecCompact[]
+                let nb = 0
+                for (const [x, y] of waypoints) {
+                    wire.addWaypointWith(isNumber(x) ? x : x.posX, isNumber(y) ? y : y.posY, ++nb)
+                }
+            }
+        } finally {
             if (styleOrAlign === true) {
                 this.alignComponentOf(endNode, startNode)
-                wire.doSetStyle("hv")
             } else if (styleOrAlign === false) {
                 this.alignComponentOf(startNode, endNode)
-                wire.doSetStyle("hv")
-            } else {
-                wire.doSetStyle(styleOrAlign)
-            }
-        } else {
-            wire.doSetStyle("straight")
-        }
-        if (via !== undefined && via.length > 0) {
-            const waypoints = (Array.isArray(via[0]) ? via : [via]) as WaypointSpecCompact[]
-            let nb = 0
-            for (const [x, y] of waypoints) {
-                wire.addWaypointWith(isNumber(x) ? x : x.posX, isNumber(y) ? y : y.posY, ++nb)
             }
         }
     }
@@ -265,7 +305,8 @@ export class XRay implements DrawableParent {
                         visitor(num - 1 - i)
                     }
                     if (num % 2 !== 0) {
-                        visitor(numHalf + 1)
+                        // middle
+                        visitor(numHalf)
                     }
                     break
                 case "inside-out":
@@ -303,11 +344,6 @@ export class XRay implements DrawableParent {
                 numCols: alloc.numColumns, cols,
             }
         }
-    }
-
-    /** Workaround to avoid importing the WirePositionAllocation class directly and causing circular dependencies */
-    public newPositionAlloc(first: number, inc: number, numCols: number) {
-        return new WirePositionAllocation(first, inc, numCols)
     }
 
     public wires(
@@ -606,6 +642,16 @@ export class XRay implements DrawableParent {
                 }
             }
         }
+    }
+
+    // Workarounds
+
+    public newPositionAlloc(first: number, inc: number, numCols: number) {
+        return new WirePositionAllocation(first, inc, numCols)
+    }
+
+    public newPosMaker(scaledHalfWidth: number, scaledHalfHeight: number) {
+        return new XRayPosMaker(scaledHalfWidth, scaledHalfHeight)
     }
 }
 

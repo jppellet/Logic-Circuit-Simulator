@@ -2,7 +2,7 @@ import { COLOR_COMPONENT_BORDER, TextVAlign, fillTextVAlign } from "../drawutils
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { LogicValue, Unknown, isHighImpedance, isUnknown } from "../utils"
-import { ComponentBase, Repr, defineComponent } from "./Component"
+import { ComponentBase, Repr, defineComponent, shiftWhenVertical } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
 import { type XRay } from "./XRay"
 
@@ -23,7 +23,7 @@ export const HalfAdderDef =
                 },
                 outs: {
                     S: [outX, -2, "e", s.OutputSumDesc, { hasTriangle: true }],
-                    C: [outX, 2, "e", s.OutputCarryDesc, { hasTriangle: true }],
+                    Cout: [outX, 2, "e", s.OutputCarryDesc, { hasTriangle: true, labelOffset: shiftWhenVertical(4, 0) }],
                 },
             }
         },
@@ -70,7 +70,7 @@ export class HalfAdder extends ComponentBase<HalfAdderRepr> {
 
     protected override propagateValue(newValue: { s: LogicValue, c: LogicValue }) {
         this.outputs.S.value = newValue.s
-        this.outputs.C.value = newValue.c
+        this.outputs.Cout.value = newValue.c
     }
 
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
@@ -90,16 +90,16 @@ export class HalfAdder extends ComponentBase<HalfAdderRepr> {
 
     protected override makeXRay(level: number, scale: number): XRay {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x, later } = this.makeXRayNodes<HalfAdder>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
-        const xor = gate("xor", "xor", x(0.3), later)
-        const and = gate("and", "and", x(0.3), later)
+        const xor = gate("xor", "xor", p.x(0.3), p.later)
+        const and = gate("and", "and", p.x(0.3), p.later)
 
         wire(ins.B, and.in[1], true)
         wire(ins.A, xor.in[0], true)
-        wire(ins.A, and.in[0], "vh", [x(-0.7), ins.A])
-        wire(ins.B, xor.in[1], "vh", [x(-0.4), ins.B])
-        wire(and, outs.C, "vh")
+        wire(ins.A, and.in[0], "vh", [p.x(-0.7), ins.A])
+        wire(ins.B, xor.in[1], "vh", [p.x(-0.4), ins.B])
+        wire(and, outs.Cout, "vh")
         wire(xor, outs.S, "vh")
 
         return xray

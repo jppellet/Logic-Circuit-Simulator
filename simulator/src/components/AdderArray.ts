@@ -8,7 +8,7 @@ import { ALUDef, doALUAdd } from "./ALU"
 import { Component, ParametrizedComponentBase, Repr, ResolvedParams, Value, defineParametrizedComponent, groupVertical, param, shiftWhenHorizontal } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
 import { NodeIn, NodeOut } from "./Node"
-import { XRay } from "./XRay"
+import { XRay, XRayPosMaker } from "./XRay"
 
 
 export const AdderArrayDef =
@@ -116,10 +116,10 @@ export class AdderArray extends ParametrizedComponentBase<AdderArrayRepr> {
         const bits = this.numBits
 
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x, y, later } = this.makeXRayNodes<AdderArray>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
         const adders = xrayWireAndLayoutAsArray<Adder>(
-            xray, bits, ins, outs, x,
+            xray, bits, ins, outs, p,
             (i, x, y) => AdderDef.makeSpawned(xray, `adder${i}`, x, y),
             comp => comp.inputs.A,
             comp => comp.inputs.B,
@@ -127,7 +127,7 @@ export class AdderArray extends ParametrizedComponentBase<AdderArrayRepr> {
         )
         const addersX = adders[0].posX
 
-        wire(ins.Cin, adders[0].inputs.Cin, "vh", [addersX, y.top + GRID_STEP])
+        wire(ins.Cin, adders[0].inputs.Cin, "vh", [addersX, p.top + GRID_STEP])
         for (let i = 1; i < bits; i++) {
             wire(adders[i - 1].outputs.Cout, adders[i].inputs.Cin)
         }
@@ -137,12 +137,12 @@ export class AdderArray extends ParametrizedComponentBase<AdderArrayRepr> {
         const lastButOneCout = adders[bits - 2].outputs.Cout
         const lastButOneCoutY = lastButOneCout.posY
 
-        const xorV = gate("xorV", "xor", later, y.bottom - 2.5 * GRID_STEP, "s")
+        const xorV = gate("xorV", "xor", p.later, p.bottom - 2.5 * GRID_STEP, "s")
         const lastCoutOutputBranchY = lastCoutY + (xorV.in[1].posY - lastCoutY) / 2
         const adderLeft = addersX - adders[0].unrotatedWidth / 2
 
         wire(xorV, outs.V, false)
-        wire(lastCout, outs.Cout, "vh", [[adderLeft, lastCoutOutputBranchY], [outs.Cout, y.bottom - 2]])
+        wire(lastCout, outs.Cout, "vh", [[adderLeft, lastCoutOutputBranchY], [outs.Cout, p.bottom - 2]])
         wire(lastCout, xorV.in[1], "hv", [addersX, lastCoutOutputBranchY])
         wire(lastButOneCout, xorV.in[0], "hv", [addersX, lastButOneCoutY + (adders[bits - 1].inputs.Cin.posY - lastButOneCoutY) / 2])
 
@@ -164,7 +164,7 @@ export function xrayWireAndLayoutAsArray<C extends Component>(
     bits: number,
     ins: { A: NodeOut[]; B: NodeOut[] },
     outs: { S: NodeIn[] },
-    x: ((f: number) => number) & { left: number, right: number },
+    p: XRayPosMaker,
     makeComp: (i: number, x: number, y: number) => C,
     getCompInputTop: (c: C) => NodeIn,
     getCompInputBottom: (c: C) => NodeIn,
@@ -180,7 +180,7 @@ export function xrayWireAndLayoutAsArray<C extends Component>(
     }, bits)
     const compWidth = getCompOutput(comps[0]).posX - getCompInputTop(comps[0]).posX
 
-    xray.wiresInZones(x.left + 2, x.right - 2, [{
+    xray.wiresInZones(p.left + 2, p.right - 2, [{
         id: "in",
         from: [...ins.A, ...ins.B],
         to: [...comps.map(getCompInputTop), ...comps.map(getCompInputBottom)],

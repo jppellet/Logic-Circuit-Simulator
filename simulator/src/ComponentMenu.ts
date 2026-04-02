@@ -173,7 +173,7 @@ const componentsMenu: Array<Section> = [{
         DemuxDef.button({ from: 2, to: 4, bottom: false }, "Demux"),
 
         LatchSRDef.button("LatchSR"),
-        LatchSRGatedDef.button(["LatchSRGated", "LatchSR"], { visible: withButton }),
+        LatchSRGatedDef.button(["LatchSRGated", "LatchSR"], { visible: ifShowOnly }),
         LatchDDef.button("LatchD", { visible: withButton }),
         FlipflopJKDef.button("FlipflopJK", { compat: "flipflop-jk", visible: withButton }),
         FlipflopTDef.button("FlipflopT", { compat: "flipflop-t", visible: withButton }),

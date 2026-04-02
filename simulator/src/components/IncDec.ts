@@ -114,9 +114,9 @@ export class IncDec extends ParametrizedComponentBase<IncDecRepr> {
     protected override makeXRay(level: number, scale: number): XRay | undefined {
         const bits = this.numBits
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, y, later } = this.makeXRayNodes<IncDec>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
-        const xorCout = gate("xorCout", "xor", 0, y.bottom - 2.5 * GRID_STEP, "s")
+        const xorCout = gate("xorCout", "xor", 0, p.bottom - 2.5 * GRID_STEP, "s")
         wire(xorCout, outs.Cout)
 
         const adderShiftY = -3 * GRID_STEP
@@ -138,7 +138,7 @@ export class IncDec extends ParametrizedComponentBase<IncDecRepr> {
         const adderInAX = allocIn.at(0)
         wire(ins.In[0], tailAdders[0].inputs.Cin, "hv", [[allocIn.at(1), not], [not.inputs.In[0].posX - GRID_STEP, tailAdders[0].inputs.Cin.posY - GRID_STEP]])
         for (let i = 0; i < bits - 1; i++) {
-            wire(ins.Dec, tailAdders[i].inputs.A, "vh", [adderInAX, y.top + GRID_STEP])
+            wire(ins.Dec, tailAdders[i].inputs.A, "vh", [adderInAX, p.top + GRID_STEP])
             if (i > 0) {
                 wire(tailAdders[i - 1].outputs.Cout, tailAdders[i].inputs.Cin)
             }
@@ -146,7 +146,7 @@ export class IncDec extends ParametrizedComponentBase<IncDecRepr> {
 
         wire(tailAdders[bits - 2].outputs.Cout, xorCout.in[0], "hv")
         wire(ins.Dec, xorCout.in[1], "vh", [
-            [adderInAX, y.top + GRID_STEP],
+            [adderInAX, p.top + GRID_STEP],
             [xorCout.in[1], tailAdders[bits - 2].outputs.Cout.posY + GRID_STEP],
         ])
 

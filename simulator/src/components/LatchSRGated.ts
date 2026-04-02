@@ -3,8 +3,9 @@ import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { LogicValue } from "../utils"
 import { Repr, defineComponent } from "./Component"
-import { DrawableParent, MenuItems } from "./Drawable"
+import { DrawableParent, MenuData, MenuItems } from "./Drawable"
 import { FlipflopOrLatch, FlipflopOrLatchDef, FlipflopOrLatchDefNodeDistX, FlipflopOrLatchDefPreClr } from "./FlipflopOrLatch"
+import { LatchSRDef } from "./LatchSR"
 import { type XRay } from "./XRay"
 
 
@@ -92,8 +93,18 @@ export class LatchSRGated extends FlipflopOrLatch<LatchSRGatedRepr> {
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {
+        const s = S.Components.LatchSR.contextMenu
+
+        const switchEnablePinMenuItem =
+            MenuData.item("check", s.WithEnable, () => {
+                const replacement = LatchSRDef.make(this.parent)
+                // TODO restore stored value
+                this.replaceWithComponent(replacement)
+            })
+
         return [
             ...this.makeSetShowContentContextMenuItem(),
+            ["mid", switchEnablePinMenuItem],
             ...this.makeForceOutputsContextMenuItem(true),
         ]
     }
@@ -102,22 +113,22 @@ export class LatchSRGated extends FlipflopOrLatch<LatchSRGatedRepr> {
 
     protected override makeXRay(level: number, scale: number): XRay {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x, later } = this.makeXRayNodes<LatchSRGated>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
         const andGateX = -4 * GRID_STEP
 
-        const andS = gate("andS", "and", andGateX, later)
+        const andS = gate("andS", "and", andGateX, p.later)
         wire(ins.S, andS.in[0], true)
-        const andR = gate("andR", "and", andGateX, later)
+        const andR = gate("andR", "and", andGateX, p.later)
         wire(ins.R, andR.in[1], true)
-        const branch = [x.left + GRID_STEP / 2, ins.E] as const
+        const branch = [p.left + GRID_STEP / 2, ins.E] as const
         wire(ins.E, andS.in[1], "vh", branch)
         wire(ins.E, andR.in[0], "vh", branch)
 
         const norGateX = 2.5 * GRID_STEP
-        const norQbar = gate("norQBar", "nor", norGateX, later, "e", 3)
+        const norQbar = gate("norQBar", "nor", norGateX, p.later, "e", 3)
         norQbar.outputs.Out.value = true as LogicValue // stabilize input
-        const norQ = gate("norQ", "nor", norGateX, later, "e", 3)
+        const norQ = gate("norQ", "nor", norGateX, p.later, "e", 3)
 
         wire(andS, norQbar.in[1], true)
         wire(andR, norQ.in[1], true)

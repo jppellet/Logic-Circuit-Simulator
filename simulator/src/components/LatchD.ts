@@ -85,27 +85,27 @@ export class LatchD extends FlipflopOrLatch<LatchDRepr> {
 
     protected override makeXRay(level: number, scale: number): XRay {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x, later } = this.makeXRayNodes<LatchD>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
         const norX = 4 * GRID_STEP
-        const andX = x.left + 7 * GRID_STEP
+        const andX = p.left + 7 * GRID_STEP
 
-        const andD = gate("andD", "and", andX, later)
+        const andD = gate("andD", "and", andX, p.later)
         wire(ins.D, andD.in[0], true)
         const andDbar = gate("andDbar", "and", andX, ins.E.posY - GRID_STEP)
 
-        const notInputX = x.left + 3.5 * GRID_STEP
+        const notInputX = p.left + 3.5 * GRID_STEP
         const notD = gate("notD", "not", notInputX, 0, "s")
 
-        const clockLeftLine = x.left + 0.5 * GRID_STEP
+        const clockLeftLine = p.left + 0.5 * GRID_STEP
         wire(ins.D, notD, "hv")
         wire(notD, andDbar.in[0], "vh")
         wire(ins.E, andDbar.in[1], "vh")
         wire(ins.E, andD.in[1], "vh", [clockLeftLine, andDbar.in[1]])
 
-        const norQbar = gate("norQBar", "nor", norX, later, "e", 3)
+        const norQbar = gate("norQBar", "nor", norX, p.later, "e", 3)
         norQbar.outputs.Out.value = true as LogicValue // stabilize input
-        const norQ = gate("norQ", "nor", norX, later, "e", 3)
+        const norQ = gate("norQ", "nor", norX, p.later, "e", 3)
         wire(andD, norQbar.in[1], true)
         wire(andDbar, norQ.in[1], true)
         wire(ins.Pre, norQbar.in[0], "vh")

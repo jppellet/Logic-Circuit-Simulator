@@ -337,7 +337,7 @@ export class Register extends RegisterBase<RegisterRepr> {
         const bits = this.numBits
         const edgeTrigger = this.trigger
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x, y } = this.makeXRayNodes<Register>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
         if (!this.hasIncDec) {
             // simple register made of D flip-flops
@@ -383,7 +383,7 @@ export class Register extends RegisterBase<RegisterRepr> {
             const incDecY = (mux.inputs.I[0][0].posY + mux.inputs.I[0][bits - 1].posY) / 2
             const incDec = IncDecDef.makeSpawned<IncDec>(xray, "incdec", mux.posX - 5 * GRID_STEP, incDecY, "e", { bits })
 
-            const allocs = xray.wiresInZones(x.left, x.right, [{
+            const allocs = xray.wiresInZones(p.left, p.right, [{
                 id: "inToMux",
                 from: ins.D,
                 to: mux.inputs.I[1],
@@ -407,21 +407,21 @@ export class Register extends RegisterBase<RegisterRepr> {
                 alloc: { allDifferent: true, order: "top-down" },
             }])
 
-            wire(ins.Pre, reg.inputs.Pre, "hv", [ins.Pre, y.top + 2])
-            wire(ins.Clr, reg.inputs.Clr, "vh", [reg.inputs.Clr, y.bottom - 2 - GRID_STEP])
+            wire(ins.Pre, reg.inputs.Pre, "hv", [ins.Pre, p.top + 2])
+            wire(ins.Clr, reg.inputs.Clr, "vh", [reg.inputs.Clr, p.bottom - 2 - GRID_STEP])
 
             const clockAnd = gate("clockAnd", "and", reg.inputs.Clock, mux.posY + mux.unrotatedHeight / 2 + GRID_STEP, "n")
             wire(clockAnd, reg.inputs.Clock)
 
             const norSel = gate("norSel", "nor", mux.inputs.S[0].posX - 3 * GRID_STEP, mux.inputs.S[0].posY + 2 * GRID_STEP)
             wire(norSel, mux.inputs.S[0], "hv")
-            wire(ins.Inc, norSel.in[1], "vh", [norSel.in[0].posX - GRID_STEP, y.bottom - 2])
-            wire(ins.Dec, norSel.in[0], "vh", [norSel.in[1].posX - 2 * GRID_STEP, y.bottom - 2 - GRID_STEP])
+            wire(ins.Inc, norSel.in[1], "vh", [norSel.in[0].posX - GRID_STEP, p.bottom - 2])
+            wire(ins.Dec, norSel.in[0], "vh", [norSel.in[1].posX - 2 * GRID_STEP, p.bottom - 2 - GRID_STEP])
             wire(ins.Clock, clockAnd.in[1], "hv")
 
             const andIncDec = gate("andIncDec", this._saturating ? "and" : "nand", norSel.posX + 2 * GRID_STEP, ins.Clock.posY - 3 * GRID_STEP)
-            wire(ins.Inc, andIncDec.in[1], "vh", [norSel.in[0].posX - GRID_STEP, y.bottom - 2])
-            wire(ins.Dec, andIncDec.in[0], "vh", [norSel.in[1].posX - 2 * GRID_STEP, y.bottom - 2 - GRID_STEP])
+            wire(ins.Inc, andIncDec.in[1], "vh", [norSel.in[0].posX - GRID_STEP, p.bottom - 2])
+            wire(ins.Dec, andIncDec.in[0], "vh", [norSel.in[1].posX - 2 * GRID_STEP, p.bottom - 2 - GRID_STEP])
             if (!this._saturating) {
                 wire(andIncDec, clockAnd.in[0], "hv")
             } else {
@@ -430,7 +430,7 @@ export class Register extends RegisterBase<RegisterRepr> {
                 wire(andIncDec, norSat.in[1], "hv")
                 wire(norSat, clockAnd.in[0], "vh")
             }
-            wire(ins.Dec, incDec.inputs.Dec, "vh", [norSel.in[1].posX - 2 * GRID_STEP, y.bottom - 2 - GRID_STEP])
+            wire(ins.Dec, incDec.inputs.Dec, "vh", [norSel.in[1].posX - 2 * GRID_STEP, p.bottom - 2 - GRID_STEP])
 
             const loopbackLineBottomY = incDec.inputs.Dec.posY - 2 * GRID_STEP
             const loopbackLineInc = allocs.regOut.inc

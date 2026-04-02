@@ -636,6 +636,9 @@ const Strings_fr = {
                 title: "Verrou SR",
                 desc: "Stocke un bit.",
             },
+            contextMenu: {
+                WithEnable: "Avec entrée d’activation",
+            },
         },
         LatchSRGated: {
             tooltip: {
@@ -1485,6 +1488,9 @@ const Strings_en: Strings = {
             tooltip: {
                 title: "SR Latch",
                 desc: "Stores one bit.",
+            },
+            contextMenu: {
+                WithEnable: "With Enable Pin",
             },
         },
         LatchSRGated: {

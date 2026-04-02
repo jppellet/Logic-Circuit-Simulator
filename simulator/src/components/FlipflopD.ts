@@ -54,30 +54,30 @@ export class FlipflopD extends Flipflop<FlipflopDRepr> {
 
     protected override makeXRay(level: number, scale: number): XRay {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x, y, later } = this.makeXRayNodes<FlipflopD>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
-        const master = LatchDDef.makeSpawned<LatchD>(xray, "master", x.right - 10 * GRID_STEP, later)
-        const slave = LatchDDef.makeSpawned<LatchD>(xray, "slave", x.right - 3 * GRID_STEP, later)
+        const master = LatchDDef.makeSpawned<LatchD>(xray, "master", p.right - 10 * GRID_STEP, p.later)
+        const slave = LatchDDef.makeSpawned<LatchD>(xray, "slave", p.right - 3 * GRID_STEP, p.later)
 
         wire(slave.outputs.Q, outs.Q, false)
         wire(master.outputs.Q, slave.inputs.D, false)
         wire(slave.outputs.Q̅, outs.Q̅, "vh")
-        wire(ins.Pre, slave.inputs.Pre, "vh", [slave.inputs.Pre, y.top + GRID_STEP])
-        wire(ins.Clr, slave.inputs.Clr, "vh", [slave.inputs.Clr, y.bottom - GRID_STEP])
+        wire(ins.Pre, slave.inputs.Pre, "vh", [slave.inputs.Pre, p.top + GRID_STEP])
+        wire(ins.Clr, slave.inputs.Clr, "vh", [slave.inputs.Clr, p.bottom - GRID_STEP])
         wire(ins.D, master.inputs.D)
 
         const isFallingTrigger = this.trigger === EdgeTrigger.falling
 
         if (isFallingTrigger) {
-            const notClockSlave = gate("notClockSlave", "not", x.left + 5.5 * GRID_STEP, later)
+            const notClockSlave = gate("notClockSlave", "not", p.left + 5.5 * GRID_STEP, p.later)
             wire(ins.Clock, notClockSlave, true)
             wire(ins.Clock, master.inputs.E, "hv")
             wire(notClockSlave, slave.inputs.E, "hv")
 
         } else {
-            const notClock = gate("notClock", "not", x.left + 2 * GRID_STEP, later)
+            const notClock = gate("notClock", "not", p.left + 2 * GRID_STEP, p.later)
             wire(ins.Clock, notClock, true)
-            const notClockSlave = gate("notClockSlave", "not", x.left + 8 * GRID_STEP, later)
+            const notClockSlave = gate("notClockSlave", "not", p.left + 8 * GRID_STEP, p.later)
             wire(notClock, notClockSlave, true)
 
             const notOutWireY = (notClock.posY + master.posY) / 2

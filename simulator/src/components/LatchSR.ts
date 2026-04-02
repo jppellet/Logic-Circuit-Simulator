@@ -3,8 +3,9 @@ import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { LogicValue } from "../utils"
 import { Repr, defineComponent } from "./Component"
-import { DrawableParent, MenuItems } from "./Drawable"
+import { DrawableParent, MenuData, MenuItems } from "./Drawable"
 import { FlipflopOrLatch, FlipflopOrLatchDef, FlipflopOrLatchDefNodeDistX } from "./FlipflopOrLatch"
+import { LatchSRGatedDef } from "./LatchSRGated"
 import { type XRay } from "./XRay"
 
 
@@ -73,8 +74,18 @@ export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {
+        const s = S.Components.LatchSR.contextMenu
+
+        const switchEnablePinMenuItem =
+            MenuData.item("none", s.WithEnable, () => {
+                const replacement = LatchSRGatedDef.make(this.parent)
+                // TODO restore stored value
+                this.replaceWithComponent(replacement)
+            })
+
         return [
             ...this.makeSetShowContentContextMenuItem(),
+            ["mid", switchEnablePinMenuItem],
             ...this.makeForceOutputsContextMenuItem(true),
         ]
     }
@@ -83,7 +94,7 @@ export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
 
     protected override makeXRay(level: number, scale: number): XRay {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs } = this.makeXRayNodes<LatchSR>(xray)
+        const { ins, outs } = this.makeXRayNodes(xray)
 
         const gateX = -GRID_STEP
         const norQbar = gate("norQBar", "nor", gateX, outs.Q, "e")

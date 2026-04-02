@@ -85,9 +85,9 @@ export class Decoder7Seg extends ComponentBase<Decoder7SegRepr> {
 
     protected override makeXRay(level: number, scale: number) {
         const { xray, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x, y, later } = this.makeXRayNodes<Decoder7Seg>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
-        const dec = DecoderDef.makeSpawned<Decoder>(xray, "dec", x.left + 10 * GRID_STEP, 0, "e", { bits: 4 })
+        const dec = DecoderDef.makeSpawned<Decoder>(xray, "dec", p.left + 10 * GRID_STEP, 0, "e", { bits: 4 })
 
         const bits = ArrayFillWith(0, 7)
         for (let n = 0; n < 16; n++) {
@@ -101,15 +101,15 @@ export class Decoder7Seg extends ComponentBase<Decoder7SegRepr> {
 
         const ors = outs.Out.map((out, i) => {
             const myBits = GateNDef.paramDefs.bits.range.find(value => value >= bits[i]) // ensure 4 is in the range
-            const or = xray.gate(`or${i}`, "or", x.right - 4 * GRID_STEP, out.posY + (i - 3) * 1.5 * GRID_STEP, "e", myBits)
+            const or = xray.gate(`or${i}`, "or", p.right - 4 * GRID_STEP, out.posY + (i - 3) * 1.5 * GRID_STEP, "e", myBits)
             return or
         })
 
         xray.wires(ors.map(or => or.outputs.Out), outs.Out, {
-            position: { right: x.right - 2 },
+            position: { right: p.right - 2 },
         })
         xray.wires(ins.In, dec.inputs.In, {
-            position: { left: x.left + GRID_STEP },
+            position: { left: p.left + GRID_STEP },
         })
 
         const allocOrs = xray.newPositionAlloc(ors[0].inputs.In[0].posX - GRID_STEP, -GRID_STEP * 1.3, 16)

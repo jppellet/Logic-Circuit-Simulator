@@ -146,19 +146,19 @@ export class Bypass extends ParametrizedComponentBase<BypassRepr> {
 
     protected override makeXRay(level: number, scale: number) {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x, y, later } = this.makeXRayNodes<Bypass>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
         const bits = this.numBits
 
-        const notF = gate("notF", "not", later, y.top + 3 * GRID_STEP, "s")
+        const notF = gate("notF", "not", p.later, p.top + 3 * GRID_STEP, "s")
         wire(ins.F, notF, true)
 
-        const andV = gate("andV", "and", notF.posX + 6 * GRID_STEP, y.top + 3 * GRID_STEP, "s")
+        const andV = gate("andV", "and", notF.posX + 6 * GRID_STEP, p.top + 3 * GRID_STEP, "s")
         wire(ins.V, andV.in[0], "vh")
         wire(ins.F, andV.in[1], "vh")
 
         const mainOffsetY = notF.outputs.Out.posY + 1 * GRID_STEP
-        const mainHeight = y.bottom - mainOffsetY
+        const mainHeight = p.bottom - mainOffsetY
 
         const n = (bits - 1) * 2 + 3
         const spacing = mainHeight / n
@@ -173,17 +173,17 @@ export class Bypass extends ParametrizedComponentBase<BypassRepr> {
             wire(notF, andIn.in[0], "vh")
             ands.push(andIn)
 
-            const or = gate(`or${i}`, "or", andPosX + GRID_STEP * 6, later)
+            const or = gate(`or${i}`, "or", andPosX + GRID_STEP * 6, p.later)
             wire(andIn, or.in[1], true)
             wire(andV, or.in[0], "vh")
             ors.push(or)
         }
 
         xray.wires(ins.In, ands.map(and => and.in[1]), {
-            position: { left: x.left + 2, right: ins.F.posX - 2 * GRID_STEP },
+            position: { left: p.left + 2, right: ins.F.posX - 2 * GRID_STEP },
         })
         xray.wires(ors.map(or => or.outputs.Out), outs.Out, {
-            position: { right: x.right },
+            position: { right: p.right },
         })
 
         return xray

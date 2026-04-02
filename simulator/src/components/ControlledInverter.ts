@@ -135,16 +135,16 @@ export class ControlledInverter extends ParametrizedComponentBase<ControlledInve
 
     protected override makeXRay(level: number, scale: number) {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x, y, later } = this.makeXRayNodes<ControlledInverter>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
         const bits = this.numBits
 
-        const xIn = x(-0.95)
+        const xIn = p.x(-0.95)
         const xorInDist = (useCompact(bits) ? 2 : 1) * GRID_STEP
-        const xorInTop = bits < 4 ? y(-0.7)
-            : y.top - (useCompact(bits) ? 1.5 : 1) / scale
+        const xorInTop = bits < 4 ? p.y(-0.7)
+            : p.top - (useCompact(bits) ? 1.5 : 1) / scale
         for (let i = bits - 1; i >= 0; i--) {
-            const xor = gate(`xor${i}`, "xor", 0, later)
+            const xor = gate(`xor${i}`, "xor", 0, p.later)
             wire(xor, outs.Out[i], false)
             wire(ins.In[i], xor.in[1], "hv", [xIn, xor.in[1]])
             wire(ins.S, xor.in[0], "hv", [

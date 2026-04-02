@@ -60,16 +60,16 @@ export class FlipflopT extends Flipflop<FlipflopTRepr> {
 
     protected override makeXRay(level: number, scale: number): XRay {
         const { xray, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, y, later } = this.makeXRayNodes<FlipflopT>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
-        const ffd = FlipflopDDef.makeSpawned<FlipflopD>(xray, "ffd", GRID_STEP, later)
+        const ffd = FlipflopDDef.makeSpawned<FlipflopD>(xray, "ffd", GRID_STEP, p.later)
         xray.alignComponentOf(ffd.outputs.Q̅, outs.Q̅)
 
         const allocOut = xray.wires([ffd.outputs.Q, ffd.outputs.Q̅], [outs.Q, outs.Q̅], {
             alloc: { allDifferent: true, order: "bottom-up" },
         })
-        wire(ins.Pre, ffd.inputs.Pre, "vh", [ffd.inputs.Pre, y.top + GRID_STEP / 2])
-        wire(ins.Clr, ffd.inputs.Clr, "vh", [ffd.inputs.Clr, y.bottom - GRID_STEP / 2])
+        wire(ins.Pre, ffd.inputs.Pre, "vh", [ffd.inputs.Pre, p.top + GRID_STEP / 2])
+        wire(ins.Clr, ffd.inputs.Clr, "vh", [ffd.inputs.Clr, p.bottom - GRID_STEP / 2])
         wire(ins.Clock, ffd.inputs.Clock, "hv", [ffd.inputs.Clock.posX - GRID_STEP, ffd.inputs.Clock])
 
         const mux = MuxDef.makeSpawned<Mux>(xray, "mux", -2.5 * GRID_STEP, ins.T.posY + 2 * GRID_STEP, "s", { from: 2, to: 1, bottom: true })

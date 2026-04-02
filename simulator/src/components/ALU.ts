@@ -7,7 +7,7 @@ import { AdderArray, AdderArrayDef } from "./AdderArray"
 import { Bypass, BypassDef } from "./Bypass"
 import { defineParametrizedComponent, groupHorizontal, groupVertical, param, paramBool, ParametrizedComponentBase, Repr, ResolvedParams, Value } from "./Component"
 import { ControlledInverter, ControlledInverterDef } from "./ControlledInverter"
-import { DrawableParent, DrawContext, GraphicsRendering, HasPosition, MenuData, MenuItems } from "./Drawable"
+import { DrawableParent, DrawContext, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
 import { GateArray, GateArrayDef } from "./GateArray"
 import { Gate1Types, Gate2toNType, Gate2toNTypes } from "./GateTypes"
 import { Mux, MuxDef } from "./Mux"
@@ -284,7 +284,7 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
 
         const bits = this.numBits
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x, y, later } = this.makeXRayNodes<ALU>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
         let muxAL: Mux
         let allocOut: WirePositionAllocation
@@ -294,32 +294,32 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
             // TODO: add and gate to prevent Cout and V from being set in logic mode
 
             // arithmetic part
-            const adder = AdderArrayDef.makeSpawned<AdderArray>(xray, "adder", later, y(-.4), "e", { bits })
+            const adder = AdderArrayDef.makeSpawned<AdderArray>(xray, "adder", p.later, p.y(-.4), "e", { bits })
             const adderHalfHeight = adder.unrotatedHeight / 2 + 3 * GRID_STEP
-            const xorCin = gate("xorCin", "xor", later, adder.posY - adderHalfHeight, "s")
+            const xorCin = gate("xorCin", "xor", p.later, adder.posY - adderHalfHeight, "s")
             wire(xorCin, adder.inputs.Cin, false)
             const xorCinInOpY = xorCin.in[0].posY - GRID_STEP
-            const xorCout = gate("xorCout", "xor", later, adder.posY + adderHalfHeight, "s")
+            const xorCout = gate("xorCout", "xor", p.later, adder.posY + adderHalfHeight, "s")
             wire(adder.outputs.Cout, xorCout.in[0], true)
 
-            const inv = ControlledInverterDef.makeSpawned<ControlledInverter>(xray, "inv", later, later, "e", { bits, bottom: false })
+            const inv = ControlledInverterDef.makeSpawned<ControlledInverter>(xray, "inv", p.later, p.later, "e", { bits, bottom: false })
             xray.alignComponentOf(inv.outputs.Out[0], adder.inputs.B[0])
 
             // logic part
-            const andArray = GateArrayDef.makeSpawned<GateArray>(xray, "andArray", later, y(.65), "e", { type: "and", bits })
+            const andArray = GateArrayDef.makeSpawned<GateArray>(xray, "andArray", p.later, p.y(.65), "e", { type: "and", bits })
             const gateArrayHeight = andArray.unrotatedHeight
-            const orArray = GateArrayDef.makeSpawned<GateArray>(xray, "orArray", later, andArray.posY - gateArrayHeight - GRID_STEP * Math.max(1, bits / 4), "e", { type: "or", bits })
-            const muxLog = MuxDef.makeSpawned<Mux>(xray, "muxLog", later, (andArray.posY + orArray.posY) / 2, "e", { from: 2 * bits, to: bits, bottom: false })
+            const orArray = GateArrayDef.makeSpawned<GateArray>(xray, "orArray", p.later, andArray.posY - gateArrayHeight - GRID_STEP * Math.max(1, bits / 4), "e", { type: "or", bits })
+            const muxLog = MuxDef.makeSpawned<Mux>(xray, "muxLog", p.later, (andArray.posY + orArray.posY) / 2, "e", { from: 2 * bits, to: bits, bottom: false })
 
             // output
-            muxAL = MuxDef.makeSpawned<Mux>(xray, "muxAL", x.right - 4 * GRID_STEP, later, "e", { from: 2 * bits, to: bits, bottom: false })
+            muxAL = MuxDef.makeSpawned<Mux>(xray, "muxAL", p.right - 4 * GRID_STEP, p.later, "e", { from: 2 * bits, to: bits, bottom: false })
 
             xray.wires(inv.outputs.Out, adder.inputs.B)
 
             const logicArrayWidth = orArray.outputs.S[0].posX - orArray.inputs.A[0].posX
             const muxWidth = muxAL.outputs.Z[0].posX - muxAL.inputs.I[0][0].posX
 
-            const allocs = xray.wiresInZones(x.left, x.right, [{
+            const allocs = xray.wiresInZones(p.left, p.right, [{
                 id: "aluIn",
                 from: [...ins.A, ...ins.B],
                 to: [[...adder.inputs.A, ...inv.inputs.In], orArray.inputs._all, andArray.inputs._all],
@@ -380,7 +380,7 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
             const inc = (bits <= 4 ? 1.4 : (bits <= 16 ? 0.85 : 0.5)) * GRID_STEP
             const invertOn = bits // to have a nicer name when deriving allocators
 
-            const allocControlLinesRight = xray.newPositionAlloc(x.right - GRID_STEP, -inc, 6)
+            const allocControlLinesRight = xray.newPositionAlloc(p.right - GRID_STEP, -inc, 6)
             xray.debugVLine(allocControlLinesRight, "blue", "allocControlLinesRight")
 
             const decGatesY = ins.Op[0].posY + 17 * GRID_STEP
@@ -397,7 +397,7 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
 
             // control gates, second line
             const decBCst = gate("decBCst", "or", decANeg, decGatesY2, "s", 3)
-            const decBGetsA = gate("decBGetsA", "nor", later, decGatesY2, "s")
+            const decBGetsA = gate("decBGetsA", "nor", p.later, decGatesY2, "s")
             const decBNeg = gate("decBNeg", "or", decATimesDiv2, decGatesY2, "s")
 
             // coordinates of upper right corners of the control lines
@@ -405,17 +405,14 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
             const allocControlLinesUp = xray.newPositionAlloc(decATimes2.in[0].posY - 2 * GRID_STEP, -inc, 5)
             xray.debugHLine(allocControlLinesUp, "green", "allocControlLinesUp")
 
-            const upBy = (d: number, obj: HasPosition) => [obj.posX, obj.posY - d * GRID_STEP] as const
-            const downBy = (d: number, obj: HasPosition) => [obj.posX, obj.posY + d * GRID_STEP] as const
-
             // wires inside decoder gates
             wire(decATimesDiv2, decATimes2.in[1], "hv", [decATimesDiv2.posX + 2.5 * GRID_STEP, decATimes2.in[1]])
             wire(decATimesDiv2, decADiv2.in[0], "hv", [decATimesDiv2.posX - 2.5 * GRID_STEP, decADiv2.in[0]])
             wire(decAGetsB, decANeg.in[0], "hv", [decAGetsB.posX - 2.5 * GRID_STEP, decANeg.in[0]])
             wire(decAGetsB, decBGetsA.in[1], true)
             wire(decATimes2, decBGetsA.in[0], "vh", [decBGetsA.in[0], decBGetsA.in[0].posY - 2 * GRID_STEP])
-            wire(decAGetsB, decBNeg.in[1], "vh", upBy(1, decBNeg.in[1]))
-            wire(decADiv2, decBCst.in[0], "vh", upBy(3, decBCst.in[0]))
+            wire(decAGetsB, decBNeg.in[1], "vh", p.upBy(1, decBNeg.in[1]))
+            wire(decADiv2, decBCst.in[0], "vh", p.upBy(3, decBCst.in[0]))
             wire(decANeg, decBCst.in[1])
             wire(decBGets1, decBCst.in[2], "vh", [decBCst.in[2], decBCst.in[2].posY - GRID_STEP])
 
@@ -433,21 +430,21 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
             wire(ins.Op[2], decATimesDiv2.in[1], "vh", [decATimesDiv2.in[1], decLineOp2Y])
             wire(ins.Op[2], decAGetsB.in[1], "vh", [decAGetsB.in[1], decLineOp2Y])
             wire(ins.Op[2], decBGets1.in[1], "vh", [decBGets1.in[1], decLineOp2Y])
-            wire(ins.Op[0], decBNeg.in[0], "vh", [decLineOp0Corner1, upBy(1, decBNeg.in[0])])
+            wire(ins.Op[0], decBNeg.in[0], "vh", [decLineOp0Corner1, p.upBy(1, decBNeg.in[0])])
 
 
             // arithmetic input selectors
-            const allocInput = xray.newPositionAlloc(x.left + GRID_STEP, inc, 2 * bits + 3)
+            const allocInput = xray.newPositionAlloc(p.left + GRID_STEP, inc, 2 * bits + 3)
             const allocInputB = allocInput.derive({ invertOn })
             const allocInputA = allocInput.derive({ colShift: bits + 1, invertOn })
 
-            const muxAShift = MuxDef.makeSpawned<Mux>(xray, "muxAShift", later, decBCst.posY + 16 * GRID_STEP, "e", { from: 2 * bits, to: bits, bottom: false })
+            const muxAShift = MuxDef.makeSpawned<Mux>(xray, "muxAShift", p.later, decBCst.posY + 16 * GRID_STEP, "e", { from: 2 * bits, to: bits, bottom: false })
             xray.alignXAfter(allocInput, muxAShift.inputs.I[0][0])
 
             const allocToMuxABSel = xray.newPositionAlloc(muxAShift.outputs.Z[0].posX, inc, bits + 2)
             const allocToMuxABSelA = allocToMuxABSel.derive({ colShift: 2 })
 
-            const muxAInput = MuxDef.makeSpawned<Mux>(xray, "muxAInput", later, later, "e", { from: 2 * bits, to: bits, bottom: false })
+            const muxAInput = MuxDef.makeSpawned<Mux>(xray, "muxAInput", p.later, p.later, "e", { from: 2 * bits, to: bits, bottom: false })
 
             xray.alignComponentOf(muxAInput.inputs.I[0][0], muxAShift.outputs.Z[0])
             xray.alignXAfter(allocToMuxABSel, muxAInput.inputs.I[0][0])
@@ -476,22 +473,22 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
 
             wire(decBGetsA, muxBInput.inputs.S[0], "vh", [allocToAdder.at(0), allocControlLinesDown.at(4)])
 
-            const adder = AdderArrayDef.makeSpawned<AdderArray>(xray, "adder", later, later, "e", { bits })
+            const adder = AdderArrayDef.makeSpawned<AdderArray>(xray, "adder", p.later, p.later, "e", { bits })
             xray.alignXAfter(allocToAdder, adder.inputs.A[0])
             xray.alignComponentOf(adder.inputs.B[0], muxBInput.outputs.Z[0])
 
             const xorCin = gate("xorCin", "xor", adder, adder.posY - adder.unrotatedHeight / 2 - 5 * GRID_STEP, "s")
-            const invB = ControlledInverterDef.makeSpawned<ControlledInverter>(xray, "invB", adder.posX - 6 * GRID_STEP, later, "e", { bits, bottom: false })
+            const invB = ControlledInverterDef.makeSpawned<ControlledInverter>(xray, "invB", adder.posX - 6 * GRID_STEP, p.later, "e", { bits, bottom: false })
             xray.alignComponentOf(invB.outputs.Out[0], adder.inputs.B[0])
-            const xorCout = gate("xorCout", "xor", later, adder.posY + adder.unrotatedHeight / 2 + 4 * GRID_STEP, "s")
+            const xorCout = gate("xorCout", "xor", p.later, adder.posY + adder.unrotatedHeight / 2 + 4 * GRID_STEP, "s")
             wire(adder.outputs.Cout, xorCout.in[0], true)
-            const andCout = gate("andCout", "and", later, xorCout.posY + 7 * GRID_STEP, "s")
+            const andCout = gate("andCout", "and", p.later, xorCout.posY + 7 * GRID_STEP, "s")
             wire(xorCout, andCout.in[0], true)
-            const andV = gate("andV", "and", later, andCout, "s")
+            const andV = gate("andV", "and", p.later, andCout, "s")
             wire(adder.outputs.V, andV.in[1], true)
             const notMode = gate("notMode", "not", xorCout.posX + 6 * GRID_STEP, xorCout, "s")
-            wire(notMode, andCout.in[1], "hv", downBy(1, notMode.outputs.Out))
-            wire(notMode, andV.in[0], "hv", downBy(1, notMode.outputs.Out))
+            wire(notMode, andCout.in[1], "hv", p.downBy(1, notMode.outputs.Out))
+            wire(notMode, andV.in[0], "hv", p.downBy(1, notMode.outputs.Out))
             // 
             wire(xorCin, adder.inputs.Cin)
             wire(decBNeg, xorCin.in[1], "vh", [xorCin.in[1], allocControlLinesDown.at(5)])
@@ -516,18 +513,18 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
 
             // logic part
 
-            const invOr = ControlledInverterDef.makeSpawned<ControlledInverter>(xray, "invOr", muxBCst, y(.15), "e", { bits, bottom: false })
-            const or = GateArrayDef.makeSpawned<GateArray>(xray, "or", invOr.posX + 6 * GRID_STEP, later, "e", { type: "or", bits })
+            const invOr = ControlledInverterDef.makeSpawned<ControlledInverter>(xray, "invOr", muxBCst, p.y(.15), "e", { bits, bottom: false })
+            const or = GateArrayDef.makeSpawned<GateArray>(xray, "or", invOr.posX + 6 * GRID_STEP, p.later, "e", { type: "or", bits })
             xray.alignComponentOf(or.inputs.B[0], invOr.outputs.Out[0])
             xray.wires(invOr.outputs.Out, or.inputs.B)
 
             const and = GateArrayDef.makeSpawned<GateArray>(xray, "and", or, or.posY + or.unrotatedHeight + 2 * GRID_STEP, "e", { type: "and", bits })
-            const invAnd = ControlledInverterDef.makeSpawned<ControlledInverter>(xray, "invAnd", invOr, later, "e", { bits, bottom: false })
+            const invAnd = ControlledInverterDef.makeSpawned<ControlledInverter>(xray, "invAnd", invOr, p.later, "e", { bits, bottom: false })
             xray.alignComponentOf(invAnd.outputs.Out[0], and.inputs.B[0])
             xray.wires(invAnd.outputs.Out, and.inputs.B)
 
             const xor = GateArrayDef.makeSpawned<GateArray>(xray, "xor", or, and.posY + and.unrotatedHeight + 2 * GRID_STEP, "e", { type: "xor", bits })
-            const bypassXor = BypassDef.makeSpawned<Bypass>(xray, "bypassXor", invOr, later, "e", { bits, bottom: true })
+            const bypassXor = BypassDef.makeSpawned<Bypass>(xray, "bypassXor", invOr, p.later, "e", { bits, bottom: true })
             xray.alignComponentOf(bypassXor.outputs.Out[0], xor.inputs.B[0])
             const cst1 = xray.constant("cst1", true, bypassXor.inputs.V.posX + 2 * GRID_STEP, bypassXor.inputs.V, "w")
             wire(cst1.outputs.Out[0], bypassXor.inputs.V)
@@ -560,9 +557,9 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
             xray.debugVLine(allocMuxLogInControlLines, "orange", "allocMuxLogInControlLines")
 
             // output mux
-            muxAL = MuxDef.makeSpawned<Mux>(xray, "muxAL", x.right - 2 - (bits + 3) * inc, 0, "e", { from: 2 * bits, to: bits, bottom: false })
+            muxAL = MuxDef.makeSpawned<Mux>(xray, "muxAL", p.right - 2 - (bits + 3) * inc, 0, "e", { from: 2 * bits, to: bits, bottom: false })
             allocOut = xray.wires(muxAL.outputs.Z, outs.S, {
-                position: { right: x.right - 2 },
+                position: { right: p.right - 2 },
                 alloc: { order: "bottom-up", allDifferent: true },
             })
             const allocToMuxAL = xray.wires([...adder.outputs.S, ...muxLog.outputs.Z], muxAL.inputs.I.flat(), {
@@ -580,7 +577,7 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
             const orCout = gate("orCout", "or", outs.Cout, outs.Cout.posY - 5 * GRID_STEP, "s")
             wire(orCout, outs.Cout)
             wire(andCout, orCout.in[0], "vh", [[allocMuxLogInControlLines.at(2), allocMiddleControlLines.at(5)], [orCout.in[0], outs.V.posY - 3 * GRID_STEP]])
-            const andLogCout = gate("andLogCout", "and", later, orCout.posY - 6 * GRID_STEP, "s")
+            const andLogCout = gate("andLogCout", "and", p.later, orCout.posY - 6 * GRID_STEP, "s")
             wire(andLogCout, orCout.in[1], false)
             wire(ins.A[bits - 1], andLogCout.in[1], "hv", [allocInputA.at(bits - 1), muxAShiftLog.inputs.I[1][bits - 2]])
 
@@ -593,10 +590,10 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
             const decLineCinCorner2 = [allocVerticalControlLines.at(1), allocControlLinesDown.at(7)] as const
             const decLineCinCorner3 = [allocMuxLogInControlLines.at(0), allocMiddleControlLines.at(2)] as const
             const decLineCinCorner4 = [muxAShiftLog.inputs.I[0][0].posX - GRID_STEP, muxAShiftLog.inputs.S[0].posY] as const
-            wire(ins.Cin, xorCin.in[0], "vh", [decLineCinCorner1, decLineCinCorner2, upBy(2, xorCin.in[0])])
+            wire(ins.Cin, xorCin.in[0], "vh", [decLineCinCorner1, decLineCinCorner2, p.upBy(2, xorCin.in[0])])
             wire(ins.Cin, muxAShiftLog.inputs.I[0][0], "vh", [decLineCinCorner1, decLineCinCorner2, decLineCinCorner3, decLineCinCorner4])
             wire(ins.Cin, muxAShiftLog.inputs.I[1][bits - 1], "vh", [decLineCinCorner1, decLineCinCorner2, decLineCinCorner3, decLineCinCorner4])
-            wire(decATimes2, andLogCout.in[0], "vh", [[allocControlLinesRight.at(5), decATimes2.outputs.Out.posY + 2 * GRID_STEP], [allocVerticalControlLines.at(0), allocControlLinesDown.at(6)], [allocMuxLogInControlLines.at(1), allocMiddleControlLines.at(3)], upBy(1, andLogCout.in[0])])
+            wire(decATimes2, andLogCout.in[0], "vh", [[allocControlLinesRight.at(5), decATimes2.outputs.Out.posY + 2 * GRID_STEP], [allocVerticalControlLines.at(0), allocControlLinesDown.at(6)], [allocMuxLogInControlLines.at(1), allocMiddleControlLines.at(3)], p.upBy(1, andLogCout.in[0])])
             const decLineOp0Corner2 = [allocVerticalControlLines.at(4), allocControlLinesDown.at(10)] as const
             const decLineOp0Corner3 = [allocMuxLogInControlLines.at(4), allocMiddleControlLines.at(1)] as const
             wire(ins.Op[0], invBypass, "vh", [decLineOp0Corner1, decLineOp0Corner2, decLineOp0Corner3])
@@ -615,7 +612,7 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
             wire(ins.Op[0], muxMuxLogSel.inputs.I[0][0], "vh", [decLineOp0Corner1, decLineOp0Corner2])
         }
 
-        const norZ = gate("norZ", "nor", later, outs.Z.posY - 5 * GRID_STEP, "s", bits)
+        const norZ = gate("norZ", "nor", p.later, outs.Z.posY - 5 * GRID_STEP, "s", bits)
         wire(norZ, outs.Z, false)
         const norZInMinY = norZ.in[0].posY
         for (let i = 0; i < bits; i++) {

@@ -250,7 +250,7 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
 
     protected override makeXRay(level: number, scale: number): XRay | undefined {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x } = this.makeXRayNodes<Mux>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
         const bits = this.numTo
         const groups = this.numGroups
@@ -265,7 +265,7 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
             nots.push(not)
         }
 
-        const orCenterX = x.right - 3 * GRID_STEP
+        const orCenterX = p.right - 3 * GRID_STEP
         const andCenterX = orCenterX - 6 * GRID_STEP
 
         const globalOffsetX = (nots[0].outputs.Out.posY - ins.S[0].posY) / 2
@@ -303,7 +303,7 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
         }
         const gateWidth = ands[0][0].outputs.Out.posX - ands[0][0].inputs.In[0].posX
         const andsFlat = ands.flat()
-        const allocations = xray.wiresInZones(x.left + 2, x.right - 2, [{
+        const allocations = xray.wiresInZones(p.left + 2, p.right - 2, [{
             id: "muxIn",
             from: ins.I.flat(),
             to: andInputs,

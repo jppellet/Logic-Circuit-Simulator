@@ -130,16 +130,16 @@ export class TristateBufferArray extends ParametrizedComponentBase<TristateBuffe
 
     protected override makeXRay(level: number, scale: number) {
         const { xray, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x, y, later } = this.makeXRayNodes<TristateBufferArray>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
         const bits = this.numBits
 
-        const xIn = x(-0.95)
+        const xIn = p.x(-0.95)
         const triInX = -(useCompact(bits) ? 5 : 3.5) * GRID_STEP
-        const triInTop = bits < 4 ? y(-0.7)
-            : y.top - (useCompact(bits) ? 1.5 : 1) / scale
+        const triInTop = bits < 4 ? p.y(-0.7)
+            : p.top - (useCompact(bits) ? 1.5 : 1) / scale
         for (let i = bits - 1; i >= 0; i--) {
-            const tri = TristateBufferDef.makeSpawned<TristateBuffer>(xray, `tri${i}`, 0, later, "e", { bottom: true })
+            const tri = TristateBufferDef.makeSpawned<TristateBuffer>(xray, `tri${i}`, 0, p.later, "e", { bottom: true })
 
             wire(tri, outs.Out[i], false)
             wire(ins.In[i], tri.inputs.In, "hv", [xIn, tri.inputs.In])

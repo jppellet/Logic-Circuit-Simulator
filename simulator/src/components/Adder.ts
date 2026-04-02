@@ -92,25 +92,25 @@ export class Adder extends ComponentBase<AdderRepr> {
 
     protected override makeXRay(level: number, scale: number) {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, x, y, later } = this.makeXRayNodes<Adder>(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
 
-        const and1 = gate("and1", "and", x(-0.5), later)
-        const xor1 = gate("xor1", "xor", x(-0.5), later)
-        const and2 = gate("and2", "and", later, y(0), "s")
-        const xor2 = gate("xor2", "xor", x(0.7), y(-0.2), "s")
-        const or = gate("or", "or", later, y.bottom - 2.5 * GRID_STEP, "s")
+        const and1 = gate("and1", "and", p.x(-0.5), p.later)
+        const xor1 = gate("xor1", "xor", p.x(-0.5), p.later)
+        const and2 = gate("and2", "and", p.later, p.y(0), "s")
+        const xor2 = gate("xor2", "xor", p.x(0.7), p.y(-0.2), "s")
+        const or = gate("or", "or", p.later, p.bottom - 2.5 * GRID_STEP, "s")
 
         wire(ins.A, xor1.in[0], true)
         wire(ins.B, and1.in[1], true)
-        wire(ins.B, xor1.in[1], "vh", [x(-0.85), ins.B])
-        wire(ins.A, and1.in[0], "vh", [x(-.95), ins.A])
+        wire(ins.B, xor1.in[1], "vh", [p.x(-0.85), ins.B])
+        wire(ins.A, and1.in[0], "vh", [p.x(-.95), ins.A])
         wire(or, outs.Cout)
         wire(and1, or.in[1], "hv")
         wire(and2, or.in[0], false)
         wire(xor1, and2.in[1], "hv")
         wire(xor1, xor2.in[1], "hv", [and2.in[1], xor1])
-        wire(ins.Cin, xor2.in[0], "hv", [ins.Cin, y(-0.9)])
-        wire(ins.Cin, and2.in[0], "vh", [and2.in[0], y(-0.9)])
+        wire(ins.Cin, xor2.in[0], "hv", [ins.Cin, p.y(-0.9)])
+        wire(ins.Cin, and2.in[0], "vh", [and2.in[0], p.y(-0.9)])
         wire(xor2, outs.S, "vh")
 
         return xray
