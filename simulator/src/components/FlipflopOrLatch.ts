@@ -248,8 +248,13 @@ export abstract class Flipflop<
             ...makeTriggerItems(this._trigger, this.doSetTrigger.bind(this)),
             ["mid", MenuData.sep()],
             ...this.makeSetShowContentContextMenuItem(),
+            ...this.makeFlipFlopSpecificContextMenuItems(),
             ...this.makeForceOutputsContextMenuItem(true),
         ]
+    }
+
+    protected makeFlipFlopSpecificContextMenuItems(): MenuItems {
+        return []
     }
 
 }

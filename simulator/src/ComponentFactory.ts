@@ -24,7 +24,7 @@ import { Display7Seg, Display7SegDef } from "./components/Display7Seg"
 import { DisplayAscii, DisplayAsciiDef } from "./components/DisplayAscii"
 import { DisplayBar, DisplayBarDef } from "./components/DisplayBar"
 import { DrawableParent, MenuData } from "./components/Drawable"
-import { FlipflopD, FlipflopDDef } from "./components/FlipflopD"
+import { FlipflopD, FlipflopDDef, FlipflopDWithEnable, FlipflopDWithEnableDef } from "./components/FlipflopD"
 import { FlipflopJK, FlipflopJKDef } from "./components/FlipflopJK"
 import { FlipflopT, FlipflopTDef } from "./components/FlipflopT"
 import { Gate1, Gate1Def, GateN, GateNDef } from "./components/Gate"
@@ -35,8 +35,7 @@ import { IncDec, IncDecDef } from "./components/IncDec"
 import { Input, InputDef } from "./components/Input"
 import { Label, LabelDef } from "./components/Label"
 import { LatchD, LatchDDef } from "./components/LatchD"
-import { LatchSR, LatchSRDef } from "./components/LatchSR"
-import { LatchSRGated, LatchSRGatedDef } from "./components/LatchSRGated"
+import { LatchSR, LatchSRDef, LatchSRWithEnable, LatchSRWithEnableDef } from "./components/LatchSR"
 import { Mux, MuxDef } from "./components/Mux"
 import { Output, OutputDef } from "./components/Output"
 import { Passthrough, PassthroughDef } from "./components/Passthrough"
@@ -74,6 +73,7 @@ export type ComponentForDef<TDef> = Component & (
     TDef extends typeof DisplayAsciiDef ? DisplayAscii :
     TDef extends typeof DisplayBarDef ? DisplayBar :
     TDef extends typeof FlipflopDDef ? FlipflopD :
+    TDef extends typeof FlipflopDWithEnableDef ? FlipflopDWithEnable :
     TDef extends typeof FlipflopJKDef ? FlipflopJK :
     TDef extends typeof FlipflopTDef ? FlipflopT :
     TDef extends typeof Gate1Def ? Gate1 :
@@ -85,7 +85,7 @@ export type ComponentForDef<TDef> = Component & (
     TDef extends typeof LabelDef ? Label :
     TDef extends typeof LatchDDef ? LatchD :
     TDef extends typeof LatchSRDef ? LatchSR :
-    TDef extends typeof LatchSRGatedDef ? LatchSRGated :
+    TDef extends typeof LatchSRWithEnableDef ? LatchSRWithEnable :
     TDef extends typeof MuxDef ? Mux :
     TDef extends typeof OutputDef ? Output :
     TDef extends typeof PassthroughDef ? Passthrough :
@@ -136,37 +136,42 @@ const AllComponentDefs: ComponentMaker<any>[] = [
     TristateBufferDef,
     TristateBufferArrayDef,
     ControlledInverterDef,
-    BypassDef,
 
     // labels & layout
     LabelDef,
     RectangleDef,
     PassthroughDef,
 
-    // ic
+    // arithmetic
     HalfAdderDef,
     AdderDef,
-    IncDecDef,
     ComparatorDef,
     AdderArrayDef,
+    IncDecDef,
     ALUDef,
+
+    // combinational
     MuxDef,
     DemuxDef,
+    BypassDef,
+    DecoderDef,
+    Decoder7SegDef,
+    Decoder16SegDef,
+    DecoderBCDDef,
+
+    // memory
     LatchSRDef,
-    LatchSRGatedDef,
+    LatchSRWithEnableDef,
     LatchDDef,
     FlipflopJKDef,
     FlipflopTDef,
     FlipflopDDef,
+    FlipflopDWithEnableDef,
     RegisterDef,
     ShiftRegisterDef,
     ROMDef,
     RAMDef,
     CounterDef,
-    DecoderDef,
-    Decoder7SegDef,
-    Decoder16SegDef,
-    DecoderBCDDef,
 ]
 
 // Data present in the HTMLElement of a component button

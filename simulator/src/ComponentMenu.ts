@@ -32,8 +32,7 @@ import { IncDecDef } from "./components/IncDec"
 import { InputDef } from "./components/Input"
 import { LabelDef } from "./components/Label"
 import { LatchDDef } from "./components/LatchD"
-import { LatchSRDef } from "./components/LatchSR"
-import { LatchSRGatedDef } from "./components/LatchSRGated"
+import { LatchSRDef, LatchSRWithEnableDef } from "./components/LatchSR"
 import { MuxDef } from "./components/Mux"
 import { OutputDef } from "./components/Output"
 import { PassthroughDef } from "./components/Passthrough"
@@ -142,11 +141,9 @@ const componentsMenu: Array<Section> = [{
         GateNDef.button({ type: "nor", bits: 4 }, "nor4", { compat: "nor4", visible: ifShowOnly }),
         GateNDef.button({ type: "xnor", bits: 4 }, "xnor4", { compat: "xnor4", visible: ifShowOnly }),
 
+        GateArrayDef.button({ type: "and", bits: 4 }, "GateArray", { compat: "quad-gate" }),
         ControlledInverterDef.button({ bits: 4, bottom: false }, "ControlledInverter", { compat: "switched-inverter", visible: withButton }),
-        BypassDef.button({ bits: 4, bottom: false }, "Bypass", { visible: withButton }),
-        GateArrayDef.button({ type: "and", bits: 4 }, "GateArray", { compat: "quad-gate", visible: withButton }),
         TristateBufferArrayDef.button({ bits: 4, bottom: false }, "TristateBufferArray", { visible: withButton }),
-
     ],
 }, {
     nameKey: "Layout",
@@ -158,22 +155,34 @@ const componentsMenu: Array<Section> = [{
         PassthroughDef.button({ bits: 4 }, "PassthroughN"),
     ],
 }, {
-    nameKey: "Components",
+    nameKey: "Arithmetic",
     items: [
         HalfAdderDef.button("HalfAdder"),
         AdderDef.button("Adder"),
-        IncDecDef.button({ bits: 4 }, "IncDec", { visible: withButton }),
         ComparatorDef.button("Comparator", { compat: "comparator", visible: withButton }),
-
+        
+        IncDecDef.button({ bits: 4 }, "IncDec", { visible: withButton }),
         AdderArrayDef.button({ bits: 4 }, "AdderArray"),
         ALUDef.button({ bits: 4, ext: false }, "ALU"),
-
+    ],
+}, {
+    nameKey: "Combinational",
+    items: [
         MuxDef.button({ from: 4, to: 2, bottom: false }, "Mux"),
         MuxDef.button({ from: 8, to: 4, bottom: false }, "Mux", { visible: ifShowOnly }),
         DemuxDef.button({ from: 2, to: 4, bottom: false }, "Demux"),
+        BypassDef.button({ bits: 4, bottom: false }, "Bypass", { visible: withButton }),
 
+        DecoderDef.button({ bits: 2 }, "Decoder", { compat: "decoder" }),
+        DecoderBCDDef.button({ bits: 4 }, "DecoderBCD", { compat: "decoder-bcd4", visible: withButton }),
+        Decoder7SegDef.button("Decoder7Seg", { compat: "decoder-7seg" }),
+        Decoder16SegDef.button("Decoder16Seg", { compat: "decoder-16seg", visible: withButton }),
+    ],
+}, {
+    nameKey: "Memory",
+    items: [
         LatchSRDef.button("LatchSR"),
-        LatchSRGatedDef.button(["LatchSRGated", "LatchSR"], { visible: ifShowOnly }),
+        LatchSRWithEnableDef.button(["LatchSRGated", "LatchSR"], { visible: ifShowOnly }),
         LatchDDef.button("LatchD", { visible: withButton }),
         FlipflopJKDef.button("FlipflopJK", { compat: "flipflop-jk", visible: withButton }),
         FlipflopTDef.button("FlipflopT", { compat: "flipflop-t", visible: withButton }),
@@ -185,12 +194,6 @@ const componentsMenu: Array<Section> = [{
 
         RAMDef.button({ lines: 16, bits: 4 }, "RAM"),
         ROMDef.button({ lines: 16, bits: 4 }, "ROM", { visible: withButton }),
-
-        DecoderDef.button({ bits: 2 }, "Decoder", { compat: "decoder" }),
-        Decoder7SegDef.button("Decoder7Seg", { compat: "decoder-7seg" }),
-        Decoder16SegDef.button("Decoder16Seg", { compat: "decoder-16seg", visible: withButton }),
-        DecoderBCDDef.button({ bits: 4 }, "DecoderBCD", { compat: "decoder-bcd4", visible: withButton }),
-
     ],
 }]
 

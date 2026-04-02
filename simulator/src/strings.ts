@@ -43,9 +43,11 @@ const Strings_fr = {
         },
         SectionNames: {
             InputOutput: "Entrées/ sorties",
-            Layout: "Dispo- sition",
             Gates: "Portes",
-            Components: "Compo- sants",
+            Layout: "Dispo- sition",
+            Arithmetic: "Arith- métique",
+            Combinational: "Combina- toire",
+            Memory: "Mémoire",
             Custom: "Person- nalisé",
         },
         Components: RichStringEnum.withProps<ComponentStrings>()({
@@ -489,6 +491,12 @@ const Strings_fr = {
                 desc: "Stocke un bit.",
             },
         },
+        FlipflopDWithEnable: {
+            tooltip: {
+                title: "Bascule D avec Enable",
+                desc: "Stocke un bit.",
+            },
+        },
         FlipflopJK: {
             InputJDesc: "J (Jump, mise à 1)",
             InputKDesc: "K (Kill, mise à 0)",
@@ -895,7 +903,9 @@ const Strings_en: Strings = {
             InputOutput: "Input/ Output",
             Gates: "Gates",
             Layout: "Layout",
-            Components: "Compo- nents",
+            Arithmetic: "Arith- metic",
+            Combinational: "Combina- tional",
+            Memory: "Memory",
             Custom: "Custom",
         },
         Labels: {
@@ -981,12 +991,12 @@ const Strings_en: Strings = {
             Demux4to8: ["4-to-8 Demultiplexer (1 Control Bit)", "Demux 4-8"],
             Demux8to16: ["8-to-16 Demultiplexer (1 Control Bit)", "Demux 8-16"],
 
-            LatchSR: ["SR Latch", "SR Latch"],
-            LatchSRGated: ["SR Latch with Enable", "SR-E Latch"],
-            LatchD: ["D Latch", "D Latch"],
-            FlipflopJK: ["JK Flip-Flop", "FF-JK"],
-            FlipflopT: ["T Flip-Flop", "FF-T"],
-            FlipflopD: ["D Flip-Flop", "FF-D"],
+            LatchSR: ["SR (Set-Reset) Latch", "SR Latch"],
+            LatchSRGated: ["SR (Set-Reset) Latch with Enable", "SR-E Latch"],
+            LatchD: ["D (Data) Latch", "D Latch"],
+            FlipflopJK: ["JK Flip-Flop", "JK Flip-Flop"],
+            FlipflopT: ["T (Toggle) Flip-Flop", "T Flip-Flop"],
+            FlipflopD: ["D (Data) Flip-Flop", "D Flip-Flop"],
             Register: ["Register", "Register"],
             ShiftRegister: ["Shift Register", "Shift Reg."],
             RAM: ["RAM Module", "RAM"],
@@ -1340,6 +1350,12 @@ const Strings_en: Strings = {
         FlipflopD: {
             tooltip: {
                 title: "D Flip-Flop",
+                desc: "Stores one bit.",
+            },
+        },
+        FlipflopDWithEnable: {
+            tooltip: {
+                title: "D Flip-Flop with Enable",
                 desc: "Stores one bit.",
             },
         },
