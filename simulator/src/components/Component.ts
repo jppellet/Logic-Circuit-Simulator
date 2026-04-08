@@ -1470,6 +1470,10 @@ export abstract class ComponentBase<
                     makeSetXRayModeContextMenuItem("auto", s.XRayModeAuto),
                     makeSetXRayModeContextMenuItem("force", s.XRayModeForce),
                     makeSetXRayModeContextMenuItem("off", s.XRayModeOff),
+                    MenuData.sep(),
+                    MenuData.item("newwindow", s.XRayInNewWindow, () => {
+                        this.exportXRayToNewWindow()
+                    }),
                 ])],
                 ["end", MenuData.sep()],
             ]
@@ -1502,6 +1506,20 @@ export abstract class ComponentBase<
             ...resetItem,
             ["end", deleteItem],
         ]
+    }
+
+    private exportXRayToNewWindow() {
+        let xray = undefined
+        const scale = this.xrayScale()
+        if (scale !== undefined) {
+            xray = this.makeXRay(0, scale)
+        }
+        if (xray === undefined) {
+            console.warn("Could not create xray for export")
+            return
+        }
+
+        this.parent.editor.exportXRayToNewWindow(xray)
     }
 
     protected makeComponentSpecificContextMenuItems(): MenuItems {

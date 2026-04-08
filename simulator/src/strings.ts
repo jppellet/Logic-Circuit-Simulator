@@ -319,6 +319,7 @@ const Strings_fr = {
                 XRayModeAuto: "Montrer si zoomé",
                 XRayModeForce: "Toujours montrer",
                 XRayModeOff: "Toujours cacher",
+                XRayInNewWindow: "Montrer dans une nouvelle fenêtre",
 
                 ParamControlBitAtBottom: "Bit de contrôle en bas",
                 ParamControlBitsAtBottom: "Bits de contrôle en bas",
@@ -1188,6 +1189,7 @@ const Strings_en: Strings = {
                 XRayModeAuto: "Show When Zoomed",
                 XRayModeForce: "Always Show",
                 XRayModeOff: "Never Show",
+                XRayInNewWindow: "Show in New Window",
 
                 ParamControlBitAtBottom: "Control Bit at Bottom",
                 ParamControlBitsAtBottom: "Control Bits at Bottom",

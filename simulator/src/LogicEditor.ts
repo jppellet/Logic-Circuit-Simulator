@@ -13,6 +13,7 @@ import * as pngMeta from 'png-metadata-writer'
 import { ComponentFactory } from "./ComponentFactory"
 import { ComponentList } from "./ComponentList"
 import { ComponentMenu, getAllComponentTypes } from "./ComponentMenu"
+import { CurrentFormatVersion } from "./DataMigration"
 import { MessageBar } from "./MessageBar"
 import { MoveManager } from "./MoveManager"
 import { NodeManager } from "./NodeManager"
@@ -47,6 +48,7 @@ const MAX_MODE_WHEN_SINGLETON = Mode.FULL
 const MAX_MODE_WHEN_EMBEDDED = Mode.DESIGN
 const DEFAULT_MODE = Mode.DESIGN
 
+const STORAGE_PREFIX = "logic/"
 const SINGLETON_INSTANCE_ID = "_main"
 
 const ATTRIBUTE_NAMES = {
@@ -216,7 +218,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     /** Mirrors the id HTML attribute, is used to preserve the state across a simple reload with sessionStorage */
     private _instanceId: string | undefined = undefined
     public get instanceId() { return this._instanceId }
-    private get persistenceKey() { return this._instanceId === undefined ? undefined : "logic/" + this._instanceId }
+    private get persistenceKey() { return this._instanceId === undefined ? undefined : STORAGE_PREFIX + this._instanceId }
     /** Stores the id used for exporting. This is generated once if we are in the standalone editor, or reused if we are in a populated instance */
     private _idWhenExporting: string | undefined = undefined
     public get idWhenExporting() { if (this._idWhenExporting === undefined) { this._idWhenExporting = randomString(6) } return this._idWhenExporting }
@@ -1265,7 +1267,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     }
 
     public setZoom(zoom: number, updateTopBar: boolean): number {
-        zoom = Math.max(10, Math.min(10000, zoom))
+        zoom = Math.max(10, Math.min(100000, zoom))
         const roundedZoomForUI = Math.round(zoom)
         this._options.zoom = roundedZoomForUI
         this._userDrawingScale = zoom / 100
@@ -2050,6 +2052,40 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
         const filename = this.documentDisplayName + extension
         saveAs(blob, filename)
+    }
+
+    public exportXRayToNewWindow(xray: XRay) {
+        xray.materializeInputsAndOutputs()
+        const bounds = xray.components.boundingRect()
+        const additionalMargin = 5 * GRID_STEP
+        const opts = this.nonDefaultOptions() ?? {}
+        opts.origin = [bounds.left - additionalMargin, bounds.top - additionalMargin]
+        opts.propagationDelay = 0
+        const obj: Circuit = Object.assign(Serialization.buildComponentsAndWireObject(
+            [...xray.components.all()],
+            [], undefined), {
+            v: CurrentFormatVersion as typeof CurrentFormatVersion,
+            opts,
+        })
+        const serialized = Serialization.stringifyObject(obj, true)
+
+        // open new window with same url but no data
+        const url = new URL(window.location.href)
+        url.searchParams.delete("data")
+        const newWindow = window.open(url.toString(), "_blank")
+        if (newWindow === null) {
+            console.warn("Could not open new window for xray export")
+            return
+        }
+        newWindow.sessionStorage.clear()
+
+        const now = Date.now()
+        const saveStr = now + ";" + serialized
+        try {
+            newWindow.sessionStorage.setItem(STORAGE_PREFIX + SINGLETON_INSTANCE_ID, saveStr)
+        } catch (e) {
+            console.error("Failed to save circuit to browser storage", e)
+        }
     }
 
     public setTestsPaletteVisible(visible: boolean) {

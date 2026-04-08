@@ -11,7 +11,8 @@ import { Gate1, Gate1Def, GateN, GateNDef } from "./Gate"
 import { Gate1Type, Gate1Types, GateNType } from "./GateTypes"
 import { InputDef } from "./Input"
 import { Node, NodeBase, NodeIn, NodeOut } from "./Node"
-import { LinkManager, WireStyle } from "./Wire"
+import { OutputDef } from "./Output"
+import { LinkManager, Wire, WireStyle } from "./Wire"
 
 
 export type XRayNodesFor<T, N> =
@@ -654,6 +655,66 @@ export class XRay implements DrawableParent {
                     fillTextVAlign(g, TextVAlign.middle, groupLabel, -(halfWidth + 10), pos - 15)
                 }
             }
+        }
+    }
+
+    // For export
+
+    public materializeInputsAndOutputs() {
+        const inputNodes = new Map<NodeOut, Wire[]>()
+        const outputNodes = new Map<NodeIn, Wire[]>()
+        for (const wire of this.linkMgr.wires) {
+            wire.customPropagationDelay = undefined
+            if (wire.startNode.xRayOutsideNode !== undefined) {
+                let wires = inputNodes.get(wire.startNode)
+                if (wires === undefined) {
+                    wires = []
+                    inputNodes.set(wire.startNode, wires)
+                }
+                wires.push(wire)
+            }
+            if (wire.endNode.xRayOutsideNode !== undefined) {
+                let wires = outputNodes.get(wire.endNode)
+                if (wires === undefined) {
+                    wires = []
+                    outputNodes.set(wire.endNode, wires)
+                }
+                wires.push(wire)
+            }
+        }
+
+        const offsets = (node: Node, orient: Orientation) => {
+            switch (orient) {
+                case "e": return [-node.gridOffsetX, -node.gridOffsetY]
+                case "w": return [node.gridOffsetX, node.gridOffsetY]
+                case "s": return [-node.gridOffsetY, -node.gridOffsetX]
+                case "n": return [node.gridOffsetY, node.gridOffsetX]
+                default: throw new Error(`invalid orientation ${orient}`)
+            }
+        }
+
+        for (const [node, wires] of inputNodes) {
+            const input = InputDef.makeSpawned(this, `in_${node.shortName}`, 0, 0, node.orient)
+            const newNodeOut = input.outputs.Out[0]
+            const [dx, dy] = offsets(newNodeOut, node.orient)
+            input.setPosition(node.posX + dx * GRID_STEP, node.posY + dy * GRID_STEP, false)
+            input.doSetName(node.shortName)
+            input.setValue([node.value])
+            for (const wire of wires) {
+                wire.setStartNode(newNodeOut)
+            }
+        }
+        for (const [node, wires] of outputNodes) {
+            const orient = Orientation.invert(node.orient)
+            const output = OutputDef.makeSpawned(this, `out_${node.shortName}`, 0, 0, orient)
+            const newNodeIn = output.inputs.In[0]
+            const [dx, dy] = offsets(newNodeIn, orient)
+            output.setPosition(node.posX + dx * 2 * GRID_STEP, node.posY + dy * 2 * GRID_STEP, false)
+            output.doSetName(node.shortName)
+            for (const wire of wires) {
+                wire.setEndNode(newNodeIn)
+            }
+
         }
     }
 

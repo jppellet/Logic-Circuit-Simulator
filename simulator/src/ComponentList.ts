@@ -186,4 +186,46 @@ export class ComponentList {
         this._componentsById.clear()
     }
 
+    public boundingRect(): DOMRectReadOnly {
+        let left = Infinity
+        let right = -Infinity
+        let top = Infinity
+        let bottom = -Infinity
+        for (const comp of this.all()) {
+            const compWidth = comp.width
+            const compHeight = comp.height
+            if (compWidth === 0 || compHeight === 0) {
+                continue
+            }
+            const compLeft = comp.posX - compWidth / 2
+            const compRight = comp.posX + compWidth / 2
+            const compTop = comp.posY - compHeight / 2
+            const compBottom = comp.posY + compHeight / 2
+            if (compLeft < left) {
+                left = compLeft
+            }
+            if (compRight > right) {
+                right = compRight
+            }
+            if (compTop < top) {
+                top = compTop
+            }
+            if (compBottom > bottom) {
+                bottom = compBottom
+            }
+        }
+        if (left === Infinity) {
+            left = 0
+        }
+        if (right === -Infinity) {
+            right = 0
+        }
+        if (top === Infinity) {
+            top = 0
+        }
+        if (bottom === -Infinity) {
+            bottom = 0
+        }
+        return new DOMRectReadOnly(left, top, right - left, bottom - top)
+    }
 }
