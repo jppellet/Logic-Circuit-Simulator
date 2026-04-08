@@ -1,4 +1,3 @@
-import { saveAs } from 'file-saver'
 import * as t from "io-ts"
 import JSON5 from "json5"
 import * as json5util from "json5/lib/util"
@@ -76,20 +75,6 @@ type LoadOptions = {
 class _Serialization {
 
     // Top-level
-
-    public saveCircuitToFile(editor: LogicEditor) {
-        const jsonStr = this.stringifyObject(this.buildCircuitObject(editor), false)
-        const blob = new Blob([jsonStr], { type: 'application/json5' })
-        const filename = editor.documentDisplayName + ".json"
-        saveAs(blob, filename)
-    }
-
-    public saveLibraryToFile(editor: LogicEditor) {
-        const jsonStr = this.stringifyObject(this.buildLibraryObject(editor), false)
-        const blob = new Blob([jsonStr], { type: 'application/json5' })
-        const filename = editor.documentDisplayName + "-lib.json"
-        saveAs(blob, filename)
-    }
 
     public loadCircuitOrLibrary(editor: LogicEditor, content: string | Record<string, unknown>, postLoadActions: PostLoadActions, opts?: LoadOptions) {
         let parsed: Record<string, unknown>

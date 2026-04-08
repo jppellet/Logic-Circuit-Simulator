@@ -1,5 +1,4 @@
 import { LogicEditor, PointerAction } from "./LogicEditor"
-import { Serialization } from "./Serialization"
 import { TimelineState } from "./Timeline"
 import { UndoState } from "./UndoManager"
 import { CustomComponentDef } from "./components/CustomComponent"
@@ -55,7 +54,7 @@ export class TopBar {
         const s = S.TopBar
         this.alwaysShowCircuitName = editor.isSingleton
 
-        this.dirtyIndicator = this.makeLabel(mods(style("margin: 3px 3px 0 -2px; font-size: 20pt"), "•", title(s.DirtyTooltip)))
+        this.dirtyIndicator = editor.hideDirtyIndicator ? span().render() : this.makeLabel(mods(style("margin: 3px 3px 0 -2px; font-size: 20pt"), "•", title(s.DirtyTooltip)))
         this.circuitNameLabel = this.makeLink(mods("", title(s.CircuitNameTooltip)), this.runSetCircuitNameDialog.bind(this))
         this.mainCircuitTab = this.makeTab(
             this.circuitNameLabel,
@@ -142,10 +141,13 @@ export class TopBar {
                 this.resetButton,
 
                 this.makeSep(),
-                this.openButton,
-                this.editor.autosave ? this.loadFromBrowserButton : emptyMod,
-                this.downloadButton,
-                this.screenshotButton,
+
+                this.editor.noLoadSave ? emptyMod : mods(
+                    this.openButton,
+                    this.editor.autosave ? this.loadFromBrowserButton : emptyMod,
+                    this.downloadButton,
+                    this.screenshotButton,
+                ),
 
                 this.timelineButtonSep,
                 this.pauseButton,
@@ -205,25 +207,21 @@ export class TopBar {
     }
 
 
-    private openHandler() {
+    public openHandler() {
         this.editor.runFileChooser("text/plain|image/png|application/json|application/json5", file => {
             this.editor.tryLoadFrom(file)
         })
     }
 
-    private loadFromBrowserHandler() {
+    public loadFromBrowserHandler() {
         this.editor.tryLoadFromLocalStorage()
     }
 
-    private saveHandler(e: MouseEvent) {
-        if (e.altKey && this.editor.factory.hasCustomComponents()) {
-            Serialization.saveLibraryToFile(this.editor)
-        } else {
-            Serialization.saveCircuitToFile(this.editor)
-        }
+    public saveHandler(e: MouseEvent) {
+        this.editor.saveToFile(e.altKey)
     }
 
-    private screenshotHandler(e: MouseEvent) {
+    public screenshotHandler(e: MouseEvent) {
         const editor = this.editor
         if (e.altKey) {
             editor.download(editor.toSVG(true), ".svg")

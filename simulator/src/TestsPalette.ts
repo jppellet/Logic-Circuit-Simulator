@@ -123,7 +123,12 @@ export class TestsPalette {
 }
 
 
-type TestCaseHTML = { line: HTMLElement, details: HTMLElement, container: HTMLElement, toggle: (force?: boolean) => void }
+type TestCaseHTML = {
+    line: HTMLElement,
+    details: HTMLElement,
+    container: HTMLElement,
+    toggle: (force?: boolean) => void,
+}
 
 export class TestSuiteUI {
 

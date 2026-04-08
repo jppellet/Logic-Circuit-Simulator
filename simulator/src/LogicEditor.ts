@@ -42,10 +42,8 @@ import { DefaultLang, S, getLang, isLang, setLang } from "./strings"
 import { Any, InBrowser, KeysOfByType, LogicValue, Mode, Orientation, ParentType, UIDisplay, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
 
 
-const MIN_MODE_INDEX: number = Mode.STATIC
-const MAX_MODE_INDEX: number = Mode.FULL
-const MAX_MODE_WHEN_SINGLETON = Mode.FULL
-const MAX_MODE_WHEN_EMBEDDED = Mode.DESIGN
+const MIN_MODE = Mode.STATIC
+const MAX_MODE = Mode.FULL
 const DEFAULT_MODE = Mode.DESIGN
 
 const STORAGE_PREFIX = "logic/"
@@ -58,7 +56,10 @@ const ATTRIBUTE_NAMES = {
     id: "id",
     autosave: "autosave", // whether to use localStorage to persist the circuit across page visits
     norestore: "norestore", // to skip restoring from any browser storage
+    noloadsave: "noloadsave", // prevent loading and saving with buttons
     hidereset: "hidereset",
+    hidedirty: "hidedirty", // whether to hide the dirty indicator (dirty events will still be sent)
+    showmodeselector: "showmodeselector", // can be true, false, or auto
     exportformat: "exportformat", // differences between MyST and pymarkdown
     linkedto: "linkedto", // query of an element whose text content should be updated with the circuit state
 
@@ -226,8 +227,10 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     private _autosave: boolean = false
     public get autosave() { return this._autosave }
     private _norestore: boolean = false
+    private _noLoadSave: boolean = false
+    public get noLoadSave() { return this._noLoadSave }
     private _linkedField: HTMLInputElement | HTMLTextAreaElement | undefined = undefined
-    private _maxInstanceMode: Mode = MAX_MODE_WHEN_EMBEDDED // can be set later
+    private _maxInstanceMode: Mode = MAX_MODE // can be set later
     private _isDirty = false
     private _isRunningOrCreatingTests = false // when inputs are being set programmatically over a longer period
     private _dontHogFocus = false
@@ -238,6 +241,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     private _initialData: InitialData | undefined = undefined
     private _options: EditorOptions = { ...DEFAULT_EDITOR_OPTIONS }
     private _hideResetButton = false
+    private _hideDirtyIndicator = false
+    public get hideDirtyIndicator() { return this._hideDirtyIndicator }
     private _exportformat: string | undefined = undefined
 
     private _menu: ComponentMenu | undefined = undefined
@@ -511,7 +516,6 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this._isEmbedded = isEmbeddedInIframe()
         const singletonAttr = this.getAttribute(ATTRIBUTE_NAMES.singleton)
         this._isSingleton = !this._isEmbedded && singletonAttr !== null && !isFalsyString(singletonAttr)
-        this._maxInstanceMode = this._isSingleton && !this._isEmbedded ? MAX_MODE_WHEN_SINGLETON : MAX_MODE_WHEN_EMBEDDED
         this._exportformat = this.getAttribute(ATTRIBUTE_NAMES.exportformat) ?? undefined
 
         // Transfer from URL param to attributes if we are in singleton mode or embedded with data transferred in the URL
@@ -641,6 +645,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const idAttr = this.getAttribute(ATTRIBUTE_NAMES.id)
         const norestoreAttr = this.getAttribute(ATTRIBUTE_NAMES.norestore)
         this._norestore = norestoreAttr !== null && !isFalsyString(norestoreAttr)
+        const noloadsaveAttr = this.getAttribute(ATTRIBUTE_NAMES.noloadsave)
+        this._noLoadSave = noloadsaveAttr !== null && !isFalsyString(noloadsaveAttr)
 
         if (idAttr !== null || this._isSingleton) {
             if (idAttr !== null) {
@@ -723,8 +729,11 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             this._options.xray = xrayAttr as XRayMode
         }
 
-        // TODO move this to options so that it is correctly persisted, too
-        this._hideResetButton = this.getAttribute(ATTRIBUTE_NAMES.hidereset) !== null && !isFalsyString(this.getAttribute(ATTRIBUTE_NAMES.hidereset))
+        const hideresetAttr = this.getAttribute(ATTRIBUTE_NAMES.hidereset)
+        this._hideResetButton = hideresetAttr !== null && !isFalsyString(hideresetAttr)
+
+        const hidedirtyAttr = this.getAttribute(ATTRIBUTE_NAMES.hidedirty)
+        this._hideDirtyIndicator = hidedirtyAttr !== null && !isFalsyString(hidedirtyAttr)
 
         let dataOrSrcRef
         if ((dataOrSrcRef = this.getAttribute(ATTRIBUTE_NAMES.data)) !== null) {
@@ -792,8 +801,14 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         this.html.rightResetButton.addEventListener("click", this.wrapHandler(this.resetCircuit.bind(this)))
 
-        const showModeChange = this._maxInstanceMode >= Mode.FULL
-        if (showModeChange) {
+        let showmodeselectorAttr = this.getAttribute(ATTRIBUTE_NAMES.showmodeselector)
+
+        const showModeSelectorDefault = this._maxInstanceMode >= Mode.FULL
+        const showModeSelector = showmodeselectorAttr === null || (showmodeselectorAttr = showmodeselectorAttr.toLowerCase()) === "auto"
+            ? showModeSelectorDefault
+            : !isFalsyString(showmodeselectorAttr)
+
+        if (showModeSelector) {
             const modeChangeMenu: HTMLElement = this.elemWithId("modeChangeMenu")!
             const titleElem = div(cls("toolbar-title"),
                 "Mode",
@@ -1161,7 +1176,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             }
         } else {
             // it's the direct mode
-            mode = Math.max(MIN_MODE_INDEX, Math.min(modeParam, MAX_MODE_INDEX))
+            mode = Math.max(MIN_MODE, Math.min(modeParam, MAX_MODE))
         }
 
         this.wrapHandler(() => {
@@ -1172,14 +1187,15 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 modeStr = Mode[mode].toLowerCase()
             }
             this._mode = mode
+            // this.setDirty("mode changed") // this seems too aggressive
 
             const modes: string[] = []
-            for (let i = MIN_MODE_INDEX; i <= mode; i++) {
+            for (let i = MIN_MODE; i <= mode; i++) {
                 modes.push(Mode[i].toLowerCase())
             }
             this.html.rootDiv.setAttribute(ATTRIBUTE_NAMES.modes, modes.join(" "))
             const nomodes: string[] = []
-            for (let i = mode + 1; i <= MAX_MODE_INDEX; i++) {
+            for (let i = mode + 1; i <= MAX_MODE; i++) {
                 nomodes.push(Mode[i].toLowerCase())
             }
             this.html.rootDiv.setAttribute(ATTRIBUTE_NAMES.nomodes, nomodes.join(" "))
@@ -1652,16 +1668,20 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     }
 
     public setDirty(__reason: string) {
-        if (this.mode >= Mode.CONNECT) {
+        if (this.mode >= Mode.CONNECT && !this._isDirty) {
             // other modes can't be dirty
             this._isDirty = true
             this._topBar?.setDirty(true)
+            this.dispatchEvent(new CustomEvent("dirty"))
         }
     }
 
     public clearDirty() {
-        this._isDirty = false
-        this._topBar?.setDirty(false)
+        if (this._isDirty) {
+            this._isDirty = false
+            this._topBar?.setDirty(false)
+            this.dispatchEvent(new CustomEvent("clean"))
+        }
     }
 
     public setDark(dark: boolean) {
@@ -1866,8 +1886,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     }
 
     public async shareSheetForMode(mode: Mode) {
-        if (this._mode > MAX_MODE_WHEN_EMBEDDED) {
-            this._mode = MAX_MODE_WHEN_EMBEDDED
+        if (this._mode > MAX_MODE) {
+            this._mode = MAX_MODE
         }
         const modeStr = Mode[mode].toLowerCase()
         const idWhenExporting = this.idWhenExporting
@@ -1878,7 +1898,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const fullUrl = this.fullUrlForMode(mode, compressedJsonForUri, showOnlyArr, idWhenExporting)
         this.html.embedUrl.value = fullUrl
 
-        const modeParam = mode === MAX_MODE_WHEN_EMBEDDED ? "" : `:mode: ${modeStr}`
+        const modeParam = `:mode: ${modeStr}`
         const embedHeight = this.guessAdequateCanvasSize(true)[1]
 
         const showOnlySpaceDelim = showOnlyArr === undefined ? undefined : showOnlyArr.join(" ")
@@ -1929,10 +1949,21 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     public saveToUrl(compressedUriSafeJson: string, showOnly: string[] | undefined) {
         if (this._isSingleton) {
-            history.pushState(null, "", this.fullUrlForMode(MAX_MODE_WHEN_SINGLETON, compressedUriSafeJson, showOnly, this.instanceId))
+            history.pushState(null, "", this.fullUrlForMode(MAX_MODE, compressedUriSafeJson, showOnly, this.instanceId))
             this.clearDirty()
             this.showMessage(S.Messages.SavedToUrl)
         }
+    }
+
+    public saveToFile(onlyCustomComponents?: boolean) {
+        const saveLib = onlyCustomComponents === true && this.factory.hasCustomComponents()
+        const dataObject = saveLib
+            ? Serialization.buildLibraryObject(this)
+            : Serialization.buildCircuitObject(this)
+        const jsonStr = Serialization.stringifyObject(dataObject, false)
+        const blob = new Blob([jsonStr], { type: 'application/json5' })
+        const filename = this.documentDisplayName + (saveLib ? "-lib" : "") + ".json"
+        saveAs(blob, filename)
     }
 
     /**
@@ -2625,12 +2656,12 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
 
         // draw border according to mode
-        if (!skipBorder && (this._mode >= Mode.CONNECT || this._maxInstanceMode === MAX_MODE_WHEN_SINGLETON)) {
+        if (!skipBorder && (this._mode >= Mode.CONNECT || this._maxInstanceMode === MAX_MODE)) {
             g.group("border", () => {
                 g.setTransform(baseTransform)
                 g.strokeStyle = COLOR_BORDER
                 g.lineWidth = 2
-                if (this._maxInstanceMode === MAX_MODE_WHEN_SINGLETON && this._mode < this._maxInstanceMode) {
+                if (this._maxInstanceMode === MAX_MODE && this._mode < this._maxInstanceMode) {
                     g.strokeRect(0, 0, width, height)
                     const h = this.guessAdequateCanvasSize(true)[1]
                     strokeSingleLine(g, 0, h, width, h)
