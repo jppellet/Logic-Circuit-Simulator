@@ -1,12 +1,17 @@
 import { saveAs } from 'file-saver'
 import * as t from "io-ts"
-import { COLOR_COMPONENT_BORDER, COLOR_EMPTY, TextVAlign, colorForLogicValue, displayValuesFromArray, fillTextVAlign, formatWithRadix, strokeSingleLine } from "../drawutils"
+import { COLOR_COMPONENT_BORDER, COLOR_EMPTY, GRID_STEP, TextVAlign, colorForLogicValue, displayValuesFromArray, fillTextVAlign, formatWithRadix, strokeSingleLine } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, InteractionResult, LogicValue, Orientation, Unknown, allBooleans, binaryStringRepr, hexStringRepr, isAllZeros, isArray, isUnknown, typeOrUndefined, valuesFromBinaryOrHexRepr } from "../utils"
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineAbstractParametrizedComponent, defineParametrizedComponent, groupHorizontal, groupVertical, param } from "./Component"
+import { Decoder, DecoderDef } from './Decoder'
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItem, MenuItemPlacement, MenuItems } from "./Drawable"
+import { FlipflopDWithEnable, FlipflopDWithEnableDef } from './FlipflopD'
+import { MuxDef } from './Mux'
+import { NodeOut } from './Node'
 import { RAM, RAMDef } from "./RAM"
+import { XRay } from './XRay'
 
 
 export const ROMRAMDef =
@@ -327,6 +332,145 @@ export abstract class ROMRAMBase<TRepr extends ROMRAMRepr> extends ParametrizedC
         return []
     }
 
+    protected override xrayScale() {
+        return RAMROMXRayDrawParams[this.numAddressBits - 2][this.numDataBits / 4 - 1]?.scale
+    }
+
+    protected override makeXRay(level: number, scale: number): XRay | undefined {
+        const addrBits = this.numAddressBits
+        const bits = this.numDataBits
+
+        if (addrBits > 4 || bits > 8) {
+            // too big to make a useful xray of
+            return undefined
+        }
+
+        // base
+        const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
+        // we cheat and tell the compiler we're always a RAM component here, but beware that
+        // we may actually not have Clock, WE and D inputs if we're a ROM
+        const { ins, outs, p } = (this as unknown as RAM).makeXRayNodes(xray)
+        const isRAM = "Clock" in ins
+        const { incXf, incYf, ffXGridSep, ffYGridSep } = RAMROMXRayDrawParams[addrBits - 2][bits / 4 - 1]
+        const incX = GRID_STEP / incXf
+        const incY = GRID_STEP / incYf
+        const allocAddrTop = xray.newPositionAlloc(p.top + 2, incY, addrBits).derive({ invertOn: addrBits })
+        xray.debugHLine(allocAddrTop, "violet", "allocAddrTop")
+
+
+        let clk: NodeOut | undefined = undefined
+        let addrDec: Decoder | undefined = undefined
+        if (isRAM) {
+            // top address decoder
+            addrDec = DecoderDef.makeSpawned(xray, "addrDec", ins.Addr[addrBits - 1], allocAddrTop.at(0) + 3 * GRID_STEP, "s", { bits: addrBits })
+            for (let i = 0; i < addrBits; i++) {
+                wire(ins.Addr[i], addrDec.inputs.In[i], "hv", [ins.Addr[i], allocAddrTop.at(i)])
+            }
+
+            // clock anded with write enable
+            const andClk = gate("andClk", "and", p.left + 2 * GRID_STEP, p.bottom - 2 * GRID_STEP)
+            wire(ins.Clock, andClk.inputs.In[0], "hv")
+            wire(ins.WE, andClk.inputs.In[1], "hv", p.upBy(1, ins.WE))
+            clk = andClk.outputs.Out
+        }
+
+        // alocation tracks
+        const clkLineBottom = clk?.posY ?? 0
+        xray.debugHLine(clkLineBottom, "blue", "clkLineBottom")
+        const clrLineBottom = clkLineBottom + GRID_STEP
+        xray.debugHLine(clrLineBottom, "blue", "clrLineBottom")
+        const lines = this.numWords
+        const allocDecTop = xray.newPositionAlloc(addrDec?.outputs.Out[0].posY ?? p.top + 8 * GRID_STEP, incY, lines).derive({ invertOn: lines })
+        xray.debugHLine(allocDecTop, "red", "allocDecTop")
+        const allocDecLeft = xray.newPositionAlloc(p.left + 2, incX, lines).derive({ invertOn: lines })
+        xray.debugVLine(allocDecLeft, "red", "allocDecLeft")
+        const allocDataLeft = xray.newPositionAlloc(allocDecLeft.at(0) + incX, incX, bits)
+        xray.debugVLine(allocDataLeft, "orange", "allocDataLeft")
+        const firstFFLeft = allocDataLeft.at(bits - 1) + 5 * GRID_STEP
+        const firstFFTop = allocDecTop.at(0) + bits * incY + 6 * GRID_STEP
+        const ffXSep = ffXGridSep * GRID_STEP
+        const ffYSep = (2 * bits) * incY + ffYGridSep * GRID_STEP
+
+        // muxes
+        const needsSecondLineMux = lines > 4
+        const muxOutX = needsSecondLineMux ? p.right - bits / 2 * incX - 4 * GRID_STEP : p.right + bits / 2 * incX + GRID_STEP
+        const muxes = []
+        const muxX = muxOutX - lines / 2 * incX - 8 * GRID_STEP
+        for (let i = 0; i < lines / 4; i++) {
+            const mux = MuxDef.makeSpawned(xray, `mux${i}-${i + 3}`, muxX, firstFFTop + (i * 4 + 1.5) * ffYSep, "e", { from: 4 * bits, to: bits, bottom: false })
+            muxes.push(mux)
+        }
+
+        // second-line mux if needed
+        if (needsSecondLineMux) {
+            // we have a 4-mux in a first line and a second 2-mux or 4-mux on the right to take care of the last two address bits
+            const muxOut = MuxDef.makeSpawned(xray, "muxOut", muxOutX, firstFFTop + (lines - 1) / 2 * ffYSep, "e", { from: (lines / 4) * bits, to: bits, bottom: false })
+            xray.wires(muxOut.outputs.Z, outs.Q, { position: { right: p.right - 2 } })
+
+            const allocInterMux = xray.wires(
+                muxes.flatMap(m => m.outputs.Z),
+                muxOut.inputs.I.flat(),
+                { bookings: { colsLeft: 3 } },
+            )
+            for (const mux of muxes) {
+                for (let j = 0; j < 2; j++) {
+                    wire(ins.Addr[j], mux.inputs.S[j], "vh", [[allocInterMux.at(-2 + j), allocAddrTop.at(j)], p.upBy(j, mux.inputs.S[j])])
+                }
+            }
+            for (let j = 2; j < addrBits; j++) {
+                const sel = muxOut.inputs.S[j - 2]
+                wire(ins.Addr[j], sel, "vh", [sel, allocAddrTop.at(j)])
+            }
+            xray.debugVLine(allocInterMux, "purple", "allocInterMux")
+
+        } else {
+            const muxOut = muxes[0]
+            xray.wires(muxOut.outputs.Z, outs.Q, { position: { right: p.right - 2 } })
+            for (let j = 0; j < 2; j++) {
+                const sel = muxOut.inputs.S[j]
+                wire(ins.Addr[j], sel, "vh", [sel, allocAddrTop.at(j)])
+            }
+        }
+
+        // storage flip-flops and their connections
+        const allocMuxIn = xray.newPositionAlloc(muxes[0].inputs.I[0][0].posX, -incX, 2 * bits)
+        xray.debugVLine(allocMuxIn, "orange", "allocMuxIn")
+        for (let line = 0; line < lines; line++) {
+            const ffY = firstFFTop + line * ffYSep
+            const allocLineTop = xray.newPositionAlloc(ffY - 4 * GRID_STEP, -incY, bits + 2)
+            xray.debugHLine(allocLineTop, "green", `allocLineTop${line}`)
+            const allocLineBottom = xray.newPositionAlloc(ffY + 5 * GRID_STEP, incY, bits)
+            xray.debugHLine(allocLineBottom, "blue", `allocLineBottom${line}`)
+            for (let bit = 0; bit < bits; bit++) {
+                const ff: FlipflopDWithEnable = FlipflopDWithEnableDef.makeSpawned(xray, `ff${line}_${bit}`, firstFFLeft + (bits - 1 - bit) * ffXSep, ffY) as unknown as FlipflopDWithEnable
+                if (isRAM) {
+                    wire(clk!, ff.inputs.Clock, "hv")
+                    wire(ins.Clr, ff.inputs.Clr, "vh", [ff.posX + ff.unrotatedWidth / 2 + incX, clrLineBottom])
+                    wire(ins.D[bit], ff.inputs.D, "hv", [[allocDataLeft.at(bits - 1 - bit), allocLineTop.at(2 + bit)]])
+                    wire(addrDec!.outputs.Out[line], ff.inputs.E, "vh", [[allocDecLeft.at(line), allocDecTop.at(line)], [ff.inputs.E.posX - incX, allocLineTop.at(0)]])
+                }
+                const muxInputIndex = line % 4
+                const muxInput = muxes[Math.floor(line / 4)].inputs.I[muxInputIndex][bit]
+                const waypointX = (() => {
+                    switch (muxInputIndex) {
+                        case 0: return allocMuxIn.at(bit)
+                        case 1: return allocMuxIn.at(bits - 1 - bit)
+                        case 2: return allocMuxIn.at(2 * bits - 1 - bit)
+                        case 3: return allocMuxIn.at(bits - 1 - bit)
+                        default: return allocMuxIn.at(0)
+                    }
+                })()
+                wire(ff.outputs.Q, muxInput, "hv", [
+                    [ff.outputs.Q.posX + GRID_STEP, allocLineBottom.at(bit)],
+                    [waypointX, muxInput.posY],
+                ])
+            }
+        }
+
+        // xray.drawDebugLines = true
+        return xray
+    }
+
 }
 
 
@@ -424,3 +568,19 @@ export class ROM extends ROMRAMBase<ROMRepr> {
 
 }
 ROMDef.impl = ROM
+
+
+const RAMROMXRayDrawParams = [
+    [ // 2 address bits, 4 words
+        { scale: 0.190, incXf: 1.20, incYf: 1.50, ffXGridSep: 8, ffYGridSep: 12 }, // 4 data bits
+        { scale: 0.120, incXf: 2.00, incYf: 1.00, ffXGridSep: 8, ffYGridSep: 12 }, // 8 data bits
+    ],
+    [ // 3 address bits, 8 words
+        { scale: 0.115, incXf: 1.00, incYf: 2.00, ffXGridSep: 13, ffYGridSep: 11 }, // 4 data bits
+        { scale: 0.093, incXf: 2.00, incYf: 2.00, ffXGridSep: 10, ffYGridSep: 11 }, // 8 data bits
+    ],
+    [ // 4 address bits, 16 words
+        { scale: 0.064, incXf: 0.50, incYf: 2.00, ffXGridSep: 20, ffYGridSep: 10 }, // 4 data bits
+        { scale: 0.050, incXf: 0.75, incYf: 2.00, ffXGridSep: 16, ffYGridSep: 10 }, // 8 data bits
+    ],
+]

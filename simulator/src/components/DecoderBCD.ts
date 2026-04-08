@@ -148,8 +148,6 @@ export class DecoderBCD extends ParametrizedComponentBase<DecoderBCDRepr> {
         } else if (this.numFrom === 8) {
 
             const allocIn = xray.newPositionAlloc(p.left + 2, GRID_STEP, 2)
-            xray.drawDebugLines = true
-            xray.debugVLine(allocIn, "red", "allocIn")
 
             const condAdd1 = Add3IfGeq5Def.makeSpawned(xray, "condAdd1", p.later, p.later)
             xray.alignXAfter(allocIn, condAdd1.inputs.In[0])
@@ -201,6 +199,8 @@ export class DecoderBCD extends ParametrizedComponentBase<DecoderBCDRepr> {
                 [...outs.BCD[0].slice(1), ...outs.BCD[1], ...outs.BCD[2].slice(0, 3)], {
                 position: { right: p.right + 2 },
             })
+        } else {
+            return undefined
         }
 
         return xray

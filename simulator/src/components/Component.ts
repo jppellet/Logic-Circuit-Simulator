@@ -1234,7 +1234,7 @@ export abstract class ComponentBase<
         const componentList = this.parent.components
         const deleted = componentList.tryDelete(this)
         if (!deleted) {
-            console.warn("Could not delete old component")
+            console.warn("Could not delete old component, not found in component list")
         }
 
         // restore component properties
@@ -1251,7 +1251,7 @@ export abstract class ComponentBase<
 
         this.parent.ifEditing?.undoMgr.takeSnapshot()
         this.parent.ifEditing?.redrawMgr.requestRedraw({ why: "component replaced", component: newComp, invalidateMask: true, invalidateTests: true })
-
+        this.parent.editor.eventMgr.setCurrentComponentUnderPointer(newComp)
         return newComp
     }
 

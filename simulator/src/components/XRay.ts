@@ -130,6 +130,10 @@ export class WirePositionAllocation {
         return new WirePositionAllocation(this.first + colShift * this.inc, this.inc, this.numCols - colShift, opts.invertOn)
     }
 
+    public get rightMostOrBottomMost() {
+        return Math.max(this.at(this.numCols - 1), this.at(0) - this.inc)
+    }
+
 }
 
 
@@ -526,10 +530,15 @@ export class XRay implements DrawableParent {
     }
 
     public alignXAfter(alloc: WirePositionAllocation, node: NodeIn) {
-        // this makes sure we align at the right, whether the wires are going left-to-right or right-to-left
-        const tracksEnd = Math.max(alloc.at(alloc.numCols - 1), alloc.at(0) - alloc.inc)
+        const tracksEnd = alloc.rightMostOrBottomMost
         const comp = node.component
         comp.setPosition(tracksEnd - node.gridOffsetX * GRID_STEP, comp.posY, false)
+    }
+
+    public alignYAfter(alloc: WirePositionAllocation, node: NodeIn) {
+        const tracksEnd = alloc.rightMostOrBottomMost
+        const comp = node.component
+        comp.setPosition(comp.posX, tracksEnd - node.gridOffsetY * GRID_STEP, false)
     }
 
     public alignComponentOf(nodeToAlign: Node, referenceNode: Node) {

@@ -9,6 +9,7 @@
             "DOM.Iterable",
             "ES2016",
             "ES2016.Array.Include",
+            "ES2019",
         ],
         
         // "module": "ES6",

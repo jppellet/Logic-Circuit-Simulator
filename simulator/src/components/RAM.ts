@@ -3,7 +3,7 @@ import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, EdgeTrigger, LogicValue, Unknown, isUnknown, typeOrUndefined } from "../utils"
 import { Repr, ResolvedParams, defineParametrizedComponent, groupVertical } from "./Component"
-import { DrawableParent, MenuData } from "./Drawable"
+import { DrawableParent, MenuData, MenuItems } from "./Drawable"
 import { Flipflop, makeTriggerItems } from "./FlipflopOrLatch"
 import { ROMRAMBase, ROMRAMDef, ROMRAMValue } from "./ROM"
 
@@ -126,7 +126,7 @@ export class RAM extends ROMRAMBase<RAMRepr> {
         ))
     }
 
-    protected override() {
+    protected override makeSpecificROMRAMItems(): MenuItems {
         return [
             ...makeTriggerItems(this._trigger, this.doSetTrigger.bind(this)),
 
