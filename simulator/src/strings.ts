@@ -107,6 +107,7 @@ const Strings_fr = {
 
             HalfAdder: ["Demi-additionneur", "Demi-add."],
             Adder: ["Additionneur", "Addit."],
+            Add3IfGeq5: ["Additionneur conditionnel", "+3 Si ≥5"],
             IncDec: ["Incrementeur/Décrementeur", "Inc/Dec"],
             AdderArray: ["Additionneur multiple", "Add. mult."],
             ALU: ["Unité arithmétique et logique", "ALU"],
@@ -374,6 +375,12 @@ const Strings_fr = {
                 ComponentAlreadyExists: template("Un composant personnalisé avec l’identifiant '${id}' existe déjà."),
                 InputsOutputsChanged: "Les entrées et sorties ont changé et certaines connexions pourront être supprimées en adaptant le circuit. Voulez-vous continuer?",
                 NotInMainEditor: "Revenez d’abord à l’éditeur principal pour modifier le circuit personnalisé de ce composant.",
+            },
+        },
+        Add3IfGeq5: {
+            tooltip: {
+                title: "Ajouter 3 si A ≥ 5",
+                desc: "Ce composant ajoute 3 à son entrée A si A est supérieur ou égal à 5, et ne fait rien sinon.",
             },
         },
         Adder: {
@@ -969,6 +976,7 @@ const Strings_en: Strings = {
 
             HalfAdder: ["Half Adder", "Half Adder"],
             Adder: ["Full Adder", "Full Adder"],
+            Add3IfGeq5: ["Add 3 if A ≥ 5", "+3 If ≥5"],
             IncDec: ["Incrementer/Decrementer", "Inc/Dec"],
             AdderArray: ["Adder Array", "Adder Arr."],
             ALU: ["Arithmetic and Logic Unit", "ALU"],
@@ -1236,6 +1244,12 @@ const Strings_en: Strings = {
                 ComponentAlreadyExists: template("A custom component definition with id '${id}' already exists."),
                 InputsOutputsChanged: "The inputs and outputs have changed and some connections may be removed by adapting the circuit. Do you want to continue?",
                 NotInMainEditor: "Please go back to the main editor to edit the custom circuit of this component.",
+            },
+        },
+        Add3IfGeq5: {
+            tooltip: {
+                title: "Add 3 if ≥ 5",
+                desc: "This component adds 3 to its input A if A is greater than or equal to 5, and does nothing otherwise.",
             },
         },
         Adder: {

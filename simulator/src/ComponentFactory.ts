@@ -4,6 +4,7 @@ import { LogicEditor } from "./LogicEditor"
 import { Serialization } from "./Serialization"
 import { TestCaseCombinational, TestCaseCombinationalRepr } from "./TestSuite"
 import { ALU, ALUDef } from "./components/ALU"
+import { Add3IfGeq5, Add3IfGeq5Def } from "./components/Add3IfGeq5"
 import { Adder, AdderDef } from "./components/Adder"
 import { AdderArray, AdderArrayDef } from "./components/AdderArray"
 import { Bypass, BypassDef } from "./components/Bypass"
@@ -56,6 +57,7 @@ import { binaryStringRepr, isArray, isRecord, isString, validateJson, valuesRepr
 export type ComponentForDef<TDef> = Component & (
     TDef extends typeof ALUDef ? ALU :
     TDef extends typeof AdderDef ? Adder :
+    TDef extends typeof Add3IfGeq5Def ? Add3IfGeq5 :
     TDef extends typeof AdderArrayDef ? AdderArray :
     TDef extends typeof BypassDef ? Bypass :
     TDef extends typeof ClockDef ? Clock :
@@ -147,6 +149,7 @@ const AllComponentDefs: ComponentMaker<any>[] = [
     AdderDef,
     ComparatorDef,
     AdderArrayDef,
+    Add3IfGeq5Def,
     IncDecDef,
     ALUDef,
 

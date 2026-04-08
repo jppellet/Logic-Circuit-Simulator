@@ -1,8 +1,9 @@
 import * as t from "io-ts"
-import { displayValuesFromArray } from "../drawutils"
+import { GRID_STEP, displayValuesFromArray } from "../drawutils"
 import { div, mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { FixedArrayFillWith, LogicValue, Unknown, isUnknown, typeOrUndefined } from "../utils"
+import { Add3IfGeq5Def } from "./Add3IfGeq5"
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupVertical, groupVerticalMulti, param } from "./Component"
 import { DrawableParent, MenuData, MenuItems } from "./Drawable"
 
@@ -116,6 +117,93 @@ export class DecoderBCD extends ParametrizedComponentBase<DecoderBCDRepr> {
             ["mid", MenuData.sep()],
             ...this.makeForceOutputsContextMenuItem(),
         ]
+    }
+
+    protected override xrayScale() {
+        return this.numFrom <= 4 ? 0.5 : 0.15
+    }
+
+    protected override makeXRay(level: number, scale: number) {
+        const { xray, wire } = this.parent.editor.newXRay(this, level, scale)
+        const { ins, outs, p } = this.makeXRayNodes(xray)
+
+        // implements the double-dabble adder structure for the BCD decoder
+        if (this.numFrom === 4) {
+
+            const condAdd = Add3IfGeq5Def.makeSpawned(xray, "condAdd", p.later, p.later)
+            xray.alignComponentOf(condAdd.inputs.In[0], ins.A[1])
+            xray.wiresInZones(p.left + 2, p.right - 2, [{
+                id: "in",
+                from: ins.A.slice(1),
+                to: condAdd.inputs.In,
+                after: condAdd,
+            }, {
+                id: "out",
+                from: condAdd.outputs.Out,
+                to: [...outs.BCD[0].slice(1), ...outs.BCD[1]],
+            }])
+            wire(ins.A[0], outs.BCD[0][0], "hv", [0, outs.BCD[0][0]])
+
+
+        } else if (this.numFrom === 8) {
+
+            const allocIn = xray.newPositionAlloc(p.left + 2, GRID_STEP, 2)
+            xray.drawDebugLines = true
+            xray.debugVLine(allocIn, "red", "allocIn")
+
+            const condAdd1 = Add3IfGeq5Def.makeSpawned(xray, "condAdd1", p.later, p.later)
+            xray.alignXAfter(allocIn, condAdd1.inputs.In[0])
+            wire(ins.A[5], condAdd1.inputs.In[0], true)
+            wire(ins.A[6], condAdd1.inputs.In[1], "hv", [allocIn.at(0), condAdd1.inputs.In[1].posY])
+            wire(ins.A[7], condAdd1.inputs.In[2], "hv", [allocIn.at(1), condAdd1.inputs.In[2].posY])
+
+            const condAdd2 = Add3IfGeq5Def.makeSpawned(xray, "condAdd2", condAdd1.posX + 5 * GRID_STEP, p.later)
+            wire(condAdd1.outputs.Out[0], condAdd2.inputs.In[1], true)
+            wire(condAdd1.outputs.Out[1], condAdd2.inputs.In[2])
+            wire(condAdd1.outputs.Out[2], condAdd2.inputs.In[3])
+            wire(ins.A[4], condAdd2.inputs.In[0], "hv")
+
+            const condAdd3 = Add3IfGeq5Def.makeSpawned(xray, "condAdd3", condAdd2.posX + 5 * GRID_STEP, p.later)
+            wire(condAdd2.outputs.Out[0], condAdd3.inputs.In[1], true)
+            wire(condAdd2.outputs.Out[1], condAdd3.inputs.In[2])
+            wire(condAdd2.outputs.Out[2], condAdd3.inputs.In[3])
+            wire(ins.A[3], condAdd3.inputs.In[0], "hv")
+
+            const condAdd4 = Add3IfGeq5Def.makeSpawned(xray, "condAdd4", condAdd3.posX + 5 * GRID_STEP, p.later)
+            wire(condAdd3.outputs.Out[0], condAdd4.inputs.In[1], true)
+            wire(condAdd3.outputs.Out[1], condAdd4.inputs.In[2])
+            wire(condAdd3.outputs.Out[2], condAdd4.inputs.In[3])
+            wire(ins.A[2], condAdd4.inputs.In[0], "hv")
+
+            const condAdd4b = Add3IfGeq5Def.makeSpawned(xray, "condAdd4b", condAdd4, p.later)
+            wire(condAdd3.outputs.Out[3], condAdd4b.inputs.In[0], true)
+            wire(condAdd2.outputs.Out[3], condAdd4b.inputs.In[1])
+            wire(condAdd1.outputs.Out[3], condAdd4b.inputs.In[2])
+
+            const condAdd5 = Add3IfGeq5Def.makeSpawned(xray, "condAdd5", condAdd4.posX + 5 * GRID_STEP, p.later)
+            wire(condAdd4.outputs.Out[0], condAdd5.inputs.In[1], true)
+            wire(condAdd4.outputs.Out[1], condAdd5.inputs.In[2])
+            wire(condAdd4.outputs.Out[2], condAdd5.inputs.In[3])
+            wire(ins.A[1], condAdd5.inputs.In[0], "hv")
+
+            const condAdd5b = Add3IfGeq5Def.makeSpawned(xray, "condAdd5b", condAdd5, p.later)
+            wire(condAdd4.outputs.Out[3], condAdd5b.inputs.In[0], true)
+            wire(condAdd4b.outputs.Out[0], condAdd5b.inputs.In[1])
+            wire(condAdd4b.outputs.Out[1], condAdd5b.inputs.In[2])
+            wire(condAdd4b.outputs.Out[2], condAdd5b.inputs.In[3])
+
+            wire(ins.A[0], outs.BCD[0][0], "hv", [allocIn.at(0), outs.BCD[0][0].posY])
+
+            wire(condAdd4b.outputs.Out[3], outs.BCD[2][1], "vh")
+
+            xray.wires(
+                [...condAdd5.outputs.Out, ...condAdd5b.outputs.Out],
+                [...outs.BCD[0].slice(1), ...outs.BCD[1], ...outs.BCD[2].slice(0, 3)], {
+                position: { right: p.right + 2 },
+            })
+        }
+
+        return xray
     }
 
 }

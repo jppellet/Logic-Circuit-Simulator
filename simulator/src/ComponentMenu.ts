@@ -3,6 +3,7 @@ import JSON5 from "json5"
 import { ButtonDataset } from "./ComponentFactory"
 import { LogicEditor } from "./LogicEditor"
 import { ALUDef } from "./components/ALU"
+import { Add3IfGeq5Def } from "./components/Add3IfGeq5"
 import { AdderDef } from "./components/Adder"
 import { AdderArrayDef } from "./components/AdderArray"
 import { BypassDef } from "./components/Bypass"
@@ -160,9 +161,10 @@ const componentsMenu: Array<Section> = [{
         HalfAdderDef.button("HalfAdder"),
         AdderDef.button("Adder"),
         ComparatorDef.button("Comparator", { compat: "comparator", visible: withButton }),
-        
+
         IncDecDef.button({ bits: 4 }, "IncDec", { visible: withButton }),
         AdderArrayDef.button({ bits: 4 }, "AdderArray"),
+        Add3IfGeq5Def.button("Add3IfGeq5", { visible: ifShowOnly }),
         ALUDef.button({ bits: 4, ext: false }, "ALU"),
     ],
 }, {

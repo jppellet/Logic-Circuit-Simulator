@@ -62,6 +62,10 @@ export class XRayPosMaker {
         return [obj.posX, obj.posY + d * GRID_STEP]
     }
 
+    public movedBy(dx: number, dy: number, obj: HasPosition): WaypointSpecCompact {
+        return [obj.posX + dx * GRID_STEP, obj.posY + dy * GRID_STEP]
+    }
+
 }
 
 

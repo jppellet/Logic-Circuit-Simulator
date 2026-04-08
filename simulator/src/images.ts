@@ -58,6 +58,7 @@ import xray from '../img/icons/xray.icon.svg'; // @ts-ignore
 
 // images
 import ALU from '../img/ALU.svg'; // @ts-ignore
+import Add3IfGeq5 from '../img/Add3IfGeq5.svg'; // @ts-ignore
 import Adder from '../img/Adder.svg'; // @ts-ignore
 import AdderArray from '../img/AdderArray.svg'; // @ts-ignore
 import Bypass from '../img/Bypass.svg'; // @ts-ignore
@@ -185,6 +186,7 @@ const icons = {
 }
 
 const images = {
+    Add3IfGeq5,
     Adder,
     AdderArray,
     ALU,
