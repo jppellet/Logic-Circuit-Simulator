@@ -42,8 +42,10 @@ import { DefaultLang, S, getLang, isLang, setLang } from "./strings"
 import { Any, InBrowser, KeysOfByType, LogicValue, Mode, Orientation, ParentType, UIDisplay, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
 
 
-const MIN_MODE = Mode.STATIC
-const MAX_MODE = Mode.FULL
+const MIN_MODE: number = Mode.STATIC
+const MAX_MODE: number = Mode.FULL
+const MAX_MODE_WHEN_SINGLETON = Mode.FULL
+const MAX_MODE_WHEN_EMBEDDED = Mode.DESIGN
 const DEFAULT_MODE = Mode.DESIGN
 
 const STORAGE_PREFIX = "logic/"
@@ -230,7 +232,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     private _noLoadSave: boolean = false
     public get noLoadSave() { return this._noLoadSave }
     private _linkedField: HTMLInputElement | HTMLTextAreaElement | undefined = undefined
-    private _maxInstanceMode: Mode = MAX_MODE // can be set later
+    private _maxInstanceMode: Mode = MAX_MODE_WHEN_EMBEDDED // can be set later
     private _isDirty = false
     private _isRunningOrCreatingTests = false // when inputs are being set programmatically over a longer period
     private _dontHogFocus = false
@@ -516,6 +518,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this._isEmbedded = isEmbeddedInIframe()
         const singletonAttr = this.getAttribute(ATTRIBUTE_NAMES.singleton)
         this._isSingleton = !this._isEmbedded && singletonAttr !== null && !isFalsyString(singletonAttr)
+        this._maxInstanceMode = this._isSingleton && !this._isEmbedded ? MAX_MODE_WHEN_SINGLETON : MAX_MODE_WHEN_EMBEDDED
         this._exportformat = this.getAttribute(ATTRIBUTE_NAMES.exportformat) ?? undefined
 
         // Transfer from URL param to attributes if we are in singleton mode or embedded with data transferred in the URL
@@ -801,14 +804,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         this.html.rightResetButton.addEventListener("click", this.wrapHandler(this.resetCircuit.bind(this)))
 
-        let showmodeselectorAttr = this.getAttribute(ATTRIBUTE_NAMES.showmodeselector)
-
-        const showModeSelectorDefault = this._maxInstanceMode >= Mode.FULL
-        const showModeSelector = showmodeselectorAttr === null || (showmodeselectorAttr = showmodeselectorAttr.toLowerCase()) === "auto"
-            ? showModeSelectorDefault
-            : !isFalsyString(showmodeselectorAttr)
-
-        if (showModeSelector) {
+        const showModeChange = this._maxInstanceMode >= Mode.FULL
+        if (showModeChange) {
             const modeChangeMenu: HTMLElement = this.elemWithId("modeChangeMenu")!
             const titleElem = div(cls("toolbar-title"),
                 "Mode",
@@ -1886,8 +1883,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     }
 
     public async shareSheetForMode(mode: Mode) {
-        if (this._mode > MAX_MODE) {
-            this._mode = MAX_MODE
+        if (this._mode > MAX_MODE_WHEN_EMBEDDED) {
+            this._mode = MAX_MODE_WHEN_EMBEDDED
         }
         const modeStr = Mode[mode].toLowerCase()
         const idWhenExporting = this.idWhenExporting
@@ -1898,7 +1895,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const fullUrl = this.fullUrlForMode(mode, compressedJsonForUri, showOnlyArr, idWhenExporting)
         this.html.embedUrl.value = fullUrl
 
-        const modeParam = `:mode: ${modeStr}`
+        const modeParam = mode === MAX_MODE_WHEN_EMBEDDED ? "" : `:mode: ${modeStr}`
         const embedHeight = this.guessAdequateCanvasSize(true)[1]
 
         const showOnlySpaceDelim = showOnlyArr === undefined ? undefined : showOnlyArr.join(" ")
@@ -1949,7 +1946,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
     public saveToUrl(compressedUriSafeJson: string, showOnly: string[] | undefined) {
         if (this._isSingleton) {
-            history.pushState(null, "", this.fullUrlForMode(MAX_MODE, compressedUriSafeJson, showOnly, this.instanceId))
+            history.pushState(null, "", this.fullUrlForMode(MAX_MODE_WHEN_SINGLETON, compressedUriSafeJson, showOnly, this.instanceId))
             this.clearDirty()
             this.showMessage(S.Messages.SavedToUrl)
         }
@@ -2656,12 +2653,12 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
 
         // draw border according to mode
-        if (!skipBorder && (this._mode >= Mode.CONNECT || this._maxInstanceMode === MAX_MODE)) {
+        if (!skipBorder && (this._mode >= Mode.CONNECT || this._maxInstanceMode === MAX_MODE_WHEN_SINGLETON)) {
             g.group("border", () => {
                 g.setTransform(baseTransform)
                 g.strokeStyle = COLOR_BORDER
                 g.lineWidth = 2
-                if (this._maxInstanceMode === MAX_MODE && this._mode < this._maxInstanceMode) {
+                if (this._maxInstanceMode === MAX_MODE_WHEN_SINGLETON && this._mode < this._maxInstanceMode) {
                     g.strokeRect(0, 0, width, height)
                     const h = this.guessAdequateCanvasSize(true)[1]
                     strokeSingleLine(g, 0, h, width, h)
