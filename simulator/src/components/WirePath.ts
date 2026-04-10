@@ -21,9 +21,9 @@ export class WirePath {
 
     public constructor(
         parts: ReadonlyArray<LineCoords | BezierCoords>,
-        mode: Mode,
+        __mode: Mode,
     ) {
-        this.parts = normalizePath(parts, mode)
+        this.parts = parts // normalizePath(parts, mode) // calling this leads to issues with waypoint detection in XRay mode
         // Find potential branch points, skipping first and last part, which are leads
         for (let i = 1; i < parts.length - 1; i++) {
             const part = parts[i]

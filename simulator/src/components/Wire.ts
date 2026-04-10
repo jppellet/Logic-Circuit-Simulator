@@ -586,9 +586,11 @@ export class Wire extends Drawable {
         if (numValues === 1) {
             // no need to compute the length of the path, which is costly
             const [value, timeSet] = this._propagatingValues[0]
-            const frac = Math.min(1.0, (drawTime - timeSet) / propagationDelay)
-            if (frac < 1.0) {
-                console.warn(`Propagating value not fully propagated but drawn as such (frac=${frac} < 1.0, drawTime=${drawTime}, timeSet=${timeSet}, propagationDelay=${propagationDelay})`)
+            if (propagationDelay > 0) {
+                const frac = Math.min(1.0, (drawTime - timeSet) / propagationDelay)
+                if (frac < 1.0) {
+                    console.warn(`Propagating value not fully propagated but drawn as such (frac=${frac} < 1.0, drawTime=${drawTime}, timeSet=${timeSet}, propagationDelay=${propagationDelay})`)
+                }
             }
             strokeWireValue(g, value, undefined, neutral, drawParams.drawTimeAnimationFraction, 0)
             this._lastDrawnWireValues[0] = [value, 1]

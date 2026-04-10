@@ -1042,66 +1042,48 @@ export abstract class ComponentBase<
         p: XRayPosMaker,
     } {
 
-        const makeInternalNodeForInput = (input: NodeIn) => {
+
+        const makeInternalNode = <NC extends typeof NodeIn | typeof NodeOut>(extNode: NodeIn | NodeOut, NodeClass: NC): InstanceType<NC> => {
             const id = xray.nodeMgr.getFreeId()
-            const internalNode = new NodeOut(this, xray, input, { id }, undefined, input.idName, input.shortName, input.fullName, 0, 0, false, Orientation.invert(input.orient), 0, undefined)
-            internalNode.setPositionAsXRayFor(input, xray.scale)
+            const internalNode = new NodeClass(this, xray, extNode as any, { id }, undefined, extNode.idName, extNode.shortName, extNode.fullName, 0, 0, false, Orientation.invert(extNode.orient), 0, undefined) as InstanceType<NC>
+            xray.registerNewInternalNode(internalNode)
+            internalNode.setPositionAsXRayFor(extNode, xray.scale)
+            if (link) {
+                if (extNode.xrayInsideNode !== undefined) {
+                    console.warn(`Unexpectedly replacing existing xray node for ${extNode.shortName} in component of type ${Object.getPrototypeOf(this).constructor.name}`)
+                }
+                extNode.xrayInsideNode = internalNode
+            }
+            return internalNode
+        }
+
+        const makeAllInternalNodesFor = <N extends NodeIn | NodeOut>(insOrOuts: NamedNodes<N>, mkIntNode: (n: N) => MirrorNode<N>) => {
+            const intNodes: Record<string, MirrorNode<N> | MirrorNode<N>[] | MirrorNode<N>[][]> = {}
+            for (const [key, nodeOrNodes] of Object.entries(insOrOuts) as Array<[string, N | N[] | N[][]]>) {
+                if (key === "_all") { continue }
+                if (!isArray(nodeOrNodes)) {
+                    // single node
+                    intNodes[key] = mkIntNode(nodeOrNodes)
+                } else {
+                    if (nodeOrNodes.length === 0 || !isArray(nodeOrNodes[0])) {
+                        // grouped nodes
+                        intNodes[key] = (nodeOrNodes as N[]).map(mkIntNode)
+                    } else {
+                        // array of grouped nodes (e.g., mux)
+                        intNodes[key] = (nodeOrNodes as N[][]).map(nodes => nodes.map(mkIntNode))
+                    }
+                }
+            }
+            return intNodes
+        }
+
+        const ins = makeAllInternalNodesFor(this.inputs, (input: NodeIn) => {
+            const internalNode = makeInternalNode(input, NodeOut)
             internalNode.value = input.value
-            if (link) {
-                if (input.xrayInsideNode !== undefined) {
-                    console.warn(`Unexpectedly replacing existing xray node for ${input.shortName}`)
-                }
-                input.xrayInsideNode = internalNode
-            }
             return internalNode
-        }
+        })
 
-        const ins: Record<string, NodeOut | NodeOut[] | NodeOut[][]> = {}
-        for (const [key, nodeOrNodes] of Object.entries(this.inputs) as Array<[string, NodeIn | NodeIn[] | NodeIn[][]]>) {
-            if (key === "_all") { continue }
-            if (!isArray(nodeOrNodes)) {
-                // single node
-                ins[key] = makeInternalNodeForInput(nodeOrNodes)
-            } else {
-                if (nodeOrNodes.length === 0 || !isArray(nodeOrNodes[0])) {
-                    // grouped nodes
-                    ins[key] = (nodeOrNodes as NodeIn[]).map(makeInternalNodeForInput)
-                } else {
-                    // array of grouped nodes (e.g., mux)
-                    ins[key] = (nodeOrNodes as NodeIn[][]).map(nodes => nodes.map(makeInternalNodeForInput))
-                }
-            }
-        }
-
-        const makeInternalNodeForOutput = (output: NodeOut) => {
-            const id = xray.nodeMgr.getFreeId()
-            const internalNode = new NodeIn(this, xray, output, { id }, undefined, output.idName, output.shortName, output.fullName, 0, 0, false, Orientation.invert(output.orient), 0, undefined)
-            internalNode.setPositionAsXRayFor(output, xray.scale)
-            if (link) {
-                if (output.xrayInsideNode !== undefined) {
-                    console.warn(`Unexpectedly replacing existing xray node for ${output.shortName}`)
-                }
-                output.xrayInsideNode = internalNode
-            }
-            return internalNode
-        }
-
-        const outs: Record<string, NodeIn | NodeIn[] | NodeIn[][]> = {}
-        for (const [key, nodeOrNodes] of Object.entries(this.outputs) as Array<[string, NodeOut | NodeOut[] | NodeOut[][]]>) {
-            if (key === "_all") { continue }
-            if (!isArray(nodeOrNodes)) {
-                // single node
-                outs[key] = makeInternalNodeForOutput(nodeOrNodes)
-            } else {
-                if (nodeOrNodes.length === 0 || !isArray(nodeOrNodes[0])) {
-                    // grouped nodes
-                    outs[key] = (nodeOrNodes as NodeOut[]).map(makeInternalNodeForOutput)
-                } else {
-                    // array of grouped nodes (e.g., mux)
-                    outs[key] = (nodeOrNodes as NodeOut[][]).map(nodes => nodes.map(makeInternalNodeForOutput))
-                }
-            }
-        }
+        const outs = makeAllInternalNodesFor(this.outputs, (output: NodeOut) => makeInternalNode(output, NodeIn))
 
         const { width, height } = this.bounds()
         // compute client size so that a wire at fractional position 1 is roughly touching the edge

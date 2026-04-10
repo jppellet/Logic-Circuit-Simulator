@@ -178,6 +178,8 @@ export class XRay implements DrawableParent {
     public readonly linkMgr: LinkManager = new LinkManager(this)
     public readonly recalcMgr = new RecalcManager()
 
+    private _internalNodes: Node[] = []
+
     public drawDebugLines: boolean = false
     private readonly _debugLines: DebugLineSpec[] = []
 
@@ -192,6 +194,10 @@ export class XRay implements DrawableParent {
         public readonly level: number,
         public readonly scale: number,
     ) {
+    }
+
+    public registerNewInternalNode(node: Node) {
+        this._internalNodes.push(node)
     }
 
     /**
@@ -675,12 +681,10 @@ export class XRay implements DrawableParent {
     }
 
     public disconnect() {
-        for (const wire of this.linkMgr.wires) {
-            for (const node of [wire.startNode, wire.endNode]) {
-                if (node.xRayOutsideNode !== undefined) {
-                    node.xRayOutsideNode.xrayInsideNode = undefined
-                    node.xRayOutsideNode = undefined
-                }
+        for (const node of this._internalNodes) {
+            if (node.xRayOutsideNode !== undefined) {
+                node.xRayOutsideNode.xrayInsideNode = undefined
+                node.xRayOutsideNode = undefined
             }
         }
     }
