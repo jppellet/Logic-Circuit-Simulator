@@ -2033,7 +2033,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             width *= drawingScale
             height *= drawingScale
 
-            const transform = new DOMMatrix().scale(drawingScale)
+            const transform = new DOMMatrix().scale(drawingScale).translate(this._translationX, this._translationY)
 
             const tmpCanvas = document.createElement('canvas')
             tmpCanvas.width = width
@@ -2073,7 +2073,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             : Serialization.stringifyObject(Serialization.buildCircuitObject(this), false)
 
         const [width, height] = this.guessAdequateCanvasSize(false)
-        const id = new DOMMatrix()
+        const id = new DOMMatrix().translate(this._translationX, this._translationY)
         const svgCtx = new SVGRenderingContext({ width, height, metadata })
         this.doDrawWithContext(svgCtx, width, height, id, id, true, true, false)
         const serializedSVG = svgCtx.getSerializedSvg()
@@ -2609,41 +2609,11 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             })
             g.setTransform(contentTransform)
         }
-        if (!skipBorder && this.translationX !== 0 || this.translationY !== 0) {
-            // draw axes when translated
-            g.group("axes", () => {
-                g.strokeStyle = COLOR_GRID_LINES
-                g.fillStyle = COLOR_GRID_LINES
-                g.lineWidth = 1
-                g.beginPath()
-                g.moveTo(0, -10)
-                g.lineTo(0, 20)
-                g.moveTo(-10, 0)
-                g.lineTo(20, 0)
-                g.stroke()
 
-                // draw arrow head right
-                g.beginPath()
-                g.moveTo(22, 0)
-                g.lineTo(15, -3)
-                g.lineTo(15, 3)
-                g.closePath()
-                g.fill()
-
-                // draw arrow head down
-                g.beginPath()
-                g.moveTo(0, 22)
-                g.lineTo(-3, 15)
-                g.lineTo(3, 15)
-                g.closePath()
-                g.fill()
-
-                // draw "0" near origin
-                g.font = '10px sans-serif'
-                g.textAlign = 'right'
-                fillTextVAlign(g, TextVAlign.bottom, "0", -3, -3)
-            })
-        }
+        // draw axes when translated
+        // if (!skipBorder && this.translationX !== 0 || this.translationY !== 0) {
+        //     this.drawOriginAndAxes(g)
+        // }
 
         // draw guidelines when moving waypoint
         const singleMovingWaypoint = moveMgr.getSingleMovingWaypoint()
@@ -2785,6 +2755,41 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
 
         // this.drawDebugInfo(g)
+    }
+
+    private drawOriginAndAxes(g: GraphicsRendering) {
+        g.group("axes", () => {
+            g.strokeStyle = COLOR_GRID_LINES
+            g.fillStyle = COLOR_GRID_LINES
+            g.lineWidth = 1
+            g.beginPath()
+            g.moveTo(0, -10)
+            g.lineTo(0, 20)
+            g.moveTo(-10, 0)
+            g.lineTo(20, 0)
+            g.stroke()
+
+            // draw arrow head right
+            g.beginPath()
+            g.moveTo(22, 0)
+            g.lineTo(15, -3)
+            g.lineTo(15, 3)
+            g.closePath()
+            g.fill()
+
+            // draw arrow head down
+            g.beginPath()
+            g.moveTo(0, 22)
+            g.lineTo(-3, 15)
+            g.lineTo(3, 15)
+            g.closePath()
+            g.fill()
+
+            // draw "0" near origin
+            g.font = '10px sans-serif'
+            g.textAlign = 'right'
+            fillTextVAlign(g, TextVAlign.bottom, "0", -3, -3)
+        })
     }
 
     private drawDebugInfo(g: GraphicsRendering) {
