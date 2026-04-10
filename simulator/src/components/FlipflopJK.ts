@@ -69,12 +69,13 @@ export class FlipflopJK extends Flipflop<FlipflopJKRepr> {
 
     protected override xrayScale(): number { return 0.35 }
 
-    protected override makeXRay(level: number, scale: number): XRay {
+    protected override makeXRayForFlipflopOrLatch(level: number, scale: number): XRay {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
         const { ins, outs, p } = this.makeXRayNodes(xray)
 
         const ffd = FlipflopDDef.makeSpawned(xray, "ffd", 3 * GRID_STEP, p.later)
         xray.alignComponentOf(ffd.outputs.Q̅, outs.Q̅)
+        ffd.doSetTrigger(this.trigger)
 
         const allocOut = xray.wires([ffd.outputs.Q, ffd.outputs.Q̅], [outs.Q, outs.Q̅], {
             alloc: { allDifferent: true, order: "bottom-up" },
@@ -93,6 +94,10 @@ export class FlipflopJK extends Flipflop<FlipflopJKRepr> {
         wire(notK, mux.inputs.I[1][0], "vh", [p.left + 2 * GRID_STEP, notK.posY - 4 * GRID_STEP])
 
         return xray
+    }
+
+    protected override setStoredValueInXRay(xray: XRay, val: LogicValue): void {
+        xray.setStoredValueOfFlipflopOrLatch("ffd", val)
     }
 
 

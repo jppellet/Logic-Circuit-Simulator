@@ -693,7 +693,7 @@ export function strokeWireValue(g: GraphicsRendering, value: LogicValue, lengthT
 export function drawComponentIDs(g: GraphicsRendering, components: Generator<Component>) {
     g.group("refs", () => {
         g.font = 'bold 14px sans-serif'
-        g.strokeStyle = "white"
+        g.strokeStyle = "rgb(255 255 255 / 0.8)"
         g.lineWidth = 3
         g.fillStyle = COLOR_COMPONENT_ID
         g.textAlign = 'center'

@@ -4,6 +4,8 @@ import { S } from "../strings"
 import { EdgeTrigger, LogicValue, LogicValueRepr, Unknown, toLogicValue, toLogicValueRepr, typeOrUndefined } from "../utils"
 import { ComponentBase, InstantiatedComponentDef, NodeInDesc, NodeRec, NodesIn, NodesOut, Repr, defineAbstractComponent } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
+import { GateN } from "./Gate"
+import { XRay } from "./XRay"
 
 
 export const FlipflopOrLatchDef =
@@ -72,6 +74,18 @@ export abstract class FlipflopOrLatch<TRepr extends FlipflopOrLatchRepr> extends
         }
     }
 
+    public get storedValue() {
+        return this.value[0]
+    }
+
+    public set storedValue(val: LogicValue) {
+        this.doSetValue([val, LogicValue.invert(val)])
+        const xray = this.cachedXRay
+        if (xray !== undefined) {
+            this.setStoredValueInXRay(xray, val)
+        }
+    }
+
     protected override propagateValue(newValue: [LogicValue, LogicValue]) {
         this.outputs.Q.value = newValue[0]
         this.outputs.Q̅.value = newValue[1]
@@ -119,6 +133,30 @@ export abstract class FlipflopOrLatch<TRepr extends FlipflopOrLatchRepr> extends
         ]
     }
 
+    protected override makeXRay(level: number, scale: number): XRay {
+        const xray = this.makeXRayForFlipflopOrLatch(level, scale)
+        this.setStoredValueInXRay(xray, this.storedValue)
+        return xray
+    }
+
+    protected abstract makeXRayForFlipflopOrLatch(level: number, scale: number): XRay
+
+    protected abstract setStoredValueInXRay(xray: XRay, val: LogicValue): void
+
+}
+
+
+export const LatchNorQBar = "norQBar"
+export const LatchNorQ = "norQ"
+export function setStoredValueInXRayForNorLatch(xray: XRay, val: LogicValue) {
+    const norQbar = xray.components.get(LatchNorQBar)
+    const norQ = xray.components.get(LatchNorQ)
+    if (norQbar === undefined || norQ === undefined) {
+        console.warn("Cannot set stored value for latch in XRay: missing nor gates")
+        return
+    }
+    const nodeToStabilize = ((val === true ? norQ : norQbar) as GateN).outputs.Out
+    nodeToStabilize.value = true as LogicValue
 }
 
 

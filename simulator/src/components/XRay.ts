@@ -7,6 +7,7 @@ import { TestSuites } from "../TestSuite"
 import { isArray, isBoolean, isNumber, isString, LogicValue, Mode, Orientation, ParentType } from "../utils"
 import { Component, InjectedParams } from "./Component"
 import { DrawableParent, GraphicsRendering, HasPosition } from "./Drawable"
+import { FlipflopOrLatch } from "./FlipflopOrLatch"
 import { Gate1, Gate1Def, GateN, GateNDef } from "./Gate"
 import { Gate1Type, Gate1Types, GateNType } from "./GateTypes"
 import { InputDef } from "./Input"
@@ -653,6 +654,32 @@ export class XRay implements DrawableParent {
                 if (i === 0 && groupLabel !== undefined) {
                     fillTextVAlign(g, TextVAlign.middle, groupLabel, +(halfWidth + 10), pos - 15)
                     fillTextVAlign(g, TextVAlign.middle, groupLabel, -(halfWidth + 10), pos - 15)
+                }
+            }
+        }
+    }
+
+    /**
+     * In an XRay, sets the value of the component by setting the value of
+     * an internal subcomponent of type FlipflopOrLatch that has a stored
+     * value. Useful for all components that delegate storing to other,
+     * simpler storing components.
+     */
+    public setStoredValueOfFlipflopOrLatch(id: string, val: LogicValue) {
+        const subcomponent = this.components.get(id)
+        if (subcomponent === undefined) {
+            console.warn(`Cannot set stored value for latch in XRay: missing subcomponent with id ${id}`)
+            return
+        }
+        (subcomponent as FlipflopOrLatch<any>).storedValue = val
+    }
+
+    public disconnect() {
+        for (const wire of this.linkMgr.wires) {
+            for (const node of [wire.startNode, wire.endNode]) {
+                if (node.xRayOutsideNode !== undefined) {
+                    node.xRayOutsideNode.xrayInsideNode = undefined
+                    node.xRayOutsideNode = undefined
                 }
             }
         }

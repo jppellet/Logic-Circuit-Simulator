@@ -4,7 +4,7 @@ import { S } from "../strings"
 import { LogicValue } from "../utils"
 import { Repr, defineComponent } from "./Component"
 import { DrawableParent, MenuItems } from "./Drawable"
-import { FlipflopOrLatch, FlipflopOrLatchDef, FlipflopOrLatchDefNodeDistX, FlipflopOrLatchDefPreClr } from "./FlipflopOrLatch"
+import { FlipflopOrLatch, FlipflopOrLatchDef, FlipflopOrLatchDefNodeDistX, FlipflopOrLatchDefPreClr, LatchNorQ, LatchNorQBar, setStoredValueInXRayForNorLatch } from "./FlipflopOrLatch"
 import { XRay } from "./XRay"
 
 
@@ -83,7 +83,7 @@ export class LatchD extends FlipflopOrLatch<LatchDRepr> {
 
     protected override xrayScale(): number { return 0.23 }
 
-    protected override makeXRay(level: number, scale: number): XRay {
+    protected override makeXRayForFlipflopOrLatch(level: number, scale: number): XRay {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
         const { ins, outs, p } = this.makeXRayNodes(xray)
 
@@ -103,9 +103,9 @@ export class LatchD extends FlipflopOrLatch<LatchDRepr> {
         wire(ins.E, andDbar.in[1], "vh")
         wire(ins.E, andD.in[1], "vh", [clockLeftLine, andDbar.in[1]])
 
-        const norQbar = gate("norQBar", "nor", norX, p.later, "e", 3)
-        norQbar.outputs.Out.value = true as LogicValue // stabilize input
-        const norQ = gate("norQ", "nor", norX, p.later, "e", 3)
+        const norQbar = gate(LatchNorQBar, "nor", norX, p.later, "e", 3)
+        const norQ = gate(LatchNorQ, "nor", norX, p.later, "e", 3)
+
         wire(andD, norQbar.in[1], true)
         wire(andDbar, norQ.in[1], true)
         wire(ins.Pre, norQbar.in[0], "vh")
@@ -144,6 +144,10 @@ export class LatchD extends FlipflopOrLatch<LatchDRepr> {
         ])
 
         return xray
+    }
+
+    protected override setStoredValueInXRay(xray: XRay, val: LogicValue): void {
+        setStoredValueInXRayForNorLatch(xray, val)
     }
 
 }

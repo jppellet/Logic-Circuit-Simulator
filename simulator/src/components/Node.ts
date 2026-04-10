@@ -35,7 +35,7 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
     public constructor(
         public readonly component: Component,
         parent: DrawableParent,
-        public readonly xRayOutsideNode: MirrorNode<N> | undefined,
+        public xRayOutsideNode: MirrorNode<N> | undefined,
         nodeSpec: InputNodeRepr | OutputNodeRepr,
         public readonly group: NodeGroup<N> | undefined,
         public readonly idName: string, // the one in comp.inputs[idName]

@@ -322,7 +322,10 @@ export abstract class ComponentBase<
 
     private _xrayMode: XRayMode | undefined = undefined
     private _cachedXRay: XRay | undefined = undefined
+    protected get cachedXRay() { return this._cachedXRay }
     private _showingXRay = false
+    public get showingXRay() { return this._showingXRay }
+
 
     protected constructor(
         parent: DrawableParent,
@@ -955,17 +958,16 @@ export abstract class ComponentBase<
         return this.xrayScale() !== undefined
     }
 
-    public get showingXRay() {
-        return this._showingXRay
-    }
-
     protected makeXRay(__level: number, __scale: number): XRay | undefined {
         // override in subclasses
         return undefined
     }
 
     protected invalidateXRay() {
-        this._cachedXRay = undefined
+        if (this._cachedXRay !== undefined) {
+            this._cachedXRay.disconnect()
+            this._cachedXRay = undefined
+        }
     }
 
     protected doDrawXRayAndOutline(
@@ -979,8 +981,10 @@ export abstract class ComponentBase<
             const fadeSpan = 0.3 // span during which some transition alpha is applied
             const myDrawParams = ctx.drawParams
             const zoomExcess = xrayMode === "force" ? fadeSpan : myDrawParams.currentDrawingScale - limitFactor / scale
-            let xray = this._cachedXRay
-            if (zoomExcess > 0) {
+            if (zoomExcess <= 0) {
+                this.invalidateXRay()
+            } else {
+                let xray = this._cachedXRay
                 if (xray === undefined) {
                     xray = this._cachedXRay = this.makeXRay(myDrawParams.xrayLevel, scale)
                 }
@@ -1979,7 +1983,7 @@ export class ComponentDef<
         if (!isNumber(y)) { y = y.posY }
         comp.setPosition(x, y, false)
         comp.setSpawned()
-        comp.doSetValidatedId(validatedId)
+        parent.components.changeIdOf(comp, validatedId)
         if (orient !== undefined) {
             comp.doSetOrient(orient)
         }
@@ -2195,7 +2199,7 @@ export class ParametrizedComponentDef<
         if (!isNumber(y)) { y = y.posY }
         comp.setPosition(x, y, false)
         comp.setSpawned()
-        comp.doSetValidatedId(validatedId)
+        parent.components.changeIdOf(comp, validatedId)
         if (orient !== undefined) {
             comp.doSetOrient(orient)
         }
