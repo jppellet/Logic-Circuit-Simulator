@@ -144,9 +144,9 @@ export class Bypass extends ParametrizedComponentBase<BypassRepr> {
         return this.numBits >= 8 ? 0.16 : 0.22
     }
 
-    protected override makeXRay(level: number, scale: number) {
+    protected override makeXRay(level: number, scale: number, link: boolean) {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const bits = this.numBits
 

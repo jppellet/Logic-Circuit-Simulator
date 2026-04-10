@@ -83,9 +83,9 @@ export class LatchD extends FlipflopOrLatch<LatchDRepr> {
 
     protected override xrayScale(): number { return 0.23 }
 
-    protected override makeXRayForFlipflopOrLatch(level: number, scale: number): XRay {
+    protected override makeXRayForFlipflopOrLatch(level: number, scale: number, link: boolean) {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const norX = 4 * GRID_STEP
         const andX = p.left + 7 * GRID_STEP

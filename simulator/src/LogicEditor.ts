@@ -583,9 +583,9 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             // singletons manage their dark mode according to system settings
             const darkModeQuery = window.matchMedia("(prefers-color-scheme: dark)")
             darkModeQuery.onchange = () => {
-                setDarkMode(darkModeQuery.matches, false)
+                setDarkMode(darkModeQuery.matches, false, false)
             }
-            setDarkMode(darkModeQuery.matches, true)
+            setDarkMode(darkModeQuery.matches, true, true)
 
             // reexport some libs
             window.JSON5 = JSON5
@@ -1139,7 +1139,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         document.body.addEventListener("themechanged", (e) => {
             const isDark = Boolean((e as any).detail?.is_dark_theme)
-            setDarkMode(isDark, false)
+            setDarkMode(isDark, false, false)
         })
 
         const mkdocsThemeObserver = new MutationObserver(function (mutations) {
@@ -1241,6 +1241,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             // const showTxGates = mode >= Mode.FULL && (showOnly === undefined || showOnly.includes("TX") || showOnly.includes("TXA"))
             // const txGateButton = this.root.querySelector("button[data-type=TXA]") as HTMLElement
             // setVisible(txGateButton, showTxGates)
+
+            this.editorRoot.linkMgr.invalidateAllWirePaths() // in case some paths are different
 
             if (doSetFocus) {
                 this.focus()
@@ -1839,8 +1841,10 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     }
 
     private guessAdequateCanvasSize(applyZoom: boolean): [number, number] {
-        let rightmostX = Number.NEGATIVE_INFINITY, leftmostX = Number.POSITIVE_INFINITY
-        let lowestY = Number.NEGATIVE_INFINITY, highestY = Number.POSITIVE_INFINITY
+        let leftmost = Infinity
+        let rightmost = -Infinity
+        let topmost = Infinity
+        let bottommost = -Infinity
         const drawables: DrawableWithPosition[] = [...this.editorRoot.components.all()]
         for (const wire of this.linkMgr.wires) {
             drawables.push(...wire.waypoints)
@@ -1850,34 +1854,37 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             const width = comp.width
             const left = cx - width / 2
             const right = left + width
-            if (right > rightmostX) {
-                rightmostX = right
+            if (right > rightmost) {
+                rightmost = right
             }
-            if (left < leftmostX) {
-                leftmostX = left
+            if (left < leftmost) {
+                leftmost = left
             }
 
             const cy = comp.posY
             const height = comp.height
             const top = cy - height / 2
             const bottom = top + height
-            if (bottom > lowestY) {
-                lowestY = bottom
+            if (bottom > bottommost) {
+                bottommost = bottom
             }
-            if (top < highestY) {
-                highestY = top
+            if (top < topmost) {
+                topmost = top
             }
         }
-        leftmostX = Math.max(0, leftmostX)
-        let w = rightmostX + leftmostX // add right margin equal to left margin
+        let w = rightmost - leftmost
         if (isNaN(w)) {
             w = 300
+        } else {
+            w += 2 * (leftmost + this._translationX) // add margin 
         }
-        highestY = Math.max(0, highestY)
-        let h = highestY + lowestY // add lower margin equal to top margin
+        let h = bottommost - topmost // add lower margin equal to top margin
         if (isNaN(h)) {
             h = 150
+        } else {
+            h += 2 * (topmost + this._translationY) // add margin 
         }
+        // console.log(`Guessed canvas size: ${w}x${h} (rightmostX=${rightmost}, leftmostX=${leftmost}, lowestY=${bottommost}, highestY=${topmost}, with ${drawables.length} drawables, translationX=${this._translationX}, translationY=${this._translationY})`)
         const f = applyZoom ? this._userDrawingScale : 1
         return [f * w, f * h]
     }
@@ -2035,11 +2042,11 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             const g = LogicEditor.getGraphics(tmpCanvas)
             const wasDark = isDarkMode()
             if (wasDark) {
-                setDarkMode(false, false)
+                setDarkMode(false, false, true)
             }
             this.doDrawWithContext(g, width, height, transform, transform, true, true, false)
             if (wasDark) {
-                setDarkMode(true, false)
+                setDarkMode(true, false, true)
             }
             tmpCanvas.toBlob(resolve, 'image/png')
             tmpCanvas.remove()
@@ -2089,6 +2096,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const opts = this.nonDefaultOptions() ?? {}
         opts.origin = [bounds.left - additionalMargin, bounds.top - additionalMargin]
         opts.propagationDelay = 0
+        opts.zoom = 100
         const obj: Circuit = Object.assign(Serialization.buildComponentsAndWireObject(
             [...xray.components.all()],
             [], undefined), {
@@ -2099,20 +2107,23 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         // open new window with same url but no data
         const url = new URL(window.location.href)
-        url.searchParams.delete("data")
+        url.searchParams.delete(ATTRIBUTE_NAMES.data)
         const newWindow = window.open(url.toString(), "_blank")
         if (newWindow === null) {
             console.warn("Could not open new window for xray export")
             return
         }
-        newWindow.sessionStorage.clear()
 
         const now = Date.now()
         const saveStr = now + ";" + serialized
         try {
+            newWindow.sessionStorage.clear()
             newWindow.sessionStorage.setItem(STORAGE_PREFIX + SINGLETON_INSTANCE_ID, saveStr)
+            newWindow.addEventListener("load", () => {
+                newWindow.Logic.singleton?.setMode(Mode.TRYOUT, true)
+            })
         } catch (e) {
-            console.error("Failed to save circuit to browser storage", e)
+            console.error("Failed to configure new window for xray export", e)
         }
     }
 
@@ -2982,7 +2993,7 @@ export class LogicStatic {
                 mode = looksDark
             }
         }
-        setDarkMode(Boolean(mode), true)
+        setDarkMode(Boolean(mode), true, false)
     }
 
     public getAllComponentTypes(lang?: string) {

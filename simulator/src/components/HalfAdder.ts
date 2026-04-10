@@ -4,7 +4,6 @@ import { S } from "../strings"
 import { LogicValue, Unknown, isHighImpedance, isUnknown } from "../utils"
 import { ComponentBase, Repr, defineComponent, shiftWhenVertical } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
-import { type XRay } from "./XRay"
 
 
 export const HalfAdderDef =
@@ -88,9 +87,9 @@ export class HalfAdder extends ComponentBase<HalfAdderRepr> {
         return 0.40
     }
 
-    protected override makeXRay(level: number, scale: number): XRay {
+    protected override makeXRay(level: number, scale: number, link: boolean) {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const xor = gate("xor", "xor", p.x(0.3), p.later)
         const and = gate("and", "and", p.x(0.3), p.later)

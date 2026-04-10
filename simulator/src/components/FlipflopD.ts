@@ -68,9 +68,9 @@ export class FlipflopD extends Flipflop<FlipflopDRepr> {
 
     protected override xrayScale(): number { return 0.3 }
 
-    protected override makeXRayForFlipflopOrLatch(level: number, scale: number): XRay {
+    protected override makeXRayForFlipflopOrLatch(level: number, scale: number, link: boolean) {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const master = LatchDDef.makeSpawned(xray, "master", p.right - 10 * GRID_STEP, p.later)
         const slave = LatchDDef.makeSpawned(xray, "slave", p.right - 3 * GRID_STEP, p.later)
@@ -157,7 +157,7 @@ export class FlipflopDWithEnable extends Flipflop<FlipflopDWithEnableRepr> {
             return Unknown
         }
         if (e === false) {
-            return this.outputs.Q.value
+            return this.storedValue
         }
         return LogicValue.filterHighZ(this.inputs.D.value)
     }
@@ -179,9 +179,9 @@ export class FlipflopDWithEnable extends Flipflop<FlipflopDWithEnableRepr> {
 
     protected override xrayScale(): number { return 0.35 }
 
-    protected override makeXRayForFlipflopOrLatch(level: number, scale: number): XRay {
+    protected override makeXRayForFlipflopOrLatch(level: number, scale: number, link: boolean) {
         const { xray, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const ffd = FlipflopDDef.makeSpawned(xray, "ffd", GRID_STEP, p.later)
         xray.alignComponentOf(ffd.outputs.Q̅, outs.Q̅)

@@ -91,9 +91,9 @@ export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
 
     protected override xrayScale(): number { return 0.5 }
 
-    protected override makeXRayForFlipflopOrLatch(level: number, scale: number): XRay {
+    protected override makeXRayForFlipflopOrLatch(level: number, scale: number, link: boolean) {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs } = this.makeXRayNodes(xray)
+        const { ins, outs } = this.makeXRayNodes(xray, link)
 
         const gateX = -GRID_STEP
         const norQbar = gate(LatchNorQBar, "nor", gateX, outs.Q, "e")
@@ -247,9 +247,9 @@ export class LatchSRWithEnable extends FlipflopOrLatch<LatchSRWithEnableRepr> {
 
     protected override xrayScale(): number { return 0.3 }
 
-    protected override makeXRayForFlipflopOrLatch(level: number, scale: number): XRay {
+    protected override makeXRayForFlipflopOrLatch(level: number, scale: number, link: boolean) {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const andGateX = -4 * GRID_STEP
 

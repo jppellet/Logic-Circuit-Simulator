@@ -8,7 +8,6 @@ import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } f
 import { FlipflopDDef } from "./FlipflopD"
 import { Flipflop, FlipflopOrLatch, makeTriggerItems } from "./FlipflopOrLatch"
 import { HalfAdderDef } from "./HalfAdder"
-import { XRay } from "./XRay"
 
 
 export const CounterDef =
@@ -210,9 +209,9 @@ export class Counter extends ParametrizedComponentBase<CounterRepr> {
         return useCompact(this.numBits) ? (this.numBits >= 16 ? 0.1 : 0.115) : 0.205
     }
 
-    protected override makeXRay(level: number, scale: number): XRay {
+    protected override makeXRay(level: number, scale: number, link: boolean) {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const bits = this.numBits
 

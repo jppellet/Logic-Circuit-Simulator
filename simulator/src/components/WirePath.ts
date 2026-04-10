@@ -1,4 +1,5 @@
 import { BezierCoords, bezierPoint, circle, fractionIfPointOnStraightSegment, isPointCloseToBezierWire, isPointCloseToStraightWire, isSameDirection, LineCoords, WIRE_WIDTH } from "../drawutils"
+import { Mode } from "../utils"
 import { GraphicsRendering } from "./Drawable"
 
 export type PossibleBranchPoints =
@@ -14,12 +15,15 @@ type WirePathLength = {
 
 export class WirePath {
 
+    public readonly parts: ReadonlyArray<LineCoords | BezierCoords>
     private _length: WirePathLength | undefined = undefined
     private readonly _possibleBranchPoints: PossibleBranchPoints[] = []
 
     public constructor(
-        public parts: ReadonlyArray<LineCoords | BezierCoords>
+        parts: ReadonlyArray<LineCoords | BezierCoords>,
+        mode: Mode,
     ) {
+        this.parts = normalizePath(parts, mode)
         // Find potential branch points, skipping first and last part, which are leads
         for (let i = 1; i < parts.length - 1; i++) {
             const part = parts[i]
@@ -155,4 +159,34 @@ export class WirePath {
         return undefined
     }
 
+}
+
+
+function normalizePath(parts: ReadonlyArray<LineCoords | BezierCoords>, mode: Mode): ReadonlyArray<LineCoords | BezierCoords> {
+
+    const tryMerge = (part1: LineCoords | BezierCoords, part2: LineCoords | BezierCoords): LineCoords | undefined => {
+        if (part1.length === 4 && part2.length === 4 &&
+            ((part1[1] === part1[3] && part1[1] === part2[3]) || // horizontal, same y as next
+                (part1[0] === part1[2] && part1[0] === part2[2]))    // vertical, same x as next
+        ) {
+            return [part1[0], part1[1], part2[2], part2[3]]
+        }
+        return undefined
+    }
+
+    // always try to merge the end
+    const newLastPart = tryMerge(parts[parts.length - 2], parts[parts.length - 1])
+    if (newLastPart !== undefined) {
+        parts = [...parts.slice(0, parts.length - 2), newLastPart]
+    }
+
+    if (mode <= Mode.TRYOUT) {
+        // also try to merge the beginning
+        const newFirstPart = tryMerge(parts[0], parts[1])
+        if (newFirstPart !== undefined) {
+            parts = [newFirstPart, ...parts.slice(2)]
+        }
+    }
+
+    return parts
 }

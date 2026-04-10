@@ -51,11 +51,11 @@ export class FlipflopJK extends Flipflop<FlipflopJKRepr> {
     protected doRecalcValueAfterClock(): LogicValue {
         const j = this.inputs.J.value
         const k = this.inputs.K.value
-        const q = this.outputs.Q.value
+        const current = this.storedValue
 
         if (j === true) {
             if (k === true) {
-                return LogicValue.invert(q)
+                return LogicValue.invert(current)
             } else {
                 return true
             }
@@ -63,15 +63,15 @@ export class FlipflopJK extends Flipflop<FlipflopJKRepr> {
         if (k === true) {
             return false
         } else {
-            return q
+            return current
         }
     }
 
     protected override xrayScale(): number { return 0.35 }
 
-    protected override makeXRayForFlipflopOrLatch(level: number, scale: number): XRay {
+    protected override makeXRayForFlipflopOrLatch(level: number, scale: number, link: boolean) {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const ffd = FlipflopDDef.makeSpawned(xray, "ffd", 3 * GRID_STEP, p.later)
         xray.alignComponentOf(ffd.outputs.Q̅, outs.Q̅)

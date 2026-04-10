@@ -58,9 +58,9 @@ export class FlipflopT extends Flipflop<FlipflopTRepr> {
 
     protected override xrayScale(): number { return 0.35 }
 
-    protected override makeXRayForFlipflopOrLatch(level: number, scale: number): XRay {
+    protected override makeXRayForFlipflopOrLatch(level: number, scale: number, link: boolean) {
         const { xray, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const ffd = FlipflopDDef.makeSpawned(xray, "ffd", GRID_STEP, p.later)
         xray.alignComponentOf(ffd.outputs.Q̅, outs.Q̅)

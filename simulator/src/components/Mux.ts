@@ -8,7 +8,7 @@ import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } f
 import { Gate1, GateN } from "./Gate"
 import { NodeIn } from "./Node"
 import { WireStyles } from "./Wire"
-import { WaypointSpecCompact, XRay } from "./XRay"
+import { WaypointSpecCompact } from "./XRay"
 
 export const MuxDemuxLimits: Array<[bits: number, maxSels: number]> = [
     [1, 4],
@@ -248,9 +248,9 @@ export class Mux extends ParametrizedComponentBase<MuxRepr> {
         return useExtraSmallScale ? 0.0848 : useSmallScale ? 0.11 : 0.18
     }
 
-    protected override makeXRay(level: number, scale: number): XRay | undefined {
+    protected override makeXRay(level: number, scale: number, link: boolean) {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const bits = this.numTo
         const groups = this.numGroups

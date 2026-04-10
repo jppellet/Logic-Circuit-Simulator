@@ -133,9 +133,9 @@ export class ControlledInverter extends ParametrizedComponentBase<ControlledInve
         return useCompact(this.numBits) ? 0.18 : 0.36
     }
 
-    protected override makeXRay(level: number, scale: number) {
+    protected override makeXRay(level: number, scale: number, link: boolean) {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const bits = this.numBits
 

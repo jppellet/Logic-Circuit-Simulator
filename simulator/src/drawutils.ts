@@ -143,14 +143,16 @@ export const OPACITY_HIDDEN_ITEMS = 0.3
 let _currentModeIsDark = false
 doSetColors(_currentModeIsDark)
 
-export function setDarkMode(darkMode: boolean, force: boolean) {
-    if (force || darkMode !== _currentModeIsDark) {
+export function setDarkMode(darkMode: boolean, forceSet: boolean, dontRedrawNow: boolean) {
+    if (forceSet || darkMode !== _currentModeIsDark) {
         doSetColors(darkMode)
-        for (const editor of LogicEditor.allConnectedEditors) {
-            editor.wrapHandler(() => {
-                editor.setDark(darkMode)
-                editor.editTools.redrawMgr.requestRedraw({ why: "dark/light mode switch" })
-            })()
+        if (!dontRedrawNow) {
+            for (const editor of LogicEditor.allConnectedEditors) {
+                editor.wrapHandler(() => {
+                    editor.setDark(darkMode)
+                    editor.editTools.redrawMgr.requestRedraw({ why: "dark/light mode switch" })
+                })()
+            }
         }
     }
 }

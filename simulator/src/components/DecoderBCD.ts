@@ -123,9 +123,9 @@ export class DecoderBCD extends ParametrizedComponentBase<DecoderBCDRepr> {
         return this.numFrom <= 4 ? 0.5 : 0.15
     }
 
-    protected override makeXRay(level: number, scale: number) {
+    protected override makeXRay(level: number, scale: number, link: boolean) {
         const { xray, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         // implements the double-dabble adder structure for the BCD decoder
         if (this.numFrom === 4) {

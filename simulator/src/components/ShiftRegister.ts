@@ -7,7 +7,7 @@ import { DrawableParent, GraphicsRendering } from "./Drawable"
 import { FlipflopD, FlipflopDDef } from "./FlipflopD"
 import { Mux, MuxDef } from "./Mux"
 import { RegisterBase, RegisterBaseDef } from "./Register"
-import { WaypointSpecCompact, XRay } from "./XRay"
+import { WaypointSpecCompact } from "./XRay"
 
 export const ShiftRegisterDef =
     defineParametrizedComponent("shift-reg", true, true, {
@@ -74,11 +74,11 @@ export class ShiftRegister extends RegisterBase<ShiftRegisterRepr> {
         return this.numBits >= 16 ? 0.105 : this.numBits >= 8 ? 0.15 : 0.3
     }
 
-    protected override makeXRay(level: number, scale: number): XRay {
+    protected override makeXRay(level: number, scale: number, link: boolean) {
         const bits = this.numBits
         const edgeTrigger = this.trigger
         const { xray, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const ffds: FlipflopD[] = []
         const muxes: Mux[] = []

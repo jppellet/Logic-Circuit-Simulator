@@ -12,7 +12,6 @@ import { IncDecDef } from "./IncDec"
 import { MuxDef } from "./Mux"
 import { NodeOut } from "./Node"
 import { type ShiftRegisterDef } from "./ShiftRegister"
-import { XRay } from "./XRay"
 
 
 export const RegisterBaseDef =
@@ -333,11 +332,11 @@ export class Register extends RegisterBase<RegisterRepr> {
         }
     }
 
-    protected override makeXRay(level: number, scale: number): XRay | undefined {
+    protected override makeXRay(level: number, scale: number, link: boolean) {
         const bits = this.numBits
         const edgeTrigger = this.trigger
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         if (!this.hasIncDec) {
             // simple register made of D flip-flops

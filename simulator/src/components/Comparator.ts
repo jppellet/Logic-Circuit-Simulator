@@ -86,9 +86,9 @@ export class Comparator extends ComponentBase<ComparatorRepr> {
         return 0.25
     }
 
-    protected override makeXRay(level: number, scale: number) {
+    protected override makeXRay(level: number, scale: number, link: boolean) {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const andEq = gate("andEq", "and", p.later, p.top + 2.5 * GRID_STEP, "n")
         const andG = gate("andG", "and", p.right - 2.5 * GRID_STEP, p.later, "e", 3)

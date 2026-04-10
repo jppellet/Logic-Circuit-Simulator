@@ -8,7 +8,6 @@ import { defineParametrizedComponent, groupVertical, param, ParametrizedComponen
 import { DrawableParent, DrawContext, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
 import { GateTypePrefix, validateGateType } from "./Gate"
 import { GateNType, GateNTypes } from "./GateTypes"
-import { XRay } from "./XRay"
 
 
 export const GateArrayDef =
@@ -236,11 +235,11 @@ export class GateArray extends ParametrizedComponentBase<GateArrayRepr> {
         return getXRayScaleForArrayComponent(this.numBits)
     }
 
-    protected override makeXRay(level: number, scale: number): XRay | undefined {
+    protected override makeXRay(level: number, scale: number, link: boolean) {
         const bits = this.numBits
 
         const { xray, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         xrayWireAndLayoutAsArray(
             xray, bits, ins, outs, p,

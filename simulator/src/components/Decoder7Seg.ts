@@ -83,9 +83,9 @@ export class Decoder7Seg extends ComponentBase<Decoder7SegRepr> {
         return 0.08
     }
 
-    protected override makeXRay(level: number, scale: number) {
+    protected override makeXRay(level: number, scale: number, link: boolean) {
         const { xray, wire } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const dec = DecoderDef.makeSpawned(xray, "dec", p.left + 10 * GRID_STEP, 0, "e", { bits: 4 })
 

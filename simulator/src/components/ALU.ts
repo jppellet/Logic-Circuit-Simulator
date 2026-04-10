@@ -11,7 +11,7 @@ import { DrawableParent, DrawContext, GraphicsRendering, MenuData, MenuItems } f
 import { GateArrayDef } from "./GateArray"
 import { Gate1Types, Gate2toNType, Gate2toNTypes } from "./GateTypes"
 import { Mux, MuxDef } from "./Mux"
-import { WaypointSpecCompact, WirePositionAllocation, XRay } from "./XRay"
+import { WaypointSpecCompact, WirePositionAllocation } from "./XRay"
 
 
 export const ALUDef =
@@ -280,11 +280,11 @@ export class ALU extends ParametrizedComponentBase<ALURepr> {
         }
     }
 
-    protected override makeXRay(level: number, scale: number): XRay | undefined {
+    protected override makeXRay(level: number, scale: number, link: boolean) {
 
         const bits = this.numBits
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         let muxAL: Mux
         let allocOut: WirePositionAllocation

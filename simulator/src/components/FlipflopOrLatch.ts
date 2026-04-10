@@ -133,13 +133,13 @@ export abstract class FlipflopOrLatch<TRepr extends FlipflopOrLatchRepr> extends
         ]
     }
 
-    protected override makeXRay(level: number, scale: number): XRay {
-        const xray = this.makeXRayForFlipflopOrLatch(level, scale)
+    protected override makeXRay(level: number, scale: number, link: boolean) {
+        const xray = this.makeXRayForFlipflopOrLatch(level, scale, link)
         this.setStoredValueInXRay(xray, this.storedValue)
         return xray
     }
 
-    protected abstract makeXRayForFlipflopOrLatch(level: number, scale: number): XRay
+    protected abstract makeXRayForFlipflopOrLatch(level: number, scale: number, link: boolean): XRay
 
     protected abstract setStoredValueInXRay(xray: XRay, val: LogicValue): void
 

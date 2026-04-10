@@ -11,7 +11,6 @@ import { FlipflopDWithEnable, FlipflopDWithEnableDef } from './FlipflopD'
 import { MuxDef } from './Mux'
 import { NodeOut } from './Node'
 import { RAM, RAMDef } from "./RAM"
-import { XRay } from './XRay'
 
 
 export const ROMRAMDef =
@@ -336,7 +335,7 @@ export abstract class ROMRAMBase<TRepr extends ROMRAMRepr> extends ParametrizedC
         return RAMROMXRayDrawParams[this.numAddressBits - 2][this.numDataBits / 4 - 1]?.scale
     }
 
-    protected override makeXRay(level: number, scale: number): XRay | undefined {
+    protected override makeXRay(level: number, scale: number, link: boolean) {
         const addrBits = this.numAddressBits
         const bits = this.numDataBits
 
@@ -349,7 +348,7 @@ export abstract class ROMRAMBase<TRepr extends ROMRAMRepr> extends ParametrizedC
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
         // we cheat and tell the compiler we're always a RAM component here, but beware that
         // we may actually not have Clock, WE and D inputs if we're a ROM
-        const { ins, outs, p } = (this as unknown as RAM).makeXRayNodes(xray)
+        const { ins, outs, p } = (this as unknown as RAM).makeXRayNodes(xray, link)
         const isRAM = "Clock" in ins
         const { incXf, incYf, ffXGridSep, ffYGridSep } = RAMROMXRayDrawParams[addrBits - 2][bits / 4 - 1]
         const incX = GRID_STEP / incXf

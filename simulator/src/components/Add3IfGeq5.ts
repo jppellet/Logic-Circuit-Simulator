@@ -79,9 +79,9 @@ export class Add3IfGeq5 extends ComponentBase<Add3IfGeq5Repr> {
         return 0.15
     }
 
-    protected override makeXRay(level: number, scale: number) {
+    protected override makeXRay(level: number, scale: number, link: boolean) {
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const allocLeft = xray.newPositionAlloc(p.left + 2, GRID_STEP, 2)
 

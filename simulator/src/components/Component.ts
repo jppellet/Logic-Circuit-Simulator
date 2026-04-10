@@ -958,7 +958,7 @@ export abstract class ComponentBase<
         return this.xrayScale() !== undefined
     }
 
-    protected makeXRay(__level: number, __scale: number): XRay | undefined {
+    protected makeXRay(__level: number, __scale: number, __link: boolean): XRay | undefined {
         // override in subclasses
         return undefined
     }
@@ -986,7 +986,7 @@ export abstract class ComponentBase<
             } else {
                 let xray = this._cachedXRay
                 if (xray === undefined) {
-                    xray = this._cachedXRay = this.makeXRay(myDrawParams.xrayLevel, scale)
+                    xray = this._cachedXRay = this.makeXRay(myDrawParams.xrayLevel, scale, true)
                 }
                 if (xray !== undefined) {
                     const composedDrawingScale = myDrawParams.currentDrawingScale * scale
@@ -1032,7 +1032,7 @@ export abstract class ComponentBase<
     }
 
 
-    protected makeXRayNodes<C extends Component = this>(this: C, xray: XRay): {
+    protected makeXRayNodes<C extends Component = this>(this: C, xray: XRay, link: boolean): {
         ins: {
             [K in Exclude<keyof C["inputs"], "_all">]: XRayNodesFor<C["inputs"][K], NodeOut>
         },
@@ -1047,10 +1047,12 @@ export abstract class ComponentBase<
             const internalNode = new NodeOut(this, xray, input, { id }, undefined, input.idName, input.shortName, input.fullName, 0, 0, false, Orientation.invert(input.orient), 0, undefined)
             internalNode.setPositionAsXRayFor(input, xray.scale)
             internalNode.value = input.value
-            if (input.xrayInsideNode !== undefined) {
-                console.warn(`Unexpectedly replacing existing xray node for ${input.shortName}`)
+            if (link) {
+                if (input.xrayInsideNode !== undefined) {
+                    console.warn(`Unexpectedly replacing existing xray node for ${input.shortName}`)
+                }
+                input.xrayInsideNode = internalNode
             }
-            input.xrayInsideNode = internalNode
             return internalNode
         }
 
@@ -1075,10 +1077,12 @@ export abstract class ComponentBase<
             const id = xray.nodeMgr.getFreeId()
             const internalNode = new NodeIn(this, xray, output, { id }, undefined, output.idName, output.shortName, output.fullName, 0, 0, false, Orientation.invert(output.orient), 0, undefined)
             internalNode.setPositionAsXRayFor(output, xray.scale)
-            if (output.xrayInsideNode !== undefined) {
-                console.warn(`Unexpectedly replacing existing xray node for ${output.shortName}`)
+            if (link) {
+                if (output.xrayInsideNode !== undefined) {
+                    console.warn(`Unexpectedly replacing existing xray node for ${output.shortName}`)
+                }
+                output.xrayInsideNode = internalNode
             }
-            output.xrayInsideNode = internalNode
             return internalNode
         }
 
@@ -1516,7 +1520,7 @@ export abstract class ComponentBase<
         let xray = undefined
         const scale = this.xrayScale()
         if (scale !== undefined) {
-            xray = this.makeXRay(0, scale)
+            xray = this.makeXRay(0, scale, false)
         }
         if (xray === undefined) {
             console.warn("Could not create xray for export")

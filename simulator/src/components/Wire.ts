@@ -344,7 +344,7 @@ export class Wire extends Drawable {
             // last part, end lead
             pathParts.push([prevX, prevY, endLeadX, endLeadY])
 
-            this._wirePath = new WirePath(pathParts)
+            this._wirePath = new WirePath(pathParts, this.parent.editor.mode)
         }
         return this._wirePath
     }

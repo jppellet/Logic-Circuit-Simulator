@@ -7,7 +7,6 @@ import { AdderDef } from "./Adder"
 import { doALUAdd, doALUSub } from "./ALU"
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupVertical, param } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
-import { XRay } from "./XRay"
 
 
 export const IncDecDef =
@@ -111,10 +110,10 @@ export class IncDec extends ParametrizedComponentBase<IncDecRepr> {
         return this.numBits >= 8 ? 0.12 : 0.21
     }
 
-    protected override makeXRay(level: number, scale: number): XRay | undefined {
+    protected override makeXRay(level: number, scale: number, link: boolean) {
         const bits = this.numBits
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const xorCout = gate("xorCout", "xor", 0, p.bottom - 2.5 * GRID_STEP, "s")
         wire(xorCout, outs.Cout)

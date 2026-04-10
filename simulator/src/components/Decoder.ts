@@ -5,7 +5,6 @@ import { S } from "../strings"
 import { ArrayFillWith, LogicValue, Unknown, isUnknown, typeOrUndefined } from "../utils"
 import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, groupVertical, param } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems } from "./Drawable"
-import { XRay } from "./XRay"
 
 
 export const DecoderDef =
@@ -99,14 +98,14 @@ export class Decoder extends ParametrizedComponentBase<DecoderRepr> {
         return [0.25, 0.18, 0.10, 0.10][this.numFrom - 2]
     }
 
-    protected override makeXRay(level: number, scale: number): XRay | undefined {
+    protected override makeXRay(level: number, scale: number, link: boolean) {
         const numBits = this.numFrom
         if (numBits > 5) {
             return
         }
 
         const { xray, wire, gate } = this.parent.editor.newXRay(this, level, scale)
-        const { ins, outs, p } = this.makeXRayNodes(xray)
+        const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
         const addSpace = numBits > 3 ? 20 : 0
         const xPosNot = p.left + 3 * GRID_STEP + addSpace
