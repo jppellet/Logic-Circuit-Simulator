@@ -68,9 +68,9 @@ export class LatchD extends FlipflopOrLatch<LatchDRepr> {
 
         const d = this.inputs.D.value
         const e = this.inputs.E.value
-        const q = this.outputs.Q.value
+        const current = this.storedValue
 
-        const newQ = e === true ? d : q
+        const newQ = e === true ? d : current
         return [newQ, LogicValue.invert(newQ)]
     }
 

@@ -68,8 +68,8 @@ export class LatchSR extends FlipflopOrLatch<LatchSRRepr> {
         }
 
         // no change
-        const q = this.outputs.Q.value
-        return [q, LogicValue.invert(q)]
+        const current = this.storedValue
+        return [current, LogicValue.invert(current)]
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {
@@ -224,8 +224,8 @@ export class LatchSRWithEnable extends FlipflopOrLatch<LatchSRWithEnableRepr> {
         }
 
         // no change
-        const q = this.outputs.Q.value
-        return [q, LogicValue.invert(q)]
+        const current = this.storedValue
+        return [current, LogicValue.invert(current)]
     }
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {

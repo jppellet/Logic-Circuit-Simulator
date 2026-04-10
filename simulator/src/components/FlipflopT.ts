@@ -52,8 +52,8 @@ export class FlipflopT extends Flipflop<FlipflopTRepr> {
         if (isUnknown(t) || isHighImpedance(t)) {
             return Unknown
         }
-        const q = this.outputs.Q.value
-        return t ? LogicValue.invert(q) : q
+        const current = this.storedValue
+        return t ? LogicValue.invert(current) : current
     }
 
     protected override xrayScale(): number { return 0.35 }
