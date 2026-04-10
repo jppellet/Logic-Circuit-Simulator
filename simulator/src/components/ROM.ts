@@ -8,6 +8,7 @@ import { ParametrizedComponentBase, Repr, ResolvedParams, defineAbstractParametr
 import { Decoder, DecoderDef } from './Decoder'
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItem, MenuItemPlacement, MenuItems } from "./Drawable"
 import { FlipflopDWithEnable, FlipflopDWithEnableDef } from './FlipflopD'
+import { LatchSR, LatchSRDef } from './LatchSR'
 import { MuxDef } from './Mux'
 import { NodeOut } from './Node'
 import { RAM, RAMDef } from "./RAM"
@@ -432,6 +433,7 @@ export abstract class ROMRAMBase<TRepr extends ROMRAMRepr> extends ParametrizedC
         }
 
         // storage flip-flops and their connections
+        const storedValues = this.value.mem
         const allocMuxIn = xray.newPositionAlloc(muxes[0].inputs.I[0][0].posX, -incX, 2 * bits)
         xray.debugVLine(allocMuxIn, "orange", "allocMuxIn")
         for (let line = 0; line < lines; line++) {
@@ -441,8 +443,10 @@ export abstract class ROMRAMBase<TRepr extends ROMRAMRepr> extends ParametrizedC
             const allocLineBottom = xray.newPositionAlloc(ffY + 5 * GRID_STEP, incY, bits)
             xray.debugHLine(allocLineBottom, "blue", `allocLineBottom${line}`)
             for (let bit = 0; bit < bits; bit++) {
-                const ff: FlipflopDWithEnable = FlipflopDWithEnableDef.makeSpawned(xray, `ff${line}_${bit}`, firstFFLeft + (bits - 1 - bit) * ffXSep, ffY) as unknown as FlipflopDWithEnable
+                const storage = (isRAM ? FlipflopDWithEnableDef : LatchSRDef).makeSpawned(xray, `ff${line}_${bit}`, firstFFLeft + (bits - 1 - bit) * ffXSep, ffY) as unknown as FlipflopDWithEnable | LatchSR
+                storage.storedValue = storedValues[line][bit]
                 if (isRAM) {
+                    const ff = storage as FlipflopDWithEnable
                     wire(clk!, ff.inputs.Clock, "hv")
                     wire(ins.Clr, ff.inputs.Clr, "vh", [ff.posX + ff.unrotatedWidth / 2 + incX, clrLineBottom])
                     wire(ins.D[bit], ff.inputs.D, "hv", [[allocDataLeft.at(bits - 1 - bit), allocLineTop.at(2 + bit)]])
@@ -459,8 +463,8 @@ export abstract class ROMRAMBase<TRepr extends ROMRAMRepr> extends ParametrizedC
                         default: return allocMuxIn.at(0)
                     }
                 })()
-                wire(ff.outputs.Q, muxInput, "hv", [
-                    [ff.outputs.Q.posX + GRID_STEP, allocLineBottom.at(bit)],
+                wire(storage.outputs.Q, muxInput, "hv", [
+                    [storage.outputs.Q.posX + GRID_STEP, allocLineBottom.at(bit)],
                     [waypointX, muxInput.posY],
                 ])
             }

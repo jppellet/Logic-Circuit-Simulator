@@ -324,6 +324,30 @@ export class Register extends RegisterBase<RegisterRepr> {
         fillTextVAlign(g, TextVAlign.middle, `${this.numBits} bits`, this.posX, this.posY + 10)
     }
 
+
+    private doSetSaturating(saturating: boolean) {
+        this._saturating = saturating
+        this.requestRedraw({ why: "saturating changed", invalidateTests: true })
+        this.invalidateXRay()
+    }
+
+    protected override makeRegisterSpecificContextMenuItems(): MenuItems {
+        const s = S.Components.Register.contextMenu
+
+        const toggleSaturatingItem: MenuItems = !this.hasIncDec ? [] : [
+            ["mid", MenuData.item(
+                this._saturating ? "check" : "none",
+                s.Saturating,
+                () => this.doSetSaturating(!this._saturating)
+            )],
+        ]
+
+        return [
+            this.makeChangeBooleanParamsContextMenuItem(s.ParamHasIncDec, this.hasIncDec, "inc"),
+            ...toggleSaturatingItem,
+        ]
+    }
+
     protected override xrayScale(): number {
         if (!this.hasIncDec) {
             return this.numBits >= 16 ? 0.125 : this.numBits >= 8 ? 0.185 : this.numBits >= 4 ? 0.35 : 0.5
@@ -338,11 +362,13 @@ export class Register extends RegisterBase<RegisterRepr> {
         const { xray, gate, wire } = this.parent.editor.newXRay(this, level, scale)
         const { ins, outs, p } = this.makeXRayNodes(xray, link)
 
+        const storedValue = this.value
         if (!this.hasIncDec) {
             // simple register made of D flip-flops
             const ffds = ArrayFillUsing(i => {
                 const ffd = FlipflopDDef.makeSpawned(xray, `ffd${i}`, 0, (i - (bits - 1) / 2) * 10 * GRID_STEP)
                 ffd.doSetTrigger(edgeTrigger)
+                ffd.storedValue = storedValue[i]
                 return ffd
             }, bits)
 
@@ -377,6 +403,7 @@ export class Register extends RegisterBase<RegisterRepr> {
         } else {
             // with inc/dec logic
             const reg = RegisterDef.makeSpawned(xray, "reg", 5 * GRID_STEP, -7 * GRID_STEP, "e", { bits, inc: false })
+            reg.doSetValue(storedValue)
             const mux = MuxDef.makeSpawned(xray, "mux", reg.posX - 7 * GRID_STEP, reg, "e", { from: 2 * bits, to: bits, bottom: true })
 
             const incDecY = (mux.inputs.I[0][0].posY + mux.inputs.I[0][bits - 1].posY) / 2
@@ -431,42 +458,17 @@ export class Register extends RegisterBase<RegisterRepr> {
             }
             wire(ins.Dec, incDec.inputs.Dec, "vh", [norSel.in[1].posX - 2 * GRID_STEP, p.bottom - 2 - GRID_STEP])
 
-            const loopbackLineBottomY = incDec.inputs.Dec.posY - 2 * GRID_STEP
-            const loopbackLineInc = allocs.regOut.inc
-            const loopbackLineLeftX = allocs.inToMux.at(2)
+            const loopbackLineInc = -allocs.regOut.inc
+            const loopbackLineBottomY = incDec.inputs.Dec.posY - 2 * GRID_STEP - bits * loopbackLineInc
             for (let i = 0; i < bits; i++) {
                 wire(reg.outputs.Q[i], incDec.inputs.In[i], "hv", [
                     [allocs.regOut.at(i), loopbackLineBottomY + i * loopbackLineInc],
-                    [loopbackLineLeftX - i * loopbackLineInc, incDec.inputs.In[i]],
+                    [allocs.inToMux.at(2 + (bits - 1 - i)), incDec.inputs.In[i]],
                 ])
             }
-
         }
+
         return xray
-    }
-
-
-    private doSetSaturating(saturating: boolean) {
-        this._saturating = saturating
-        this.requestRedraw({ why: "saturating changed", invalidateTests: true })
-        this.invalidateXRay()
-    }
-
-    protected override makeRegisterSpecificContextMenuItems(): MenuItems {
-        const s = S.Components.Register.contextMenu
-
-        const toggleSaturatingItem: MenuItems = !this.hasIncDec ? [] : [
-            ["mid", MenuData.item(
-                this._saturating ? "check" : "none",
-                s.Saturating,
-                () => this.doSetSaturating(!this._saturating)
-            )],
-        ]
-
-        return [
-            this.makeChangeBooleanParamsContextMenuItem(s.ParamHasIncDec, this.hasIncDec, "inc"),
-            ...toggleSaturatingItem,
-        ]
     }
 
 }

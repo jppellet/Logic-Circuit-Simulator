@@ -727,6 +727,7 @@ export class XRay implements DrawableParent {
             input.setPosition(node.posX + dx * GRID_STEP, node.posY + dy * GRID_STEP, false)
             input.doSetName(node.shortName)
             input.setValue([node.value])
+            input.doSetIsPushButton(node.xRayOutsideNode?.prefersSpike ?? false)
             for (const wire of wires) {
                 wire.setStartNode(newNodeOut)
             }

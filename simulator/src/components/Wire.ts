@@ -477,12 +477,7 @@ export class Wire extends Drawable {
             console.warn(`Couldn't find waypoint to insert at for (${x}, ${y})`)
             partIndex = 1
         }
-
-        // console.log("wirePath.parts")
-        // for (const part of wirePath.parts) {
-        //     console.log(part)
-        // }
-        // console.log("partIndex", partIndex, "x", x, "y", y)
+        partIndex = Math.min(partIndex, wirePath.parts.length - 1)
 
         // determine initial direction
         const [startX, startY, endX, endY] = wirePath.parts[partIndex]

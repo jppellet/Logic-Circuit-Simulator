@@ -215,10 +215,13 @@ export class Counter extends ParametrizedComponentBase<CounterRepr> {
 
         const bits = this.numBits
 
-        const ffds = ArrayFillUsing(i =>
-            FlipflopDDef.makeSpawned(xray, `ffd${i === bits ? "V" : i}`, 3 * GRID_STEP, (i - bits / 2) * 10 * GRID_STEP),
-            bits + 1
-        )
+        const storedValue = this.value[0]
+        const ffds = ArrayFillUsing(i => {
+            const ffd = FlipflopDDef.makeSpawned(xray, `ffd${i === bits ? "V" : i}`, 3 * GRID_STEP, (i - bits / 2) * 10 * GRID_STEP)
+            ffd.doSetTrigger(this._trigger)
+            ffd.storedValue = storedValue[i]
+            return ffd
+        }, bits + 1)
 
         const ffdV = ffds.pop()! // the last one is just for overflow
         ffdV.doSetTrigger(EdgeTrigger.falling)

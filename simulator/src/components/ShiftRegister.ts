@@ -83,9 +83,11 @@ export class ShiftRegister extends RegisterBase<ShiftRegisterRepr> {
         const ffds: FlipflopD[] = []
         const muxes: Mux[] = []
 
+        const storedValue = this.value
         for (let i = 0; i < bits; i++) {
             const ffd = FlipflopDDef.makeSpawned(xray, `ffd${i}`, 2 * GRID_STEP, (i - (bits - 1) / 2) * 12 * GRID_STEP)
             ffd.doSetTrigger(edgeTrigger)
+            ffd.storedValue = storedValue[i]
             ffds.push(ffd)
 
             const mux = MuxDef.makeSpawned(xray, `mux${i}`, p.left + 5 * GRID_STEP, p.later, "e", { from: 2, to: 1, bottom: true })
@@ -111,11 +113,19 @@ export class ShiftRegister extends RegisterBase<ShiftRegisterRepr> {
         for (let i = 0; i < bits; i++) {
             if (i > 0) {
                 // first mux input from previous FF
-                wire(ffds[i - 1].outputs.Q, muxes[i].inputs.I[0][0], "hv", [allocOut.at(-2), ffds[i - 1].posY + 6 * GRID_STEP])
+                const muxIn = muxes[i].inputs.I[0][0]
+                wire(ffds[i - 1].outputs.Q, muxIn, "hv", [
+                    [allocOut.at(-2), ffds[i - 1].posY + 6 * GRID_STEP],
+                    p.rightBy(1, muxIn),
+                ])
             }
             if (i < bits - 1) {
                 // second mux input from next FF
-                wire(ffds[i + 1].outputs.Q, muxes[i].inputs.I[1][0], "hv", [allocOut.at(-3), ffds[i + 1].posY - 7 * GRID_STEP])
+                const muxIn = muxes[i].inputs.I[1][0]
+                wire(ffds[i + 1].outputs.Q, muxIn, "hv", [
+                    [allocOut.at(-3), ffds[i + 1].posY - 7 * GRID_STEP],
+                    p.rightBy(1, muxIn),
+                ])
             }
         }
 
