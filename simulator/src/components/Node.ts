@@ -1,4 +1,5 @@
 import { distSquaredToWaypointIfOver, drawWaypoint, GRID_STEP, NodeStyle, WAYPOINT_DIAMETER } from "../drawutils"
+import { isOutput } from "../TestSuite"
 import { HighImpedance, InteractionResult, isUnknown, LogicValue, Mode, Orientation, RepeatFunction, toLogicValue, Unknown } from "../utils"
 import { Component, InputNodeRepr, NodeGroup, NodeLabelOffsetProvider, OutputNodeRepr } from "./Component"
 import { DrawableParent, DrawableWithPosition, DrawContext, GraphicsRendering } from "./Drawable"
@@ -21,11 +22,15 @@ export type WireColor = keyof typeof WireColor
 
 export type MirrorNode<N extends Node> = N extends NodeIn ? NodeOut : N extends NodeOut ? NodeIn : Node
 
+function defaultNodeValueFor(component: Component, isNodeIn: boolean): LogicValue {
+    return isNodeIn && isOutput(component) ? component.parent.editor.options.outputDefault : false
+}
+
 export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
 
     public readonly id: number
     private _isAlive = true
-    private _value: LogicValue = false
+    private _value: LogicValue
     private _leadLength: number
     protected _initialValue: LogicValue | undefined = undefined
     protected _forceValue: LogicValue | undefined
@@ -50,6 +55,7 @@ export abstract class NodeBase<N extends Node> extends DrawableWithPosition {
     ) {
         super(parent)
         this.id = nodeSpec.id
+        this._value = defaultNodeValueFor(component, this instanceof NodeIn)
         if ("force" in nodeSpec) {
             this._forceValue = toLogicValue(nodeSpec.force)
         }
@@ -367,10 +373,14 @@ export class NodeIn extends NodeBase<NodeIn> {
     public set incomingWire(wire: Wire | null) {
         this._incomingWire = wire
         if (wire === null) {
-            this.value = false
+            this.resetToDefaultValue()
         } else {
             this.value = wire.startNode.value
         }
+    }
+
+    public resetToDefaultValue() {
+        this.value = defaultNodeValueFor(this.component, true)
     }
 
     public get isConnected(): boolean {

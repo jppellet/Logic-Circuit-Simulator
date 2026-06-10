@@ -188,6 +188,7 @@ const Strings_fr = {
         userDataHeader: "Les données suivantes sont exportées avec le circuit:",
         wireStyle: "Style des fils:",
         xrayMode: "Mode rayons X:",
+        disconnectedOutputsValue: "Sorties non connectées:",
     },
     Tests: {
         Title: "Tests",
@@ -883,6 +884,10 @@ const Strings_fr = {
                 XRayModeForce: "Forcer",
                 XRayModeOff: "Désactiver",
 
+                OutputValueZero: "0",
+                OutputValueUnknown: "?",
+                OutputValueHighImpedance: "Z",
+
                 HiddenWire: "Masquer le fil",
             },
             timeline: {
@@ -1058,6 +1063,7 @@ const Strings_en: Strings = {
         userDataHeader: "This data is exported with the circuit:",
         wireStyle: "Wire style:",
         xrayMode: "X-ray mode:",
+        disconnectedOutputsValue: "Unconnected outputs:",
     },
     Tests: {
         Title: "Tests",
@@ -1752,6 +1758,10 @@ const Strings_en: Strings = {
                 XRayModeAuto: "Auto",
                 XRayModeForce: "Force",
                 XRayModeOff: "Disable",
+
+                OutputValueZero: "0",
+                OutputValueUnknown: "?",
+                OutputValueHighImpedance: "Z",
 
                 HiddenWire: "Hide Wire",
             },

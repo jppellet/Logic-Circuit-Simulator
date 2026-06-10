@@ -12,7 +12,7 @@ import * as LZString from "lz-string"
 import * as pngMeta from 'png-metadata-writer'
 import { ComponentFactory } from "./ComponentFactory"
 import { ComponentList } from "./ComponentList"
-import { ComponentMenu, getAllComponentTypes } from "./ComponentMenu"
+import { ComponentMenu, ComponentSection, getAllComponentTypes } from "./ComponentMenu"
 import { CurrentFormatVersion } from "./DataMigration"
 import { MessageBar } from "./MessageBar"
 import { MoveManager } from "./MoveManager"
@@ -20,7 +20,7 @@ import { NodeManager } from "./NodeManager"
 import { RecalcManager, RedrawManager } from "./RedrawRecalcManager"
 import { SVGRenderingContext } from "./SVGRenderingContext"
 import { Circuit, PostLoadActions, PostLoadActions_None, PostLoadActions_SnapshotNoStorage, PostLoadActions_SnapshotStorage, Serialization } from "./Serialization"
-import { TestCaseCombinational, TestCaseResult, TestCaseResultMismatch, TestCaseValueMap, TestSuite, TestSuiteResults, TestSuites } from "./TestSuite"
+import { TestCaseCombinational, TestCaseResult, TestCaseResultMismatch, TestCaseValueMap, TestSuite, TestSuiteResults, TestSuites, isOutput } from "./TestSuite"
 import { Tests } from "./Tests"
 import { TestsPalette } from "./TestsPalette"
 import { Timeline } from "./Timeline"
@@ -39,7 +39,7 @@ import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
 import { makeIcon } from "./images"
 import { DefaultLang, S, getLang, isLang, setLang } from "./strings"
-import { Any, InBrowser, KeysOfByType, LogicValue, Mode, Orientation, ParentType, UIDisplay, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
+import { Any, HighImpedance, InBrowser, KeysOfByType, LogicValue, Mode, Orientation, ParentType, UIDisplay, Unknown, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toLogicValueFromChar, toLogicValueRepr, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
 
 
 const MIN_MODE: number = Mode.STATIC
@@ -91,6 +91,7 @@ const DEFAULT_EDITOR_OPTIONS = {
     initParams: undefined as undefined | Record<string, Partial<InitParams>>,
     showGateTypes: false,
     showDisconnectedPins: false,
+    outputDefault: false as LogicValue,
     wireStyle: WireStyles.auto as WireStyle,
     animateWires: false,
     hideWireColors: false,
@@ -286,6 +287,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         showGateTypesCheckbox: HTMLInputElement,
         showDisconnectedPinsCheckbox: HTMLInputElement,
         wireStylePopup: HTMLSelectElement,
+        disconnectedOutputsPopup: HTMLSelectElement,
         animateWiresCheckbox: HTMLInputElement,
         hideWireColorsCheckbox: HTMLInputElement,
         hideInputColorsCheckbox: HTMLInputElement,
@@ -388,6 +390,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             optionsHtml.showGateTypesCheckbox.checked = newOptions.showGateTypes
             optionsHtml.wireStylePopup.value = newOptions.wireStyle
             optionsHtml.showDisconnectedPinsCheckbox.checked = newOptions.showDisconnectedPins
+            optionsHtml.disconnectedOutputsPopup.value = String(toLogicValueRepr(newOptions.outputDefault))
             optionsHtml.hideTooltipsCheckbox.checked = newOptions.hideTooltips
             optionsHtml.xrayPopup.value = newOptions.xray
             optionsHtml.groupParallelWiresCheckbox.checked = newOptions.groupParallelWires
@@ -970,6 +973,22 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             this.editTools.redrawMgr.requestRedraw({ why: "xray mode changed", invalidateMask: false })
         })
 
+        const disconnectedOutputsPopup = makeSelect<string>(S.Settings.disconnectedOutputsValue, [
+            ["0", sw.OutputValueZero],
+            [Unknown, sw.OutputValueUnknown],
+            [HighImpedance, sw.OutputValueHighImpedance],
+        ], value => {
+            this._options.outputDefault = toLogicValueFromChar(value)
+            for (const c of this.components.all()) {
+                if (isOutput(c)) {
+                    for (const node of c.allNodes()) {
+                        if (!node.isOutput() && node.connectedWires.length === 0) {
+                            node.resetToDefaultValue()
+                        }
+                    }
+                }
+            }
+        })
 
         const propagationDelayField = input(type("number"),
             style("margin: 0 4px; width: 4em"),
@@ -1004,6 +1023,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             hideOutputColorsCheckbox,
             hideMemoryContentCheckbox,
             wireStylePopup,
+            disconnectedOutputsPopup,
             showGateTypesCheckbox,
             showDisconnectedPinsCheckbox,
             hideTooltipsCheckbox,
@@ -1916,7 +1936,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         const showOnlyHtmlAttr = showOnlySpaceDelim === undefined ? "" : ` showonly="${showOnlySpaceDelim}"`
 
-        const iframeEmbed = `<iframe style="width: 100%; height: ${embedHeight}px; border: 0"${showOnlyHtmlAttr} src="${fullUrl}"></iframe>`
+        const iframeEmbed = `<iframe style="width: 100%; height: ${embedHeight}px; border: 0" src="${fullUrl}"></iframe>`
         this.html.embedIframe.value = iframeEmbed
 
         const webcompEmbed = `<div style="width: 100%; height: ${embedHeight}px">\n  <logic-editor id="${idWhenExporting}" mode="${Mode[mode].toLowerCase()}"${showOnlyHtmlAttr}>\n    <script type="application/json5">\n      ${fullJson.replace(/\n/g, "\n      ")}\n    </script>\n  </logic-editor>\n</div>`
@@ -3001,7 +3021,7 @@ export class LogicStatic {
         setDarkMode(Boolean(mode), true, false)
     }
 
-    public getAllComponentTypes(lang?: string) {
+    public getAllComponentTypes(lang?: string): ComponentSection[] {
         const l = lang !== undefined && isLang(lang) ? lang : DefaultLang
         return getAllComponentTypes(l)
     }
