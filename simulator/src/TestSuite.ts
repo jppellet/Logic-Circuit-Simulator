@@ -37,11 +37,11 @@ function fixMap<IO extends Input | Output>(map: TestCaseValueMap<IO>, compList: 
     }
 }
 
-function isInput(comp: Component | undefined): comp is Input {
+export function isInput(comp: Component | undefined): comp is Input {
     return comp?.def.type === ComponentTypeInput
 }
 
-function isOutput(comp: Component | undefined): comp is Output {
+export function isOutput(comp: Component | undefined): comp is Output {
     return comp?.def.type === ComponentTypeOutput
 }
 

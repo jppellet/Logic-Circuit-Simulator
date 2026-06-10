@@ -364,9 +364,10 @@ export class ComponentMenu {
         }
 
         // section header
+        const headerNames = S.ComponentBar.SectionNames[nameKey]
         const header: HTMLDivElement =
             div(cls("leftToolbarHeader"),
-                S.ComponentBar.SectionNames[nameKey]
+                headerNames.length > 1 ? headerNames[1] : headerNames[0]
             ).render()
         this.containerElem.appendChild(header)
 
@@ -537,13 +538,26 @@ function componentIdsFor(item: LibraryItem): string[] {
 }
 
 
-export function getAllComponentTypes(lang: Lang) {
+export type ComponentSection = {
+    sectionId: string,
+    sectionName: string,
+    components: ComponentDef[]
+}
+
+export type ComponentDef = {
+    id: string,
+    name: string,
+    initiallyFolded: boolean,
+    icon: string
+}
+
+export function getAllComponentTypes(lang: Lang): ComponentSection[] {
     const S = TranslationStrings[lang]
-    const sections = []
+    const sections: ComponentSection[] = []
     for (const section of componentsMenu) {
-        const id = section.nameKey
-        const name = S.ComponentBar.SectionNames[id]
-        const components = []
+        const sectionId = section.nameKey
+        const sectionName = S.ComponentBar.SectionNames[sectionId][0]
+        const components: ComponentDef[] = []
         for (const item of section.items) {
             const [stringsKey, iconKey] = isString(item.visual) ? [item.visual, item.visual] : item.visual
             const compStrings = S.ComponentBar.Components.props[stringsKey]
@@ -553,7 +567,7 @@ export function getAllComponentTypes(lang: Lang) {
             const icon = inlineImageSvgFor(iconKey)
             components.push({ id, name, initiallyFolded, icon })
         }
-        sections.push({ id, name, components })
+        sections.push({ sectionId, sectionName, components })
     }
     return sections
 }

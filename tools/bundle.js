@@ -50,6 +50,8 @@ async function build(dist) {
     const bundleFile = `simulator/lib/bundle${suffix}.js`
 
     const esbuild = require("esbuild")
+
+
     const result = await esbuild
         .build({
             minify,
@@ -66,6 +68,14 @@ async function build(dist) {
             entryPoints: ["simulator/src/LogicEditor.ts"],
             outfile: bundleFile,
             metafile: dist,
+
+            // some libs want to call define() to define AMD modules, which causes problems with e.g. the Moodle plugin
+            banner: {
+                js: `var __savedDefine = typeof define === 'function' && define; if (typeof define === 'function') define = undefined;`,
+            },
+            footer: {
+                js: `if (__savedDefine) define = __savedDefine;`,
+            },
         })
         .then(result => {
             const fs = require("fs")
@@ -74,7 +84,7 @@ async function build(dist) {
             if (result.metafile) {
                 const metafilePath = 'simulator/lib/bundlemeta.json'
                 fs.writeFileSync(metafilePath, JSON.stringify(result.metafile))
-                console.log("Wrote metafile to: " + metafilePath+ "\n\n")
+                console.log("Wrote metafile to: " + metafilePath + "\n\n")
             }
 
             // compute md5 hash of the bundle
