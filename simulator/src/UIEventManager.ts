@@ -1366,25 +1366,42 @@ class EditHandlers extends ToolHandlers {
         applyModifiersTo(mainContextMenu, items)
         mainContextMenu.classList.add("show-menu")
 
-        let menuTop = e.pageY
-        mainContextMenu.style.top = menuTop + 'px'
-        mainContextMenu.style.left = e.pageX + 'px'
+        const menuParentRect = this.editor.html.rootDiv.getBoundingClientRect()
+        let menuTop = e.clientY - menuParentRect.top
+        let menuLeft = e.clientX - menuParentRect.left
+        mainContextMenu.style.top = `${menuTop}px`
+        mainContextMenu.style.left = `${menuLeft}px`
 
         let needsScrollY = false
         const menuRect = mainContextMenu.getBoundingClientRect()
-        const hOverflow = window.innerHeight - menuRect.bottom
-        if (hOverflow < 0) {
-            menuTop += Math.min(0, hOverflow)
-            if (menuTop < 5) {
-                menuTop = 5
+        const overflowRight = menuRect.right - window.innerWidth + 10
+        if (overflowRight > 0) {
+            menuLeft -= overflowRight
+
+            const minMenuLeft = Math.max(5, 5 - menuParentRect.left)
+            if (menuLeft < minMenuLeft) {
+                menuLeft = minMenuLeft
+            }
+            mainContextMenu.style.left = `${menuLeft}px`
+        }
+
+        const overflowBottom = menuRect.bottom - window.innerHeight
+        if (overflowBottom > 0) {
+            menuTop -= overflowBottom
+
+            const minMenuTop = Math.max(5, 5 - menuParentRect.top)
+            if (menuTop < minMenuTop) {
+                menuTop = minMenuTop
                 needsScrollY = true
             }
-            mainContextMenu.style.top = menuTop + 'px'
+            mainContextMenu.style.top = `${menuTop}px`
         }
 
         // TODO this causes some weird behavior with submenus, to be fixed
         if (needsScrollY) {
-            mainContextMenu.style.setProperty("max-height", (window.innerHeight - 10) + "px")
+            const menuViewportTop = menuParentRect.top + menuTop
+            const maxHeight = Math.max(0, window.innerHeight - menuViewportTop - 5)
+            mainContextMenu.style.setProperty("max-height", `${maxHeight}px`)
             mainContextMenu.style.setProperty("overflow-y", "scroll")
         } else {
             mainContextMenu.style.removeProperty("max-height")
