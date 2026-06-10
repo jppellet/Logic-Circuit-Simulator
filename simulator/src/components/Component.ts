@@ -5,10 +5,10 @@ import type { ComponentKey, DefAndParams, LibraryButtonOptions, LibraryButtonPro
 import { DrawParams, LogicEditor } from "../LogicEditor"
 import { PointerDragEvent } from "../UIEventManager"
 import { UIPermissions } from "../UIPermissions"
-import { COLORCOMP_BACKGROUND_TRANSLUCENT, COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_GROUP_SPAN, COMPONENT_OUTLINE_THICKNESS, DrawingRect, GRID_STEP, XRayMode, XRayModes, drawClockInput, drawComponentName, drawLabel, drawWireLineToComponent, isTrivialNodeName, shouldDrawNodeLabel, useCompact } from "../drawutils"
+import { COLORCOMP_BACKGROUND_TRANSLUCENT, COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_COMPONENT_INVALID, COLOR_COMPONENT_KEY, COLOR_GROUP_SPAN, COMPONENT_OUTLINE_THICKNESS, DrawingRect, GRID_STEP, XRayMode, XRayModes, drawClockInput, drawComponentName, drawLabel, drawWireLineToComponent, isTrivialNodeName, shouldDrawNodeLabel, useCompact } from "../drawutils"
 import { IconName, ImageName } from "../images"
 import { S, Template } from "../strings"
-import { ArrayFillUsing, ArrayOrDirect, EdgeTrigger, Expand, FixedArrayMap, HasField, HighImpedance, InteractionResult, LogicValue, LogicValueRepr, Mode, Orientation, Unknown, brand, deepArrayEquals, isArray, isBoolean, isNumber, isRecord, isString, mergeWhereDefined, toLogicValueRepr, typeOrUndefined, validateJson } from "../utils"
+import { ArrayFillUsing, ArrayOrDirect, EdgeTrigger, Expand, FixedArrayMap, HasField, HighImpedance, InteractionResult, LogicValue, LogicValueRepr, Mode, Orientation, Tag, Tags_, Unknown, brand, deepArrayEquals, isArray, isBoolean, isNumber, isRecord, isString, mergeWhereDefined, toLogicValueRepr, typeOrUndefined, validateJson } from "../utils"
 import { DrawContext, DrawContextExt, Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, GraphicsRendering, HasPosition, MenuData, MenuItem, MenuItemPlacement, MenuItems, PointerOverMode, PositionSupportRepr } from "./Drawable"
 import { DEFAULT_WIRE_COLOR, MirrorNode, Node, NodeBase, NodeIn, NodeOut, WireColor } from "./Node"
 import { Wire } from "./Wire"
@@ -87,11 +87,18 @@ type NodeIDsRepr<THasIn extends boolean, THasOut extends boolean>
     : THasOut extends true ? OnlyOutNodeIds : NoNodeIds
 
 
+
 /**
  * Base representation of a component: position & repr of nodes
  */
 export type ComponentRepr<THasIn extends boolean, THasOut extends boolean> =
-    { type: string } & PositionSupportRepr & NodeIDsRepr<THasIn, THasOut> & Partial<{ xray: string }>
+    { type: string } &
+    PositionSupportRepr &
+    NodeIDsRepr<THasIn, THasOut> &
+    Partial<{
+        tags: Tag[]
+        xray: string
+    }>
 
 export const ComponentRepr = <THasIn extends boolean, THasOut extends boolean>(hasIn: THasIn, hasOut: THasOut) =>
     t.intersection([
@@ -101,6 +108,7 @@ export const ComponentRepr = <THasIn extends boolean, THasOut extends boolean>(h
         PositionSupportRepr,
         NodeIDsRepr(hasIn, hasOut),
         t.partial({
+            tags: t.array(t.keyof(Tags_)),
             xray: t.string,
         }),
     ], "Component")
@@ -312,6 +320,7 @@ export abstract class ComponentBase<
     private _height: number
     private _state: ComponentState
     private _value: TValue
+    private readonly _tags: Tag[]
 
     public readonly inputs: TInputNodes
     public readonly outputs: TOutputNodes
@@ -326,7 +335,6 @@ export abstract class ComponentBase<
     private _showingXRay = false
     public get showingXRay() { return this._showingXRay }
 
-
     protected constructor(
         parent: DrawableParent,
         def: InstantiatedComponentDef<TRepr, TValue>,
@@ -338,6 +346,7 @@ export abstract class ComponentBase<
         this._width = def.size.gridWidth * GRID_STEP
         this._height = def.size.gridHeight * GRID_STEP
         this._value = def.initialValue(saved)
+        this._tags = saved?.tags ?? []
         this._xrayMode = XRayModes.includes(saved?.xray as any) ? saved?.xray as XRayMode : undefined
 
         const ins = def.nodeRecs.ins
@@ -452,6 +461,7 @@ export abstract class ComponentBase<
             ...typeHolder,
             ...super.toJSONBase(),
             ...this.buildNodesRepr(),
+            tags: this._tags.length > 0 ? this._tags : undefined,
             xray: this._xrayMode,
         }
     }
@@ -867,9 +877,14 @@ export abstract class ComponentBase<
     public override draw(g: GraphicsRendering, drawParams: DrawParams): void {
         super.draw(g, drawParams)
         if (this._state === ComponentState.INVALID) {
-            g.fillStyle = "rgba(255, 0, 0, 0.3)"
+            g.fillStyle = COLOR_COMPONENT_INVALID
             const bounds = this.bounds(true)
             g.fill(bounds.outline(g, 5))
+        }
+        if (this.hasTag("key")) {
+            g.fillStyle = COLOR_COMPONENT_KEY
+            const bounds = this.bounds(true)
+            g.fill(bounds.outline(g, 10))
         }
     }
 
@@ -1468,9 +1483,22 @@ export abstract class ComponentBase<
                 ["end", MenuData.sep()],
             ]
 
+        const setTagsItems: MenuItems = []
+        if (editor.mode >= Mode.FULL && editor.options.useTags.length > 0) {
+            setTagsItems.push(...editor.options.useTags.map(tag => ["end", MenuData.item(
+                this.hasTag(tag) ? "check" : "none",
+                s.Tags[tag],
+                () => {
+                    this.toggleTag(tag)
+                    this.requestRedraw({ why: "tag toggled" })
+                }
+            )] as [MenuItemPlacement, MenuItem]))
+        }
+
         const setRefItems: MenuItems =
             editor.mode < Mode.FULL ? [] : [
                 ["end", this.makeSetIdContextMenuItem()],
+                ...setTagsItems,
                 ["end", MenuData.sep()],
             ]
 
@@ -1510,6 +1538,45 @@ export abstract class ComponentBase<
         }
 
         this.parent.editor.exportXRayToNewWindow(xray)
+    }
+
+    public get tags(): readonly Tag[] {
+        return this._tags
+    }
+
+    public addTag(tag: Tag): boolean {
+        if (!this._tags.includes(tag)) {
+            this._tags.push(tag)
+            return true
+        }
+        return false
+    }
+
+    public hasTag(tag: Tag): boolean {
+        return this._tags.includes(tag)
+    }
+
+    public removeTag(tag: Tag): boolean {
+        const index = this._tags.indexOf(tag)
+        if (index !== -1) {
+            this._tags.splice(index, 1)
+            return true
+        }
+        return false
+    }
+
+    public toggleTag(tag: Tag, force?: boolean): boolean {
+        if (force === true) {
+            return this.addTag(tag)
+        } else if (force === false) {
+            return this.removeTag(tag)
+        } else {
+            if (this.hasTag(tag)) {
+                return this.removeTag(tag)
+            } else {
+                return this.addTag(tag)
+            }
+        }
     }
 
     protected makeComponentSpecificContextMenuItems(): MenuItems {

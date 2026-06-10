@@ -517,6 +517,17 @@ export const Orientation = {
     },
 }
 
+export const Tags_ = {
+    key: "key",
+    opt: "opt",
+} as const
+
+export type Tag = typeof Tags_[keyof typeof Tags_]
+
+export function isTag(str: unknown): str is Tag {
+    return isString(str) && Object.values(Tags_).includes(str as Tag)
+}
+
 
 // An InteractionResult is used to indicate whether some interaction
 // had an effect, in which case a snapshot can be taken for undo/redo.

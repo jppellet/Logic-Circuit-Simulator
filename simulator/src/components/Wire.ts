@@ -1,6 +1,6 @@
 import { Bezier, Offset } from "bezier-js"
 import * as t from "io-ts"
-import { BezierCoords, COLOR_ANCHOR_NEW, COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, LineCoords, NodeStyle, OPACITY_HIDDEN_ITEMS, WAYPOINT_DIAMETER, WIRE_WIDTH, colorForLogicValue, distSquaredToWaypointIfOver, drawAnchorTo, drawStraightWireLine, drawWaypoint, makeBezierCoords, strokeWireOutline, strokeWireOutlineAndSingleValue, strokeWireValue } from "../drawutils"
+import { BezierCoords, COLOR_ANCHOR_NEW, COLOR_COMPONENT_KEY, COLOR_MOUSE_OVER, COLOR_UNKNOWN, COLOR_WIRE, GRID_STEP, LineCoords, NodeStyle, OPACITY_HIDDEN_ITEMS, WAYPOINT_DIAMETER, WIRE_WIDTH, colorForLogicValue, distSquaredToWaypointIfOver, drawAnchorTo, drawStraightWireLine, drawWaypoint, makeBezierCoords, strokeWireOutline, strokeWireOutlineAndSingleValue, strokeWireValue } from "../drawutils"
 import { span, style, title } from "../htmlgen"
 import { DrawParams } from "../LogicEditor"
 import { S } from "../strings"
@@ -563,9 +563,14 @@ export class Wire extends Drawable {
 
         const drawParams = ctx.drawParams
         // highlight if needed
-        if (drawParams.highlightColor !== undefined && (drawParams.highlightedItems?.wires.includes(this) ?? false)) {
+        const isHighlighted = drawParams.highlightColor !== undefined && (drawParams.highlightedItems?.wires.includes(this) ?? false)
+        const highlightColor = isHighlighted ? drawParams.highlightColor :
+            this.startNode.component.hasTag("key") || this.endNode.component.hasTag("key") ? COLOR_COMPONENT_KEY :
+                undefined
+
+        if (highlightColor !== undefined) {
             g.lineWidth = 15
-            g.shadowColor = drawParams.highlightColor
+            g.shadowColor = highlightColor
             g.shadowBlur = 20
             g.shadowOffsetX = 0
             g.shadowOffsetY = 0

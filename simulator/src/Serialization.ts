@@ -2,7 +2,7 @@ import * as t from "io-ts"
 import JSON5 from "json5"
 import * as json5util from "json5/lib/util"
 import { CurrentFormatVersion, migrateData } from './DataMigration'
-import { LogicEditor } from "./LogicEditor"
+import { EditorOptions, LogicEditor } from "./LogicEditor"
 import { NodeMapping } from './NodeManager'
 import { TestSuite, TestSuiteRepr } from './TestSuite'
 import { type Component } from "./components/Component"
@@ -10,7 +10,7 @@ import { type CustomComponent, type CustomComponentDefRepr } from './components/
 import { DrawableParent } from './components/Drawable'
 import { Wire } from "./components/Wire"
 import { S } from './strings'
-import { JSONParseObject, isArray, isRecord, isString, keysOf, validateJson } from "./utils"
+import { JSONParseObject, isArray, isRecord, isString, isTag, keysOf, validateJson } from "./utils"
 
 
 export type Circuit = CommonFields & {
@@ -207,7 +207,11 @@ class _Serialization {
 
             // also works with undefined
             // must be done AFTER setting user data to ensure the UI is updated accordingly
-            parent.setPartialOptions(parsed.opts as any)
+            const partialOptions = parsed.opts as Partial<EditorOptions> | undefined
+            if (partialOptions?.useTags !== undefined) {
+                partialOptions.useTags = partialOptions.useTags.filter(isTag)
+            }
+            parent.setPartialOptions(partialOptions)
             delete parsed.opts
 
             const takeSnapshot = postLoadActions.startsWith("snapshot")

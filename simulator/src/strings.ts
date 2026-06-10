@@ -322,6 +322,11 @@ const Strings_fr = {
                 XRayModeOff: "Toujours cacher",
                 XRayInNewWindow: "Montrer dans une nouvelle fenêtre",
 
+                Tags: {
+                    key: "Fait partie de la solution",
+                    opt: "Est optionnel",
+                },
+
                 ParamControlBitAtBottom: "Bit de contrôle en bas",
                 ParamControlBitsAtBottom: "Bits de contrôle en bas",
 
@@ -1196,6 +1201,11 @@ const Strings_en: Strings = {
                 XRayModeForce: "Always Show",
                 XRayModeOff: "Never Show",
                 XRayInNewWindow: "Show in New Window",
+
+                Tags: {
+                    key: "Is Part of the Solution",
+                    opt: "Is Optional",
+                },
 
                 ParamControlBitAtBottom: "Control Bit at Bottom",
                 ParamControlBitsAtBottom: "Control Bits at Bottom",

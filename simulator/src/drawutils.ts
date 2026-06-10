@@ -109,6 +109,8 @@ export let COLORCOMP_COMPONENT_BORDER: ColorGreyLevel
 export let COLOR_COMPONENT_BORDER: ColorString
 export let COLOR_COMPONENT_INNER_LABELS: ColorString
 export let COLOR_COMPONENT_ID: ColorString
+export let COLOR_COMPONENT_INVALID: ColorString
+export let COLOR_COMPONENT_KEY: ColorString
 export let COLOR_GROUP_SPAN: ColorString
 export let COLOR_WIRE_BORDER: ColorString
 export let COLOR_MOUSE_OVER: ColorString
@@ -177,6 +179,8 @@ function doSetColors(darkMode: boolean) {
         COLORCOMP_COMPONENT_BORDER = 0x00
         COLOR_COMPONENT_INNER_LABELS = ColorString(0xAA)
         COLOR_COMPONENT_ID = ColorString([50, 50, 250])
+        COLOR_COMPONENT_INVALID = ColorString([255, 0, 0, 0.3])
+        COLOR_COMPONENT_KEY = ColorString([100, 255, 100, 0.2])
         COLOR_GROUP_SPAN = ColorString([128, 128, 128, 0.13])
         COLOR_WIRE_BORDER = ColorString(80)
         COLOR_MOUSE_OVER_NORMAL = ColorString([0, 0x7B, 0xFF])
@@ -220,6 +224,8 @@ function doSetColors(darkMode: boolean) {
         COLORCOMP_COMPONENT_BORDER = 220
         COLOR_COMPONENT_INNER_LABELS = ColorString(0x8B)
         COLOR_COMPONENT_ID = ColorString([0, 0, 150])
+        COLOR_COMPONENT_INVALID = ColorString([255, 0, 0, 0.3])
+        COLOR_COMPONENT_KEY = ColorString([100, 255, 100, 0.2])
         COLOR_GROUP_SPAN = ColorString([128, 128, 128, 0.13])
         COLOR_WIRE_BORDER = ColorString(175)
         COLOR_MOUSE_OVER_NORMAL = ColorString([0, 0x7B, 0xFF])

@@ -333,7 +333,11 @@ export abstract class ROMRAMBase<TRepr extends ROMRAMRepr> extends ParametrizedC
     }
 
     protected override xrayScale() {
-        return RAMROMXRayDrawParams[this.numAddressBits - 2][this.numDataBits / 4 - 1]?.scale
+        try {
+            return RAMROMXRayDrawParams[this.numAddressBits - 2][this.numDataBits / 4 - 1]?.scale
+        } catch {
+            return undefined
+        }
     }
 
     protected override makeXRay(level: number, scale: number, link: boolean) {

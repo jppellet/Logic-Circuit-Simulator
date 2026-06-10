@@ -39,7 +39,7 @@ import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
 import { makeIcon } from "./images"
 import { DefaultLang, S, getLang, isLang, setLang } from "./strings"
-import { Any, HighImpedance, InBrowser, KeysOfByType, LogicValue, Mode, Orientation, ParentType, UIDisplay, Unknown, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toLogicValueFromChar, toLogicValueRepr, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
+import { Any, HighImpedance, InBrowser, KeysOfByType, LogicValue, Mode, Orientation, ParentType, Tag, UIDisplay, Unknown, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toLogicValueFromChar, toLogicValueRepr, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
 
 
 const MIN_MODE: number = Mode.STATIC
@@ -99,6 +99,7 @@ const DEFAULT_EDITOR_OPTIONS = {
     hideOutputColors: false,
     hideMemoryContent: false,
     hideTooltips: false,
+    useTags: [] as Tag[],
     xray: "auto" as XRayMode,
     groupParallelWires: false,
     showHiddenWires: false,
@@ -372,7 +373,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         return this._options.name ?? S.Settings.DefaultFileName
     }
 
-    public setPartialOptions(opts: Partial<EditorOptions>) {
+    public setPartialOptions(opts: Partial<EditorOptions> | undefined) {
         const newOptions = { ...DEFAULT_EDITOR_OPTIONS, ...opts }
         if (this._isSingleton) {
             // restore showOnly
