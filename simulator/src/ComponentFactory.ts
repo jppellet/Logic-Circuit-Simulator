@@ -560,9 +560,11 @@ export class ComponentFactory {
 
         const inputsByBit: Array<[Input, number]> = []
         let numInputs = 0
-        for (const input of inputs) {
-            for (let i = 0; i < input.numBits; i++) {
-                inputsByBit.push([input, i])
+        // get bit of last input first
+        for (let i = inputs.length - 1; i >= 0; i--) {
+            const input = inputs[i]
+            for (let j = 0; j < input.numBits; j++) {
+                inputsByBit.push([input, j])
             }
             numInputs += input.numBits
         }
@@ -773,6 +775,16 @@ export class ComponentFactory {
         if (outputs.length === 0) {
             return s.NoOutput
         }
+
+        const getSortName = (inOut: Input | Output): string => {
+            if (isString(inOut.name)) {
+                return inOut.name
+            }
+            return ""
+        }
+
+        inputs.sort((a, b) => getSortName(a).localeCompare(getSortName(b)))
+        outputs.sort((a, b) => getSortName(a).localeCompare(getSortName(b)))
 
         return { inputs, outputs }
     }
