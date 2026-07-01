@@ -30,6 +30,10 @@ export type Library = CommonFields & {
     type: "lib",
 }
 
+export type CircuitObjectOptions = {
+    skipTests?: boolean
+}
+
 type Scratch = {
 
     /** The ID of the component whose scratch space it is */
@@ -84,8 +88,10 @@ class _Serialization {
             try {
                 parsed = JSONParseObject(content)
             } catch (err) {
-                console.error(err)
-                return "can't load this JSON - error “" + err + `”, length = ${content.length}, JSON:\n` + content
+                const errMsg = err instanceof Error ? err.message : String(err)
+                const logMsg = `can't load this JSON - error “${errMsg}”, length = ${content.length}, JSON: '${content}'`
+                console.error(logMsg)
+                return logMsg
             }
         }
         const isLib = (parsed as Partial<Library>).type === "lib"
@@ -342,7 +348,7 @@ class _Serialization {
         }
     }
 
-    public buildCircuitObject(editor: LogicEditor): Circuit {
+    public buildCircuitObject(editor: LogicEditor, opts?: CircuitObjectOptions): Circuit {
         const dataObject: Circuit = {
             v: CurrentFormatVersion,
             opts: editor.nonDefaultOptions(),
@@ -362,7 +368,9 @@ class _Serialization {
             dataObject.scratch = scratch
         }
 
-        this.buildReprsInto(dataObject, editor.components.all(), editor.linkMgr.wires, editor.testSuites.suites)
+        const skipTests = opts?.skipTests ?? false
+        const testSuites = skipTests ? [] : editor.testSuites.suites
+        this.buildReprsInto(dataObject, editor.components.all(), editor.linkMgr.wires, testSuites)
         return dataObject
     }
 
@@ -518,7 +526,7 @@ class _Serialization {
             console.error("ERROR: unprocessed fields in stringified JSON: " + unprocessedFields.join(", "))
         }
 
-        return "{ // JSON5\n  " + parts.join(",\n  ") + "\n}"
+        return "{\n  " + parts.join(",\n  ") + "\n}"
     }
 
 }

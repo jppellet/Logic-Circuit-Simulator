@@ -19,7 +19,7 @@ import { MoveManager } from "./MoveManager"
 import { NodeManager } from "./NodeManager"
 import { RecalcManager, RedrawManager } from "./RedrawRecalcManager"
 import { SVGRenderingContext } from "./SVGRenderingContext"
-import { Circuit, PostLoadActions, PostLoadActions_None, PostLoadActions_SnapshotNoStorage, PostLoadActions_SnapshotStorage, Serialization } from "./Serialization"
+import { Circuit, CircuitObjectOptions, PostLoadActions, PostLoadActions_None, PostLoadActions_SnapshotNoStorage, PostLoadActions_SnapshotStorage, Serialization } from "./Serialization"
 import { TestCaseCombinational, TestCaseResult, TestCaseResultMismatch, TestCaseValueMap, TestSuite, TestSuiteResults, TestSuites, isOutput } from "./TestSuite"
 import { Tests } from "./Tests"
 import { TestsPalette } from "./TestsPalette"
@@ -39,7 +39,7 @@ import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
 import { makeIcon } from "./images"
 import { DefaultLang, S, getLang, isLang, setLang } from "./strings"
-import { Any, HighImpedance, InBrowser, KeysOfByType, LogicValue, Mode, Orientation, ParentType, Tag, UIDisplay, Unknown, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTruthyString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toLogicValueFromChar, toLogicValueRepr, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
+import { Any, HighImpedance, InBrowser, KeysOfByType, LogicValue, Mode, Orientation, ParentType, Tag, UIDisplay, Unknown, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toLogicValueFromChar, toLogicValueRepr, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
 
 
 const MIN_MODE: number = Mode.STATIC
@@ -243,6 +243,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     public get modeStr() { return Mode[this._mode].toLowerCase() }
     private _loadedFromStorage: boolean = false
     private _initialData: InitialData | undefined = undefined
+    private _instanceDefaultOptions: EditorOptions = { ...DEFAULT_EDITOR_OPTIONS }
     private _options: EditorOptions = { ...DEFAULT_EDITOR_OPTIONS }
     private _hideResetButton = false
     private _hideDirtyIndicator = false
@@ -374,7 +375,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     }
 
     public setPartialOptions(opts: Partial<EditorOptions> | undefined) {
-        const newOptions = { ...DEFAULT_EDITOR_OPTIONS, ...opts }
+        const newOptions = { ...this._instanceDefaultOptions, ...opts }
         if (this._isSingleton) {
             // restore showOnly
             newOptions.showOnly = this._options.showOnly
@@ -713,28 +714,29 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         const showonlyAttr = this.getAttribute(ATTRIBUTE_NAMES.showonly)
         if (showonlyAttr !== null) {
-            this._options.showOnly = this.splitShowOnlyParam(showonlyAttr)
+            this._instanceDefaultOptions.showOnly = this.splitShowOnlyParam(showonlyAttr)
         }
 
         const showgatetypesAttr = this.getAttribute(ATTRIBUTE_NAMES.showgatetypes)
         if (showgatetypesAttr !== null) {
-            this._options.showGateTypes = isTruthyString(showgatetypesAttr)
+            this._instanceDefaultOptions.showGateTypes = !isFalsyString(showgatetypesAttr)
         }
 
         const showdisconnectedpinsAttr = this.getAttribute(ATTRIBUTE_NAMES.showdisconnectedpins)
         if (showdisconnectedpinsAttr !== null) {
-            this._options.showDisconnectedPins = isTruthyString(showdisconnectedpinsAttr)
+            this._instanceDefaultOptions.showDisconnectedPins = !isFalsyString(showdisconnectedpinsAttr)
         }
 
         const showtooltipsAttr = this.getAttribute(ATTRIBUTE_NAMES.showtooltips)
         if (showtooltipsAttr !== null) {
-            this._options.hideTooltips = !isFalsyString(showtooltipsAttr)
+            this._instanceDefaultOptions.hideTooltips = !isFalsyString(showtooltipsAttr)
         }
 
         const xrayAttr = this.getAttribute(ATTRIBUTE_NAMES.xray)
         if (xrayAttr !== null) {
-            this._options.xray = xrayAttr as XRayMode
+            this._instanceDefaultOptions.xray = xrayAttr as XRayMode
         }
+        this._options = { ...this._instanceDefaultOptions }
 
         const hideresetAttr = this.getAttribute(ATTRIBUTE_NAMES.hidereset)
         this._hideResetButton = hideresetAttr !== null && !isFalsyString(hideresetAttr)
@@ -1183,7 +1185,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.setMode(modeStr, doSetFocus)
     }
 
-    public setMode(modeParam: Mode | string | null | undefined, doSetFocus: boolean = false) {
+    public setMode(modeParam: Mode | string | null | undefined, doSetFocus: boolean = false, bypassMaxInstanceMode: boolean = false) {
         let mode: Mode = this._maxInstanceMode
         if (modeParam === null || modeParam === undefined) {
             // keep default
@@ -1200,9 +1202,14 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.wrapHandler(() => {
             let modeStr = Mode[mode].toLowerCase()
             if (mode > this._maxInstanceMode) {
-                mode = this._maxInstanceMode
-                console.log(`Cannot switch to mode ${modeStr} because we are capped by ${Mode[this._maxInstanceMode]}`)
-                modeStr = Mode[mode].toLowerCase()
+                if (bypassMaxInstanceMode) {
+                    this._maxInstanceMode = mode
+                    console.log(`Bypassing maxInstanceMode to switch to mode ${modeStr}`)
+                } else {
+                    mode = this._maxInstanceMode
+                    console.log(`Cannot switch to mode ${modeStr} because we are capped by ${Mode[this._maxInstanceMode]}`)
+                    modeStr = Mode[mode].toLowerCase()
+                }
             }
             this._mode = mode
             // this.setDirty("mode changed") // this seems too aggressive
@@ -1292,8 +1299,9 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this._menu?.rebuildMenu(showOnly)
     }
 
-    private splitShowOnlyParam(showOnlyParam: string) {
-        return showOnlyParam.toLowerCase().split(/[, +]+/).filter(x => x.trim())
+    private splitShowOnlyParam(showOnlyParam: string): string[] | undefined {
+        const split = showOnlyParam.toLowerCase().split(/[, +]+/).filter(x => x.trim())
+        return split.length === 0 ? undefined : split
     }
 
     public setCircuitName(name: string | undefined) {
@@ -1968,8 +1976,8 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.saveToUrl(compressedJsonForUri, showOnlyArr)
     }
 
-    public save() {
-        return Serialization.buildCircuitObject(this)
+    public save(opts?: CircuitObjectOptions) {
+        return Serialization.buildCircuitObject(this, opts)
     }
 
     public saveToUrl(compressedUriSafeJson: string, showOnly: string[] | undefined) {
@@ -2190,7 +2198,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
     }
 
-    public async disableUIWhile<T>(message: string, action: (restoreAfter: Map<Input, LogicValue[]>) => Promise<T>): Promise<T | undefined> {
+    public async disableUIWhile<T>(message: string, keepTestsPalette: boolean, action: (restoreAfter: Map<Input, LogicValue[]>) => Promise<T>): Promise<T | undefined> {
         if (this._isRunningOrCreatingTests) {
             // cannot run tests while already running
             return undefined
@@ -2203,11 +2211,18 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
 
         try {
             this.setMode(Mode.STATIC, false)
+            if (keepTestsPalette) {
+                // setMode may hide it
+                this.setTestsPaletteVisible(true)
+            }
             const result = await action(restoreAfter)
             return result
         } finally {
             hideMsg()
             this.setMode(oldMode, true)
+            if (keepTestsPalette) {
+                this.setTestsPaletteVisible(true)
+            }
             for (const [input, value] of restoreAfter) {
                 input.setValue(value)
             }
@@ -2248,9 +2263,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             testSuite = new TestSuite([testSuiteRepr, this.editor.components])
         }
 
-        return this.disableUIWhile(S.Messages.RunningTests, async restoreAfter => {
-
-            this.setTestsPaletteVisible(true) // after setMode, which may hide it
+        return this.disableUIWhile(S.Messages.RunningTests, !noUI, async restoreAfter => {
 
             const results = new TestSuiteResults(testSuite)
             const ui = noUI ? undefined : palette.getOrMakeUIFor(testSuite)

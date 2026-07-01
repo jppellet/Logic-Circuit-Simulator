@@ -530,8 +530,8 @@ export class UIEventManager {
         // Wheel events for zooming and panning
         let wheelEndTimer: TimeoutHandle | null = null
         canvas.onwheel = editor.wrapHandler(e => {
+            let handled = false
             if (editor.mode >= Mode.CONNECT) {
-                e.preventDefault()
                 const isZoomGesture = e.ctrlKey || e.metaKey
                 if (isZoomGesture) {
                     // Calculate zoom factor based on deltaY
@@ -541,13 +541,21 @@ export class UIEventManager {
                     const [oldCenterX, oldCenterY] = editor.offsetXY(e, false)
                     const [newCenterX, newCenterY] = editor.offsetXY(e, true)
                     applyZoomAndTranslation(oldZoom * zoomFactor, oldCenterX, oldCenterY, newCenterX, newCenterY)
+                    handled = true
                 } else {
-                    // Handle as a pan gesture if not a zoom
-                    const speedFactor = 1 / editor.userDrawingScale // slower if zoomed in
-                    const panX = -e.deltaX * speedFactor
-                    const panY = -e.deltaY * speedFactor
-                    editor.setTranslation(editor.translationX + panX, editor.translationY + panY)
+                    // Handle as a pan gesture if not a zoom, but only if we are a singleton or alt or space is pressed, otherwise we have unwanted scrolling of the editor when the user is trying to scroll the page
+                    if (editor.isSingleton || e.altKey || LogicEditor.spaceDown) {
+                        const speedFactor = 1 / editor.userDrawingScale // slower if zoomed in
+                        const panX = -e.deltaX * speedFactor
+                        const panY = -e.deltaY * speedFactor
+                        editor.setTranslation(editor.translationX + panX, editor.translationY + panY)
+                        handled = true
+                    }
                 }
+            }
+
+            if (handled) {
+                e.preventDefault()
 
                 // detect end of wheel interaction
                 if (wheelEndTimer !== null) {

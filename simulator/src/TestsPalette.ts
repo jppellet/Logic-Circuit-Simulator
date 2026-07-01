@@ -110,8 +110,8 @@ export class TestsPalette {
         }
 
         // circuit built for event detail, to save it from e.g. Moodle
-        const circuit = this.editor.save()
-        const jsonStr = Serialization.stringifyObject(circuit, true)
+        const circuit = this.editor.save({ skipTests: false }) // don't skip test for now, because the Moodle plugin is not injecting into the student answer the teacher's tests
+        const jsonStr = Serialization.stringifyObject(circuit, false)
         this.editor.dispatchEvent(new CustomEvent("testsexecuted", {
             detail: { results, circuit: jsonStr },
         }))

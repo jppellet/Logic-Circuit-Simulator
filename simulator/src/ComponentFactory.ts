@@ -585,7 +585,7 @@ export class ComponentFactory {
             return ""
         }
 
-        const result = await editor.disableUIWhile(s.ComputingTestCases, async restoreAfter => {
+        const result = await editor.disableUIWhile(s.ComputingTestCases, false, async restoreAfter => {
             for (const input of inputs) {
                 restoreAfter.set(input, input.value)
             }
