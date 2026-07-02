@@ -40,6 +40,7 @@ import question from '../img/icons/question.icon.svg'; // @ts-ignore
 import questioncircled from '../img/icons/questioncircled.icon.svg'; // @ts-ignore
 import redo from '../img/icons/redo.icon.svg'; // @ts-ignore
 import { default as ref, default as regroup } from '../img/icons/ref.icon.svg'; // @ts-ignore
+import reframe from '../img/icons/reframe.icon.svg'; // @ts-ignore
 import replace from '../img/icons/replace.icon.svg'; // @ts-ignore
 import reset from '../img/icons/reset.icon.svg'; // @ts-ignore
 import screenshot from '../img/icons/screenshot.icon.svg'; // @ts-ignore
@@ -170,6 +171,7 @@ const icons = {
     redo,
     ref,
     regroup,
+    reframe,
     replace,
     reset,
     screenshot,

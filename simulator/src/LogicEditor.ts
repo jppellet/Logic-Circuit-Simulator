@@ -3054,20 +3054,24 @@ if (InBrowser) {
         template.content.querySelectorAll("i.svgicon").forEach(setupSvgIcon)
         return template
     })()
-    window.Logic = new LogicStatic(template)
-    window.customElements.define('logic-editor', LogicEditor)
-    document.addEventListener("toggle", e => {
-        if (!(e.target instanceof HTMLDetailsElement)) {
-            return
-        }
-        if (e.target.open) {
-            e.target.querySelectorAll("logic-editor").forEach(el => {
-                if (el instanceof LogicEditor) {
-                    el.redraw()
-                }
-            })
-        }
-    }, true)
+    if (window.Logic !== undefined) {
+        console.warn("Logic simulator already loaded; check that you are not loading it twice")
+    } else {
+        window.Logic = new LogicStatic(template)
+        window.customElements.define('logic-editor', LogicEditor)
+        document.addEventListener("toggle", e => {
+            if (!(e.target instanceof HTMLDetailsElement)) {
+                return
+            }
+            if (e.target.open) {
+                e.target.querySelectorAll("logic-editor").forEach(el => {
+                    if (el instanceof LogicEditor) {
+                        el.redraw()
+                    }
+                })
+            }
+        }, true)
+    }
 
 } else {
     // TODO

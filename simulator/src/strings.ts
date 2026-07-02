@@ -230,6 +230,7 @@ const Strings_fr = {
         Design: tuple("Concevoir", "Compose ou modifie le circuit"),
         Delete: tuple("Supprimer", "Supprime des éléments du circuit"),
         Move: tuple("Déplacer", "Déplace tout le circuit"),
+        Reframe: "Recadrer le circuit dans la fenêtre",
 
         Tests: tuple("Tests", "Montre les tests pour ce circuit"),
     },
@@ -1110,6 +1111,7 @@ const Strings_en: Strings = {
         Design: tuple("Design", "Create or modify the circuit"),
         Delete: tuple("Delete", "Delete elements from the circuit"),
         Move: tuple("Move", "Move the whole circuit"),
+        Reframe: "Reframe the circuit to be seen ",
 
         Tests: tuple("Tests", "Show tests for the circuit"),
     },

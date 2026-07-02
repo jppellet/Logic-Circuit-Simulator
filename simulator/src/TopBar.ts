@@ -45,6 +45,7 @@ export class TopBar {
 
     private readonly flexibleSep: HTMLElement
 
+    private readonly reframeButton: HTMLButtonElement
     private readonly moveButton: HTMLButtonElement
     private readonly zoomLevelInput: HTMLInputElement
 
@@ -115,6 +116,7 @@ export class TopBar {
             () => this.editor.setTestsPaletteVisible(!this.testsButton.classList.contains("active")))
 
         this.flexibleSep = div(style("flex: auto")).render()
+        this.reframeButton = this.makeButton("reframe", s.Reframe, this.reframeHandler.bind(this))
         this.moveButton = this.makeButton("move", s.Move[1],
             () => this.editor.setCurrentPointerAction("move"))
         this.zoomLevelInput = input(type("number"),
@@ -164,6 +166,7 @@ export class TopBar {
 
                 this.flexibleSep,
 
+                this.reframeButton,
                 this.moveButton,
                 zoomControl,
 
@@ -228,6 +231,12 @@ export class TopBar {
         } else {
             editor.download(editor.toPNG(true), ".png")
         }
+    }
+
+    public reframeHandler(e: MouseEvent) {
+        const editor = this.editor
+        editor.setZoom(100, true)
+        editor.setTranslation(0, 0)
     }
 
     private zoomLevelHandler() {
