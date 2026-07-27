@@ -233,7 +233,7 @@ export class TopBar {
         }
     }
 
-    public reframeHandler(e: MouseEvent) {
+    public reframeHandler(__e: MouseEvent) {
         const editor = this.editor
         editor.setZoom(100, true)
         editor.setTranslation(0, 0)

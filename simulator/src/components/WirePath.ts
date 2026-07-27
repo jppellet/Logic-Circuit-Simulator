@@ -162,7 +162,7 @@ export class WirePath {
 }
 
 
-function normalizePath(parts: ReadonlyArray<LineCoords | BezierCoords>, mode: Mode): ReadonlyArray<LineCoords | BezierCoords> {
+export function normalizePath(parts: ReadonlyArray<LineCoords | BezierCoords>, mode: Mode): ReadonlyArray<LineCoords | BezierCoords> {
 
     const tryMerge = (part1: LineCoords | BezierCoords, part2: LineCoords | BezierCoords): LineCoords | undefined => {
         if (part1.length === 4 && part2.length === 4 &&

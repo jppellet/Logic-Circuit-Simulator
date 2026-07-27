@@ -283,7 +283,7 @@ export class Rectangle extends ComponentBase<RectangleRepr> {
         })
 
         const setCaptionItemName = this._caption !== undefined ? s.ChangeTitle : s.SetTitle
-        const setCaptionItem = MenuData.item("pen", setCaptionItemName, () => this.runSetCaptionDialog(), "↩︎")
+        const setCaptionItem = MenuData.item("pen", setCaptionItemName, () => this.runSetCaptionDialog(), { shortcut: "↩︎" })
 
         const makeItemSetPlacement = (desc: string, placement: CaptionPosition) => {
             const isCurrent = this._captionPos === placement

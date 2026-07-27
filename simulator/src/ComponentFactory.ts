@@ -382,7 +382,7 @@ export class ComponentFactory {
                     this._customComponents.delete(customId)
                     this.editor.updateCustomComponentButtons()
                 }
-            }, undefined, true),
+            }, { danger: true }),
         ]
     }
 

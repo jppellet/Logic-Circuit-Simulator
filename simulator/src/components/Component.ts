@@ -4,7 +4,6 @@ import type { ComponentForDef } from "../ComponentFactory"
 import type { ComponentKey, DefAndParams, LibraryButtonOptions, LibraryButtonProps, LibraryItem } from "../ComponentMenu"
 import { DrawParams, LogicEditor } from "../LogicEditor"
 import { PointerDragEvent } from "../UIEventManager"
-import { UIPermissions } from "../UIPermissions"
 import { COLORCOMP_BACKGROUND_TRANSLUCENT, COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_COMPONENT_INVALID, COLOR_COMPONENT_KEY, COLOR_GROUP_SPAN, COMPONENT_OUTLINE_THICKNESS, DrawingRect, GRID_STEP, XRayMode, XRayModes, drawClockInput, drawComponentName, drawLabel, drawWireLineToComponent, isTrivialNodeName, shouldDrawNodeLabel, useCompact } from "../drawutils"
 import { IconName, ImageName } from "../images"
 import { S, Template } from "../strings"
@@ -1409,52 +1408,6 @@ export abstract class ComponentBase<
     private makeBaseContextMenu(editor: LogicEditor): MenuItems {
         const s = S.Components.Generic.contextMenu
 
-        // only allow to make new custom components or test cases in main editor
-        const nonEmptySelectionInMainEditor = !editor.eventMgr.currentSelectionEmpty() && this.parent.isMainEditor()
-
-        const makeNewComponentItems: MenuItems =
-            (!nonEmptySelectionInMainEditor || !UIPermissions.canModifyCustomComponents(this.parent)) ? [] : [
-                ["start", MenuData.item("newcomponent", s.MakeNewComponent, () => {
-                    const result = editor.factory.tryMakeNewCustomComponent(editor)
-                    if (isString(result)) {
-                        if (result.length > 0) {
-                            window.alert(s.MakeNewComponentFailed + " " + result)
-                        }
-                    } else {
-                        editor.options.showOnly?.push(result.id)
-                        editor.updateCustomComponentButtons()
-                    }
-                })],
-            ]
-
-        const makeNewTestCaseItems: MenuItems =
-            (!nonEmptySelectionInMainEditor || !UIPermissions.canModifyTestCases(this.parent)) ? [] : [
-                ["start", MenuData.item("testcase", s.MakeNewTestCase, () => {
-                    const result = editor.factory.tryMakeNewTestCase(editor)
-                    if (isString(result)) {
-                        if (result.length > 0) {
-                            window.alert(s.MakeNewTestCaseFailed + " " + result)
-                        }
-                        return
-                    }
-                    this.parent.editor.addTestCases(result)
-                })],
-                ["start", MenuData.item("testcase", s.MakeAllTestCases, async () => {
-                    const result = await editor.factory.tryMakeAllTestCases(editor)
-                    if (isString(result)) {
-                        if (result.length > 0) {
-                            window.alert(s.MakeNewTestCaseFailed + " " + result)
-                        }
-                        return
-                    }
-                    this.parent.editor.addTestCases(result)
-                })],
-            ]
-
-        if (makeNewComponentItems.length > 0 || makeNewTestCaseItems.length > 0) {
-            makeNewTestCaseItems.push(["start", MenuData.sep()])
-        }
-
         const makeSetXRayModeContextMenuItem = (mode: XRayMode | undefined, caption: string): MenuItem => {
             return MenuData.item(
                 this._xrayMode === mode ? "check" : "none",
@@ -1512,12 +1465,10 @@ export abstract class ComponentBase<
 
         const deleteItem = MenuData.item("trash", s.Delete, () => {
             return this.parent.editor.eventMgr.tryDeleteDrawable(this)
-        }, "⌫", true)
+        }, { shortcut: "⌫", danger: true })
 
         return [
             ["start", MenuData.sep()],
-            ...makeNewComponentItems,
-            ...makeNewTestCaseItems,
             ...this.makeOrientationAndPosMenuItems(),
             ...xrayItems,
             ...setRefItems,
@@ -1649,7 +1600,7 @@ export abstract class ComponentBase<
     protected makeSetNameContextMenuItem(currentName: ComponentName, handler: (newName: ComponentName) => void): MenuItem {
         const s = S.Components.Generic.contextMenu
         const caption = currentName === undefined ? s.SetName : s.ChangeName
-        return MenuData.item("pen", caption, () => this.runSetNameDialog(currentName, handler), "↩︎")
+        return MenuData.item("pen", caption, () => this.runSetNameDialog(currentName, handler), { shortcut: "↩︎" })
     }
 
     protected runSetNameDialog(currentName: ComponentName, handler: (newName: ComponentName) => void): void {

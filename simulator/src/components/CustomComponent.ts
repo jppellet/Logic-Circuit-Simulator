@@ -457,7 +457,7 @@ export class CustomComponent extends ComponentBase<CustomComponentRepr, LogicVal
             ...this.makeForceOutputsContextMenuItem(),
             ["mid", MenuData.item("connect", s.ChangeCircuit, () => {
                 this.tryOpenEditor()
-            }, "↩︎")],
+            }, { shortcut: "↩︎" })],
         ]
     }
 

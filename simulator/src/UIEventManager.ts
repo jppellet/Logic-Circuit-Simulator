@@ -10,7 +10,8 @@ import { applyModifiersTo, button, cls, emptyMod, li, Modifier, ModifierObject, 
 import { IconName, makeIcon } from './images'
 import { LogicEditor, PointerAction, PoionterActionParams } from './LogicEditor'
 import { S } from './strings'
-import { getScrollParent, InteractionResult, Mode, targetIsFieldOrOtherInput, TimeoutHandle } from "./utils"
+import { UIPermissions } from './UIPermissions'
+import { getScrollParent, InteractionResult, isString, Mode, targetIsFieldOrOtherInput, TimeoutHandle } from "./utils"
 
 type PointerDownData = {
     mainComp: Drawable | Element
@@ -175,7 +176,12 @@ export class UIEventManager {
                 } else {
                     // for touch events, we trigger a context menu
                     if (this.editor.mode >= Mode.CONNECT && startPointerDownData.mainComp instanceof Drawable) {
-                        this._currentHandlers.contextMenuOn(startPointerDownData.mainComp, e)
+                        const elems = this.selectionIfNotEmpty()
+                        if (elems) {
+                            this._currentHandlers.contextMenuOnMulti(startPointerDownData.mainComp, elems, e)
+                        } else {
+                            this._currentHandlers.contextMenuOn(startPointerDownData.mainComp, e)
+                        }
                     }
                 }
             }),
@@ -206,8 +212,15 @@ export class UIEventManager {
         }
     }
 
-    public currentSelectionEmpty() {
-        return this.currentSelection === undefined || this.currentSelection.previouslySelectedElements.size === 0
+    public selectionIfNotEmpty(): Set<Drawable> | undefined {
+        if (this.currentSelection === undefined || this.currentSelection.previouslySelectedElements.size === 0) {
+            return undefined
+        }
+        return this.currentSelection.previouslySelectedElements
+    }
+
+    public currentSelectionEmpty(): boolean {
+        return this.selectionIfNotEmpty() === undefined
     }
 
     public updateComponentUnderPointer([x, y]: [number, number], pullingWire: boolean, settingAnchor: boolean, isTouch: boolean): Drawable | null {
@@ -572,7 +585,12 @@ export class UIEventManager {
         canvas.oncontextmenu = editor.wrapHandler((e) => {
             e.preventDefault()
             if (this.editor.mode >= Mode.CONNECT && this._currentComponentUnderPointer !== null) {
-                this._currentHandlers.contextMenuOn(this._currentComponentUnderPointer, e)
+                const elems = this.selectionIfNotEmpty()
+                if (elems) {
+                    this._currentHandlers.contextMenuOnMulti(this._currentComponentUnderPointer, elems, e)
+                } else {
+                    this._currentHandlers.contextMenuOn(this._currentComponentUnderPointer, e)
+                }
             }
         })
         // there is a global 'pointerdown' listener that is used to hide the context menu
@@ -1129,6 +1147,9 @@ abstract class ToolHandlers {
     public contextMenuOn(__comp: Drawable, __e: MouseEvent): boolean {
         return false // false means unhandled
     }
+    public contextMenuOnMulti(__mainComp: Drawable, __comps: Set<Drawable>, __e: MouseEvent): boolean {
+        return false // false means unhandled
+    }
     public contextMenuOnButton(__props: ButtonDataset, __e: MouseEvent) {
         // empty
     }
@@ -1191,30 +1212,170 @@ class EditHandlers extends ToolHandlers {
             editor.eventMgr.makeTooltip(tooltip, rect)
         }
     }
+
     public override pointerDownOn(comp: Drawable, e: PointerEvent) {
         return comp.pointerDown(e)
     }
+
     public override pointerDraggedOn(comp: Drawable, e: PointerDragEvent) {
         comp.pointerDragged(e)
     }
+
     public override pointerUpOn(comp: Drawable, e: PointerEvent) {
         const change = comp.pointerUp(e)
         this.editor.editorRoot.linkMgr.tryCancelWireOrAnchor()
         return change
     }
+
     public override pointerClickedOn(comp: Drawable, e: PointerEvent) {
         // console.log("pointerClickedOn %o", comp)
         return comp.pointerClicked(e)
     }
+
     public override pointerDoubleClickedOn(comp: Drawable, e: PointerEvent) {
         return comp.pointerDoubleClicked(e)
     }
+
     public override contextMenuOn(comp: Drawable, e: PointerEvent) {
         // console.log("contextMenuOn: %o", comp)
         return this.showContextMenu(comp.makeContextMenu(), e)
     }
+
     public override contextMenuOnButton(props: ButtonDataset, e: PointerEvent) {
         return this.showContextMenu(this.editor.factory.makeContextMenu(props.type), e)
+    }
+
+    public override contextMenuOnMulti(mainComp: Drawable, allComps: Set<Drawable>, e: PointerEvent) {
+        if (allComps.size === 0) {
+            return false
+        }
+
+        // only allow to make new custom components or test cases in main editor
+        const editor = this.editor
+        const isMainEditor = this.editor.editorRoot.isMainEditor()
+        const s = S.Components.Generic.contextMenu
+
+        // some generic menu items on selections with multiple components
+        const makeNewComponentItems: MenuData =
+            (!isMainEditor || !UIPermissions.canModifyCustomComponents(editor)) ? [] : [
+                MenuData.item("newcomponent", s.MakeNewComponent, () => {
+                    const result = editor.factory.tryMakeNewCustomComponent(editor)
+                    if (isString(result)) {
+                        if (result.length > 0) {
+                            window.alert(s.MakeNewComponentFailed + " " + result)
+                        }
+                    } else {
+                        editor.options.showOnly?.push(result.id)
+                        editor.updateCustomComponentButtons()
+                    }
+                }),
+            ]
+
+        const makeNewTestCaseItems: MenuData =
+            (!isMainEditor || !UIPermissions.canModifyTestCases(editor)) ? [] : [
+                MenuData.item("testcase", s.MakeNewTestCase, () => {
+                    const result = editor.factory.tryMakeNewTestCase(editor)
+                    if (isString(result)) {
+                        if (result.length > 0) {
+                            window.alert(s.MakeNewTestCaseFailed + " " + result)
+                        }
+                        return
+                    }
+                    editor.addTestCases(result)
+                }),
+                MenuData.item("testcase", s.MakeAllTestCases, async () => {
+                    const result = await editor.factory.tryMakeAllTestCases(editor)
+                    if (isString(result)) {
+                        if (result.length > 0) {
+                            window.alert(s.MakeNewTestCaseFailed + " " + result)
+                        }
+                        return
+                    }
+                    editor.addTestCases(result)
+                }),
+            ]
+
+        if (makeNewComponentItems.length > 0 || makeNewTestCaseItems.length > 0) {
+            makeNewTestCaseItems.push(MenuData.sep())
+        }
+
+        const selectionMenuData = [
+            ...makeNewComponentItems,
+            ...makeNewTestCaseItems,
+        ]
+
+        const mainCompMenuData = mainComp.makeContextMenu()
+
+        const keepCommonItems = (menuData: MenuData, otherMenuData: MenuData | undefined) => {
+            if (otherMenuData === undefined) {
+                menuData.length = 0
+                return
+            }
+            for (let i = menuData.length - 1; i >= 0; i--) {
+                const item = menuData[i]
+                switch (item._tag) {
+                    case "item": {
+                        let match
+                        if (item.skipCombine || (match = otherMenuData.find(it => it._tag === "item" && it.caption === item.caption)) === undefined) {
+                            menuData.splice(i, 1)
+                        } else {
+                            // combine items
+                            const item2 = match as MenuItem & { _tag: "item" }
+                            // combine check mark
+                            if (item.icon === "check" && item2.icon !== "check" || item.icon !== "check" && item2.icon === "check") {
+                                item.icon = "hbar" // semichecked
+                            }
+                            // combine listeners
+                            const firstHandler = item.action
+                            item.action = async (itemEvent, menuEvent) => {
+                                const r1 = firstHandler(itemEvent, menuEvent)
+                                const rr1 = r1 instanceof Promise ? await r1 : r1
+                                const r2 = item2.action(itemEvent, menuEvent)
+                                const rr2 = r2 instanceof Promise ? await r2 : r2
+                                if (rr1 === undefined) {
+                                    return rr2
+                                }
+                                if (rr2 === undefined) {
+                                    return rr1
+                                }
+                                return InteractionResult.merge(rr1, rr2)
+                            }
+                        }
+                        break
+                    }
+                    case "submenu": {
+                        const match = otherMenuData.find(it => it._tag === "submenu" && it.caption === item.caption)
+                        if (!match) {
+                            menuData.splice(i, 1)
+                        } else {
+                            const item2 = match as MenuItem & { _tag: "submenu" }
+                            keepCommonItems(item.items, item2.items)
+                            if (item.items.length === 0) {
+                                menuData.splice(i, 1)
+                            }
+                        }
+                        break
+                    }
+                    case "sep":
+                    case "text":
+                        // we keep them
+                        break
+
+                }
+            }
+        }
+        if (mainCompMenuData !== undefined) {
+            // check with all other components and only keep the common ones
+            for (const comp of allComps) {
+                if (comp === mainComp) {
+                    continue
+                }
+                keepCommonItems(mainCompMenuData, comp.makeContextMenu())
+            }
+            selectionMenuData.push(...mainCompMenuData)
+        }
+
+        return this.showContextMenu(selectionMenuData, e)
     }
 
     public override pointerDownOnBackground(e: PointerEvent) {
@@ -1244,6 +1405,7 @@ class EditHandlers extends ToolHandlers {
             }
         }
     }
+
     public override pointerDraggedOnBackground(e: PointerDragEvent) {
         const editor = this.editor
         if (this._currentPanningSession !== undefined) {

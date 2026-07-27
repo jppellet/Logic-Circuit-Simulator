@@ -20,6 +20,7 @@ import eye from '../img/icons/eye.icon.svg'; // @ts-ignore
 import eyecrossed from '../img/icons/eyecrossed.icon.svg'; // @ts-ignore
 import font from '../img/icons/font.icon.svg'; // @ts-ignore
 import force from '../img/icons/force.icon.svg'; // @ts-ignore
+import hbar from '../img/icons/hbar.icon.svg'; // @ts-ignore
 import inputs from '../img/icons/inputs.icon.svg'; // @ts-ignore
 import link from '../img/icons/link.icon.svg'; // @ts-ignore
 import memcontent from '../img/icons/memcontent.icon.svg'; // @ts-ignore
@@ -150,6 +151,7 @@ const icons = {
     eyecrossed,
     font,
     force,
+    hbar,
     inputs,
     link,
     memcontent,

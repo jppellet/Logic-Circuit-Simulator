@@ -56,6 +56,7 @@ export type MenuItem =
         caption: Modifier,
         shortcut: string | undefined,
         danger: boolean | undefined,
+        skipCombine: boolean, // true to not try to combine with other similarly named items in a multiple selection
         action: (itemEvent: MouseEvent, menuEvent: MouseEvent) => PromiseOrValue<InteractionResult | undefined | void>
     }
 
@@ -67,8 +68,8 @@ export const MenuData = {
     text(caption: Modifier): MenuItem {
         return { _tag: "text", caption }
     },
-    item(icon: IconName | undefined, caption: Modifier, action: (itemEvent: MouseEvent, menuEvent: MouseEvent) => PromiseOrValue<InteractionResult | undefined | void>, shortcut?: string, danger?: boolean): MenuItem {
-        return { _tag: "item", icon, caption, action, shortcut, danger }
+    item(icon: IconName | undefined, caption: Modifier, action: (itemEvent: MouseEvent, menuEvent: MouseEvent) => PromiseOrValue<InteractionResult | undefined | void>, opts?: { shortcut?: string, danger?: boolean, skipCombine?: boolean }): MenuItem {
+        return { _tag: "item", icon, caption, action, shortcut: opts?.shortcut, danger: opts?.danger, skipCombine: opts?.skipCombine ?? false }
     },
     submenu(icon: IconName | undefined, caption: Modifier, items: MenuData): MenuItem {
         return { _tag: "submenu", icon, caption, items }
@@ -272,7 +273,7 @@ export abstract class Drawable {
         const caption: Modifier = currentId === undefined ? s.SetIdentifier : span(s.ChangeIdentifier[0], span(fixedWidthInContextMenu, currentId), s.ChangeIdentifier[1])
         return MenuData.item("ref", caption, () => {
             this.runSetIdDialog()
-        }, "⌥↩︎")
+        }, { shortcut: "⌥↩︎" })
     }
 
     private runSetIdDialog() {
@@ -543,7 +544,7 @@ export abstract class DrawableWithPosition extends Drawable implements HasPositi
                     const action = isCurrent ? () => undefined : () => {
                         this.doSetOrient(orient)
                     }
-                    return MenuData.item(icon, caption, action, shortcuts[orient])
+                    return MenuData.item(icon, caption, action, { shortcut: shortcuts[orient] })
                 }),
                 MenuData.sep(),
                 MenuData.text(s.ChangeOrientationDesc),
@@ -553,7 +554,7 @@ export abstract class DrawableWithPosition extends Drawable implements HasPositi
         const lockPosItem: MenuItems = !this.canLockPos() ? [] : [
             ["start", MenuData.item(this.lockPos ? "check" : "none", s.LockPosition, () => {
                 this.doSetLockPos(!this.lockPos)
-            }, "L")],
+            }, { shortcut: "L" })],
         ]
 
         const anchorItem: MenuItems = this._anchor === undefined ? [

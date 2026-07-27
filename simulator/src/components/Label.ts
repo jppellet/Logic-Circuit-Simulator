@@ -107,7 +107,7 @@ export class Label extends ComponentBase<LabelRepr> {
 
     protected override makeComponentSpecificContextMenuItems(): MenuItems {
         const s = S.Components.Label.contextMenu
-        const setTextItem = MenuData.item("pen", s.ChangeText, this.runSetTextDialog.bind(this), "↩︎")
+        const setTextItem = MenuData.item("pen", s.ChangeText, this.runSetTextDialog.bind(this), { shortcut: "↩︎" })
 
         const setFontItem = MenuData.item("font", s.Font, () => {
             this.runSetFontDialog(this._font, LabelDef.aults.font, this.doSetFont.bind(this))
