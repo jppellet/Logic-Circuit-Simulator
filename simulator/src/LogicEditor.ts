@@ -14,6 +14,7 @@ import { ComponentFactory } from "./ComponentFactory"
 import { ComponentList } from "./ComponentList"
 import { ComponentMenu, ComponentSection, getAllComponentTypes } from "./ComponentMenu"
 import { CurrentFormatVersion } from "./DataMigration"
+import { KeyInfoPanel } from "./KeyInfoPanel"
 import { MessageBar } from "./MessageBar"
 import { MoveManager } from "./MoveManager"
 import { NodeManager } from "./NodeManager"
@@ -39,7 +40,7 @@ import { gallery } from './gallery'
 import { Modifier, a, attr, attrBuilder, cls, div, emptyMod, href, input, label, mods, option, select, setupSvgIcon, span, style, target, title, type } from "./htmlgen"
 import { makeIcon } from "./images"
 import { DefaultLang, S, getLang, isLang, setLang } from "./strings"
-import { Any, HighImpedance, InBrowser, KeysOfByType, LogicValue, Mode, Orientation, ParentType, Tag, UIDisplay, Unknown, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toLogicValueFromChar, toLogicValueRepr, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
+import { Any, HighImpedance, InBrowser, KeysOfByType, LogicValue, Mode, Orientation, ParentType, Tag, UIDisplay, Unknown, copyToClipboard, deepArrayEquals, formatString, getURLParameter, isArray, isEmbeddedInIframe, isFalsyString, isRecord, isString, isTag, onVisible, pasteFromClipboard, randomString, setDisplay, setVisible, showModal, toLogicValueFromChar, toLogicValueRepr, toggleVisible, validateJson, valuesFromReprForInput } from "./utils"
 
 
 const MIN_MODE: number = Mode.STATIC
@@ -64,6 +65,9 @@ const ATTRIBUTE_NAMES = {
     showmodeselector: "showmodeselector", // can be true, false, or auto
     exportformat: "exportformat", // differences between MyST and pymarkdown
     linkedto: "linkedto", // query of an element whose text content should be updated with the circuit state
+    usetags: "usetags", // comma-separated list of allowed tags
+    striptags: "striptags", // intrinsic property of the editor, not loadable from the circuit, to remove components with certain tags
+    showkeyinfo: "showkeyinfo", // whether to show some info about the key for an assignment
 
     // these are mirrored in the display options
     name: "name",
@@ -71,6 +75,7 @@ const ATTRIBUTE_NAMES = {
     showgatetypes: "showgatetypes",
     showdisconnectedpins: "showdisconnectedpins",
     showtooltips: "showtooltips",
+    outputdefault: "outputdefault",
     xray: "xray",
 
     src: "src",
@@ -248,11 +253,15 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
     private _hideResetButton = false
     private _hideDirtyIndicator = false
     public get hideDirtyIndicator() { return this._hideDirtyIndicator }
+    private _stripTags: Tag[] = []
+    public get stripTags(): ReadonlyArray<Tag> { return this._stripTags }
     private _exportformat: string | undefined = undefined
+    private readonly _allowedTags: Tag[] = []
 
     private _menu: ComponentMenu | undefined = undefined
     private _topBar: TopBar | undefined = undefined
     private _messageBar: MessageBar | undefined = undefined
+    private _keyInfoPanel: KeyInfoPanel | undefined = undefined
     private _toolCursor: string | null = null
     private _highlightedItems: HighlightedItems | undefined = undefined
     private _nextAnimationFrameHandle: number | null = null
@@ -542,9 +551,13 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 ATTRIBUTE_NAMES.showgatetypes,
                 ATTRIBUTE_NAMES.showdisconnectedpins,
                 ATTRIBUTE_NAMES.showtooltips,
+                ATTRIBUTE_NAMES.usetags,
+                ATTRIBUTE_NAMES.striptags,
+                ATTRIBUTE_NAMES.showkeyinfo,
                 ATTRIBUTE_NAMES.data,
                 ATTRIBUTE_NAMES.src,
                 ATTRIBUTE_NAMES.hidereset,
+                ATTRIBUTE_NAMES.outputdefault,
             ]) {
                 transferUrlParamToAttribute(attr)
             }
@@ -712,6 +725,23 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
             }
         }
 
+        const parseTagList = (value: string): Tag[] => value.split(",").map(s => s.trim()).filter(isTag)
+
+        const useTagsAttr = this.getAttribute(ATTRIBUTE_NAMES.usetags)
+        if (useTagsAttr !== null) {
+            this._instanceDefaultOptions.useTags = parseTagList(useTagsAttr)
+        }
+
+        const stripTagsAttr = this.getAttribute(ATTRIBUTE_NAMES.striptags)
+        if (stripTagsAttr !== null) {
+            this._stripTags = parseTagList(stripTagsAttr)
+        }
+
+        const showkeyinfoAttr = this.getAttribute(ATTRIBUTE_NAMES.showkeyinfo)
+        if (!isFalsyString(showkeyinfoAttr)) {
+            this._keyInfoPanel = new KeyInfoPanel(this)
+        }
+
         const showonlyAttr = this.getAttribute(ATTRIBUTE_NAMES.showonly)
         if (showonlyAttr !== null) {
             this._instanceDefaultOptions.showOnly = this.splitShowOnlyParam(showonlyAttr)
@@ -730,6 +760,15 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         const showtooltipsAttr = this.getAttribute(ATTRIBUTE_NAMES.showtooltips)
         if (showtooltipsAttr !== null) {
             this._instanceDefaultOptions.hideTooltips = !isFalsyString(showtooltipsAttr)
+        }
+
+        const outputdefaultAttr = this.getAttribute(ATTRIBUTE_NAMES.outputdefault)
+        if (outputdefaultAttr !== null) {
+            const val = toLogicValueFromChar(outputdefaultAttr)
+            const invalidValue = val === Unknown && outputdefaultAttr !== Unknown
+            if (!invalidValue) {
+                this._instanceDefaultOptions.outputDefault = val
+            }
         }
 
         const xrayAttr = this.getAttribute(ATTRIBUTE_NAMES.xray)
@@ -1347,6 +1386,10 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         this.html.mainCanvas.focus({ preventScroll: true })
     }
 
+    public updateKeyInfoPanel() {
+        this._keyInfoPanel?.update()
+    }
+
     /**
      * This saves the passed circuit to both sessionStorage and localStorage.
      * The idea is that sessionStorage is always restored (page reload),
@@ -1362,6 +1405,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
                 this._linkedField.setSelectionRange(selectionStart, selectionEnd)
             }
         }
+        this.updateKeyInfoPanel()
 
         if (this._norestore) {
             return

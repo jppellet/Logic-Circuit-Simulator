@@ -2,8 +2,8 @@ import { LogicEditor, PointerAction } from "./LogicEditor"
 import { TimelineState } from "./Timeline"
 import { UndoState } from "./UndoManager"
 import { CustomComponentDef } from "./components/CustomComponent"
-import { Modifier, a, attr, button, cls, div, emptyMod, i, input, mods, raw, span, style, title, type } from "./htmlgen"
-import { IconName, inlineIconSvgFor } from "./images"
+import { Modifier, a, attr, button, cls, div, emptyMod, icon, input, mods, span, style, title, type } from "./htmlgen"
+import { IconName } from "./images"
 import { S } from "./strings"
 import { Mode, UIDisplay, setActive, setDisplay, setEnabled, setVisible } from "./utils"
 
@@ -431,11 +431,11 @@ export class TopBar {
         return this.makeButton(icon, labelTooltip[1], handler, labelTooltip[0])
     }
 
-    private makeButton(icon: IconName, tooltip: string, handler: (e: MouseEvent) => void, label?: Modifier): HTMLButtonElement {
+    private makeButton(iconName: IconName, tooltip: string, handler: (e: MouseEvent) => void, label?: Modifier): HTMLButtonElement {
         const labelSpan = label === undefined ? emptyMod : span(cls("btnLabel"), label)
         const but =
             button(
-                i(cls("svgicon"), raw(inlineIconSvgFor(icon))),
+                icon(iconName),
                 title(tooltip),
                 labelSpan
             ).render()

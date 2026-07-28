@@ -3,7 +3,7 @@
 // Helper export function s to build HTML more smartly in JavaScript
 //
 
-import { inlineIconSvgFor, isIconName } from "./images"
+import { IconName, inlineIconSvgFor, isIconName } from "./images"
 import { isHighImpedance, isRecord, isUnknown, LogicValue, Unknown } from "./utils"
 
 export interface ModifierObject {
@@ -160,6 +160,10 @@ export function tooltipContent(title: Modifier | undefined, body: Modifier, maxW
         title === undefined ? emptyMod : div(style("padding-bottom: 3px; border-bottom: 1px solid grey;"), title),
         div(body)
     )
+}
+
+export function icon(iconName: IconName, ...modifiers: Modifier[]): ModifierObject {
+    return i(cls("svgicon"), raw(inlineIconSvgFor(iconName)), ...modifiers)
 }
 
 export const fixedWidthInContextMenu = style("font-family: monospace; font-weight: bolder; font-size: 90%")

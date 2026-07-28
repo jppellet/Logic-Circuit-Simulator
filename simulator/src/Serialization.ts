@@ -226,6 +226,7 @@ class _Serialization {
                 parent.editor.editTools.undoMgr.takeSnapshot(undefined, skipStorage)
             }
 
+            parent.updateKeyInfoPanel()
             parent.updateCustomComponentButtons()
 
             // try to load scratch, if any
@@ -268,16 +269,24 @@ class _Serialization {
         const components: Component[] = []
         const componentsByRef: Record<string, Component> = {}
         const anchorsToSet: Array<[Component, string]> = []
+        const stripTags = parent.editor.stripTags
         const add = (c: Component | undefined, repr: unknown) => {
-            if (c !== undefined) {
-                components.push(c)
-                if (c.ref !== undefined) {
-                    componentsByRef[c.ref] = c
+            if (c === undefined) {
+                return
+            }
+            if (c.tags.some(t => stripTags.includes(t))) {
+                if (!parent.components.tryDelete(c)) {
+                    console.warn("Failed to delete component with stripped tag: " + c)
                 }
-                let anchor
-                if (isRecord(repr) && "anchor" in repr && isString(anchor = repr.anchor)) {
-                    anchorsToSet.push([c, anchor])
-                }
+                return
+            }
+            components.push(c)
+            if (c.ref !== undefined) {
+                componentsByRef[c.ref] = c
+            }
+            let anchor
+            if (isRecord(repr) && "anchor" in repr && isString(anchor = repr.anchor)) {
+                anchorsToSet.push([c, anchor])
             }
         }
 

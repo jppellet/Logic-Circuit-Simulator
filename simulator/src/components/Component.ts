@@ -7,7 +7,7 @@ import { PointerDragEvent } from "../UIEventManager"
 import { COLORCOMP_BACKGROUND_TRANSLUCENT, COLOR_BACKGROUND, COLOR_COMPONENT_INNER_LABELS, COLOR_COMPONENT_INVALID, COLOR_COMPONENT_KEY, COLOR_GROUP_SPAN, COMPONENT_OUTLINE_THICKNESS, DrawingRect, GRID_STEP, XRayMode, XRayModes, drawClockInput, drawComponentName, drawLabel, drawWireLineToComponent, isTrivialNodeName, shouldDrawNodeLabel, useCompact } from "../drawutils"
 import { IconName, ImageName } from "../images"
 import { S, Template } from "../strings"
-import { ArrayFillUsing, ArrayOrDirect, EdgeTrigger, Expand, FixedArrayMap, HasField, HighImpedance, InteractionResult, LogicValue, LogicValueRepr, Mode, Orientation, Tag, Tags_, Unknown, brand, deepArrayEquals, isArray, isBoolean, isNumber, isRecord, isString, mergeWhereDefined, toLogicValueRepr, typeOrUndefined, validateJson } from "../utils"
+import { ArrayFillUsing, ArrayOrDirect, EdgeTrigger, Expand, FixedArrayMap, HasField, HighImpedance, InteractionResult, LogicValue, LogicValueRepr, Mode, Orientation, Tag, Tags_, Unknown, brand, deepArrayEquals, isArray, isBoolean, isNumber, isRecord, isString, isTag, mergeWhereDefined, toLogicValueRepr, typeOrUndefined, validateJson } from "../utils"
 import { DrawContext, DrawContextExt, Drawable, DrawableParent, DrawableWithDraggablePosition, DrawableWithPosition, GraphicsRendering, HasPosition, MenuData, MenuItem, MenuItemPlacement, MenuItems, PointerOverMode, PositionSupportRepr } from "./Drawable"
 import { DEFAULT_WIRE_COLOR, MirrorNode, Node, NodeBase, NodeIn, NodeOut, WireColor } from "./Node"
 import { Wire } from "./Wire"
@@ -95,7 +95,7 @@ export type ComponentRepr<THasIn extends boolean, THasOut extends boolean> =
     PositionSupportRepr &
     NodeIDsRepr<THasIn, THasOut> &
     Partial<{
-        tags: Tag[]
+        tags: Tag | Tag[]
         xray: string
     }>
 
@@ -107,7 +107,7 @@ export const ComponentRepr = <THasIn extends boolean, THasOut extends boolean>(h
         PositionSupportRepr,
         NodeIDsRepr(hasIn, hasOut),
         t.partial({
-            tags: t.array(t.keyof(Tags_)),
+            tags: t.union([t.keyof(Tags_), t.array(t.keyof(Tags_))]),
             xray: t.string,
         }),
     ], "Component")
@@ -345,8 +345,9 @@ export abstract class ComponentBase<
         this._width = def.size.gridWidth * GRID_STEP
         this._height = def.size.gridHeight * GRID_STEP
         this._value = def.initialValue(saved)
-        this._tags = saved?.tags ?? []
         this._xrayMode = XRayModes.includes(saved?.xray as any) ? saved?.xray as XRayMode : undefined
+        const savedTags = saved?.tags
+        this._tags = savedTags === undefined ? [] : (Array.isArray(savedTags) ? savedTags : [savedTags]).filter(isTag)
 
         const ins = def.nodeRecs.ins
         const outs = def.nodeRecs.outs
@@ -456,11 +457,12 @@ export abstract class ComponentBase<
             // a few lines below, but this makes the compiler happy
             type: this.jsonType(),
         }
+        const numTags = this._tags.length
         return {
             ...typeHolder,
             ...super.toJSONBase(),
             ...this.buildNodesRepr(),
-            tags: this._tags.length > 0 ? this._tags : undefined,
+            tags: numTags === 0 ? undefined : numTags === 1 ? this._tags[0] : this._tags,
             xray: this._xrayMode,
         }
     }
