@@ -3115,6 +3115,8 @@ if (InBrowser) {
                 })
             }
         }, true)
+        // send custom event to let the page know that the logic simulator is ready
+        window.dispatchEvent(new CustomEvent("logic-simulator-ready"))
     }
 
 } else {
