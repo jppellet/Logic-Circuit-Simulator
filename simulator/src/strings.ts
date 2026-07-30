@@ -246,6 +246,7 @@ const Strings_fr = {
             info: "Les composants à recréer par les élèves et à supprimer du circuit de base doivent être marqués comme faisant partie de la solution.",
         },
         IOMarkedButInTests: "Ces entrées/sorties testées et ne doivent pas faire partie de la solution: ",
+        IOMarkedButInTestsFix: "Corriger",
     },
     Messages: {
         UnsupportedFileType: template("Type de fichier non pris en charge: ${type}."),
@@ -1141,6 +1142,7 @@ const Strings_en: Strings = {
             info: "The components that need to be recreated by students and removed from the base circuit must be marked as part of the solution.",
         },
         IOMarkedButInTests: "These inputs/outputs are tested and this should not be part of the solution: ",
+        IOMarkedButInTestsFix: "Fix",
     },
     Messages: {
         UnsupportedFileType: template("Unsupported file type: ${type}."),

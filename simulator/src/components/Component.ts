@@ -1503,6 +1503,7 @@ export abstract class ComponentBase<
     public addTag(tag: Tag): boolean {
         if (!this._tags.includes(tag)) {
             this._tags.push(tag)
+            this.requestRedraw({ why: "tag added" })
             return true
         }
         return false
@@ -1516,6 +1517,7 @@ export abstract class ComponentBase<
         const index = this._tags.indexOf(tag)
         if (index !== -1) {
             this._tags.splice(index, 1)
+            this.requestRedraw({ why: "tag removed" })
             return true
         }
         return false

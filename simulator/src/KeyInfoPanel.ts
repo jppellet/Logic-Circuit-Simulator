@@ -3,7 +3,7 @@ import { isInput, isOutput } from "./TestSuite"
 import { a, div, href, icon, span, style, title } from "./htmlgen"
 import { IconName } from "./images"
 import { S } from "./strings"
-import { isString } from "./utils"
+import { InteractionResult, isString } from "./utils"
 
 export class KeyInfoPanel {
 
@@ -67,6 +67,19 @@ export class KeyInfoPanel {
                         html.appendChild(span(", ").render())
                     }
                 })
+                html.appendChild(span(". ").render())
+                const fixLink = a(s.IOMarkedButInTestsFix, href("#")).render()
+                fixLink.onclick = this.editor.wrapHandler(e => {
+                    e.preventDefault()
+                    for (const ref of markedTestIO) {
+                        const comp = editor.components.get(ref)
+                        if (comp !== undefined) {
+                            comp.removeTag("key")
+                        }
+                    }
+                    editor.editTools.undoMgr.takeSnapshot(InteractionResult.SimpleChange)
+                })
+                html.appendChild(fixLink)
                 htmlParts.push(html)
             }
         }
