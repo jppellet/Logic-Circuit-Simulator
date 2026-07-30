@@ -1397,7 +1397,9 @@ export abstract class ComponentBase<
             }
         }
 
-        addItemsAt("start", specificItems)
+        addItemsAt("header", baseItems)
+        addItemsAt("header", specificItems)
+        addItemsAt("start", specificItems, true)
         addItemsAt("start", baseItems)
         addItemsAt("mid", baseItems, true)
         addItemsAt("mid", specificItems)
@@ -1440,20 +1442,20 @@ export abstract class ComponentBase<
 
         const setTagsItems: MenuItems = []
         if (editor.mode >= Mode.FULL && editor.options.useTags.length > 0) {
-            setTagsItems.push(...editor.options.useTags.map(tag => ["end", MenuData.item(
+            setTagsItems.push(...editor.options.useTags.map(tag => ["header", MenuData.item(
                 this.hasTag(tag) ? "check" : "none",
                 s.Tags[tag],
                 () => {
                     this.toggleTag(tag)
                     this.requestRedraw({ why: "tag toggled" })
-                }
+                },
+                { color: "success" }
             )] as [MenuItemPlacement, MenuItem]))
         }
 
         const setRefItems: MenuItems =
             editor.mode < Mode.FULL ? [] : [
                 ["end", this.makeSetIdContextMenuItem()],
-                ...setTagsItems,
                 ["end", MenuData.sep()],
             ]
 
@@ -1467,9 +1469,10 @@ export abstract class ComponentBase<
 
         const deleteItem = MenuData.item("trash", s.Delete, () => {
             return this.parent.editor.eventMgr.tryDeleteDrawable(this)
-        }, { shortcut: "⌫", danger: true })
+        }, { shortcut: "⌫", color: "danger" })
 
         return [
+            ...setTagsItems,
             ["start", MenuData.sep()],
             ...this.makeOrientationAndPosMenuItems(),
             ...xrayItems,

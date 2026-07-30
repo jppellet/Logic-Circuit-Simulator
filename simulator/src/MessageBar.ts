@@ -13,7 +13,7 @@ export class MessageBar {
         editor: LogicEditor,
     ) {
         this.msgSpan = span().render()
-        this.closeButton = span("×", style("padding-left: 0.5em; cursor: pointer; margin-left: 0.5em; border-left: 1px solid rgba(127,127,127,0.8);")).render()
+        this.closeButton = span("×", style("display: inline-flex; align-items: center; padding-left: 0.5em; cursor: pointer; margin-left: 0.5em; border-left: 1px solid rgba(127,127,127,0.8)")).render()
         this.closeButton.onclick = () => this.hideNow()
         this.root = div(cls("msgZone"),
             div(cls("msgBar"),

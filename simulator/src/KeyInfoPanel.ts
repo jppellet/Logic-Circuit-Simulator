@@ -1,7 +1,9 @@
 import { LogicEditor } from "./LogicEditor"
-import { div, icon, span, style, title } from "./htmlgen"
+import { isInput, isOutput } from "./TestSuite"
+import { a, div, href, icon, span, style, title } from "./htmlgen"
 import { IconName } from "./images"
 import { S } from "./strings"
+import { isString } from "./utils"
 
 export class KeyInfoPanel {
 
@@ -32,31 +34,66 @@ export class KeyInfoPanel {
         }
         const keyMarked = markedAsKey.length > 0
 
-        const testIONotMarked = hasTests && markedAsKey.every(ref => !this.editor.testSuites.hasReferenceTo(ref))
 
         const checks: Array<[boolean, CriterionStrings]> = [
             [hasTests, s.TestsDefined],
             [keyMarked, s.KeyMarked],
-            [testIONotMarked, s.TestIONotMarked],
         ]
 
-        const makeIcon = (name: IconName, color: string) => icon(name, style(`color: ${color}; position: relative; top: -2px; display: inline-block; margin-right: 0.2ex`))
+        const makeIcon = (name: IconName, color: string) => icon(name, style(`color: ${color}; position: relative; top: -1px; display: inline-block; margin: 0 0.2ex`))
 
-        const results = checks.map(([passed, label], index) => {
-            const html = passed ?
-                span(makeIcon("check", "green"), label.true) :
-                span(makeIcon("close", "red"), label.false, title(label.info))
-            return { index, passed, html }
+        const htmlParts = checks.map(([passed, label]) => {
+            let html: HTMLElement
+            if (passed === undefined) {
+                html = span().render()
+            } else if (passed) {
+                html = span(makeIcon("check", "green"), label.true).render()
+            } else {
+                const link = a(makeIcon("questioncircled", "blue")).render()
+                link.onclick = () => editor.showMessage(label.info, 5000, true)
+                html = span(makeIcon("close", "red"), label.false, link, title(label.info)).render()
+            }
+
+            return html
         })
+
+        if (hasTests) {
+            const markedTestIO = markedAsKey.filter(ref => editor.testSuites.hasReferenceTo(ref))
+            if (markedTestIO.length > 0) {
+                const html = span(makeIcon("close", "red"), s.IOMarkedButInTests).render()
+                markedTestIO.forEach((ref, i) => {
+                    html.appendChild(this.makeComponentRefSpan(ref))
+                    if (i < markedTestIO.length - 1) {
+                        html.appendChild(span(", ").render())
+                    }
+                })
+                htmlParts.push(html)
+            }
+        }
 
         this.root.innerHTML = ""
-
-        results.forEach(({ html }, i) => {
+        htmlParts.forEach((html, i) => {
             if (i > 0) {
-                span(style("padding: 0 1ex")).applyTo(this.root)
+                this.root.insertAdjacentHTML("beforeend", "<br>")
             }
-            html.applyTo(this.root)
+            this.root.appendChild(html)
         })
     }
+
+    private makeComponentRefSpan(ref: string): HTMLElement {
+        const component = this.editor.components.get(ref)
+        if (component === undefined) {
+            return span(ref).render()
+        }
+
+        const compStr = (isInput(component) || isOutput(component)) && isString(component.name) ? component.name : ref
+        const link = a(compStr, href("#")).render()
+        link.addEventListener("click", (e) => {
+            e.preventDefault()
+            this.editor.highlight(component)
+        })
+        return link
+    }
+
 
 }

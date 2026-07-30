@@ -1486,8 +1486,8 @@ class EditHandlers extends ToolHandlers {
         let hasContentJustifyingSeparator = false
 
         const defToElem = (item: MenuItem): Modifier => {
-            function mkButton(spec: { icon?: IconName | undefined, caption: Modifier }, shortcut: string | undefined, danger: boolean) {
-                return button(type("button"), cls(`menu-btn${(danger ? " danger" : "")}`),
+            function mkButton(spec: { icon?: IconName | undefined, caption: Modifier }, shortcut: string | undefined = undefined, color: undefined | "danger" | "success" = undefined) {
+                return button(type("button"), cls(`menu-btn ${color ?? ""}`),
                     spec.icon === undefined
                         ? spec.caption
                         : mods(
@@ -1510,7 +1510,7 @@ class EditHandlers extends ToolHandlers {
                 case "text":
                     return li(cls("menu-item-static"), item.caption).render()
                 case "item": {
-                    const but = mkButton(item, item.shortcut, item.danger ?? false).render()
+                    const but = mkButton(item, item.shortcut, item.color).render()
                     but.addEventListener("click", this.editor.wrapAsyncHandler(async (itemEvent: MouseEvent) => {
                         this.hideContextMenuIfNeeded()
                         const result = await Promise.resolve(item.action(itemEvent, e))
@@ -1521,7 +1521,7 @@ class EditHandlers extends ToolHandlers {
                 }
                 case "submenu": {
                     return li(cls("menu-item submenu"),
-                        mkButton(item, undefined, false),
+                        mkButton(item),
                         ul(cls("menu"),
                             ...item.items.map(defToElem)
                         )

@@ -154,7 +154,7 @@ export class Waypoint extends DrawableWithDraggablePosition {
             MenuData.sep(),
             MenuData.item("trash", S.Components.Generic.contextMenu.Delete, () => {
                 this.removeFromParent()
-            }, { shortcut: "⌫", danger: true }),
+            }, { shortcut: "⌫", color: "danger" }),
         ]
     }
 }
@@ -765,7 +765,7 @@ export class Wire extends Drawable {
             MenuData.sep(),
             MenuData.item("trash", S.Components.Generic.contextMenu.Delete, () => {
                 return this.parent.linkMgr.deleteWire(this)
-            }, { shortcut: "⌫", danger: true }),
+            }, { shortcut: "⌫", color: "danger" }),
         ]
     }
 

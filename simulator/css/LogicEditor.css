@@ -363,11 +363,17 @@ logic-editor:not(:defined) {
 }
 
 .menu-item:hover>.menu-btn.danger {
-  color: #fff;
   background-color: #C1210E;
   background: -webkit-linear-gradient(to bottom, #DE2610, #C1210E);
   background: linear-gradient(to bottom, #DE2610, #C1210E);
   border: 1px solid #C1210E;
+}
+
+.menu-item:hover>.menu-btn.success {
+  background-color: #4CAF50;
+  background: -webkit-linear-gradient(to bottom, #45a049, #4CAF50);
+  background: linear-gradient(to bottom, #45a049, #4CAF50);
+  border: 1px solid #4CAF50;
 }
 
 .menu-item.disabled {
@@ -596,6 +602,7 @@ svg text {
 }
 
 .msgZone .msgBar {
+  display: flex;
   padding: 5px 10px;
   border-radius: 20px;
   text-align: center;

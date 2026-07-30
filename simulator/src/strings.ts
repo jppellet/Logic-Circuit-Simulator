@@ -245,11 +245,7 @@ const Strings_fr = {
             false: "Aucun composant faisant partie de la solution",
             info: "Les composants à recréer par les élèves et à supprimer du circuit de base doivent être marqués comme faisant partie de la solution.",
         },
-        TestIONotMarked: {
-            true: "Entrées/sorties définies",
-            false: "Entrées/sorties des tests marquées comme solution",
-            info: "Les entrées et sorties référencées dans les tests ne doivent pas être marquées comme faisant partie de la solution.",
-        },
+        IOMarkedButInTests: "Ces entrées/sorties testées et ne doivent pas faire partie de la solution: ",
     },
     Messages: {
         UnsupportedFileType: template("Type de fichier non pris en charge: ${type}."),
@@ -1144,11 +1140,7 @@ const Strings_en: Strings = {
             false: "No components marked as part of the solution",
             info: "The components that need to be recreated by students and removed from the base circuit must be marked as part of the solution.",
         },
-        TestIONotMarked: {
-            true: "Inputs/outputs defined",
-            false: "Test inputs/outputs marked as solution",
-            info: "The inputs and outputs referenced in the tests must not be marked as part of the solution.",
-        },
+        IOMarkedButInTests: "These inputs/outputs are tested and this should not be part of the solution: ",
     },
     Messages: {
         UnsupportedFileType: template("Unsupported file type: ${type}."),

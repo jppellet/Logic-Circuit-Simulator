@@ -55,7 +55,7 @@ export type MenuItem =
         icon: IconName | undefined,
         caption: Modifier,
         shortcut: string | undefined,
-        danger: boolean | undefined,
+        color: undefined | "danger" | "success",
         skipCombine: boolean, // true to not try to combine with other similarly named items in a multiple selection
         action: (itemEvent: MouseEvent, menuEvent: MouseEvent) => PromiseOrValue<InteractionResult | undefined | void>
     }
@@ -68,15 +68,15 @@ export const MenuData = {
     text(caption: Modifier): MenuItem {
         return { _tag: "text", caption }
     },
-    item(icon: IconName | undefined, caption: Modifier, action: (itemEvent: MouseEvent, menuEvent: MouseEvent) => PromiseOrValue<InteractionResult | undefined | void>, opts?: { shortcut?: string, danger?: boolean, skipCombine?: boolean }): MenuItem {
-        return { _tag: "item", icon, caption, action, shortcut: opts?.shortcut, danger: opts?.danger, skipCombine: opts?.skipCombine ?? false }
+    item(icon: IconName | undefined, caption: Modifier, action: (itemEvent: MouseEvent, menuEvent: MouseEvent) => PromiseOrValue<InteractionResult | undefined | void>, opts?: { shortcut?: string, color?: "danger" | "success", skipCombine?: boolean }): MenuItem {
+        return { _tag: "item", icon, caption, action, shortcut: opts?.shortcut, color: opts?.color, skipCombine: opts?.skipCombine ?? false }
     },
     submenu(icon: IconName | undefined, caption: Modifier, items: MenuData): MenuItem {
         return { _tag: "submenu", icon, caption, items }
     },
 }
 
-export type MenuItemPlacement = "start" | "mid" | "end" // where to insert items created by components
+export type MenuItemPlacement = "header" | "start" | "mid" | "end" // where to insert items created by components
 export type MenuItems = Array<[MenuItemPlacement, MenuItem]>
 
 export enum PointerOverMode {
