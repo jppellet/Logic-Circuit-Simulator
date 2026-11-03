@@ -48,6 +48,7 @@ import { Rectangle, RectangleDef } from "./components/Rectangle"
 import { Register, RegisterDef } from "./components/Register"
 import { ShiftDisplay, ShiftDisplayDef } from "./components/ShiftDisplay"
 import { ShiftRegister, ShiftRegisterDef } from "./components/ShiftRegister"
+import { TrafficLights, TrafficLightsDef } from "./components/TrafficLights"
 import { TristateBuffer, TristateBufferDef } from "./components/TristateBuffer"
 import { TristateBufferArray, TristateBufferArrayDef } from "./components/TristateBufferArray"
 import { S } from "./strings"
@@ -99,6 +100,7 @@ export type ComponentForDef<TDef> = Component & (
     TDef extends typeof RegisterDef ? Register :
     TDef extends typeof ShiftDisplayDef ? ShiftDisplay :
     TDef extends typeof ShiftRegisterDef ? ShiftRegister :
+    TDef extends typeof TrafficLightsDef ? TrafficLights :
     TDef extends typeof TristateBufferDef ? TristateBuffer :
     TDef extends typeof TristateBufferArrayDef ? TristateBufferArray :
     Component
@@ -129,6 +131,7 @@ const AllComponentDefs: ComponentMaker<any>[] = [
     DisplayAsciiDef,
     DisplayBarDef,
     PixelDef,
+    TrafficLightsDef,
     ShiftDisplayDef,
 
     // gates

@@ -74,7 +74,7 @@ export class DecoderBCD extends ParametrizedComponentBase<DecoderBCDRepr> {
 
     public override makeTooltip() {
         return tooltipContent(undefined, mods(
-            div(S.Components.DecoderBCD4.tooltip)
+            div(S.Components.DecoderBCD.tooltip)
         ))
     }
 

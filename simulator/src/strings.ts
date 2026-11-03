@@ -66,6 +66,7 @@ const Strings_fr = {
             DisplayAscii: ["Affichage d’un caractère ASCII (sur 7 bits)", "Caractère"],
             DisplayBar: ["Affichage d’un bit sous forme de segment lumineux", "Segment"],
             Pixel: ["Affichage d’un pixel avec couleur réglable", "Pixel"],
+            TrafficLights: ["Feux de circulation rouge-orange-vert", "Feux"],
             ShiftDisplay: ["Affichage avec buffer à décalage", "Affichage à décalage"],
 
             Passthrough1: ["Broche", "Broche"],
@@ -141,7 +142,7 @@ const Strings_fr = {
             RAM: ["RAM (mémoire vive)", "RAM"],
             ROM: ["ROM (mémoire morte)", "ROM"],
 
-            Counter: ["Compteur 4 bits", "Compteur"],
+            Counter: ["Compteur", "Compteur"],
             Decoder: ["Décodeur binaire vers 1-sur-n", "Décodeur"],
             Decoder7Seg: ["Décodeur 7 segments", "Déc. 7 seg."],
             Decoder16Seg: ["Décodeur ASCII vers 16 segments", "Déc. 16 seg."],
@@ -487,7 +488,7 @@ const Strings_fr = {
         Counter: {
             tooltip: {
                 title: "Compteur",
-                desc: "Compteur à quatre bits.",
+                desc: "Compteur.",
             },
             contextMenu: {
                 DisplayTempl: template("Affichage ${desc}"),
@@ -508,8 +509,8 @@ const Strings_fr = {
         Decoder16Seg: {
             tooltip: "Décodeur ASCII vers 16 segments",
         },
-        DecoderBCD4: {
-            tooltip: "Décodeur 4 bits vers BCD (binary-coded decimal)",
+        DecoderBCD: {
+            tooltip: "Décodeur binaire vers BCD (binary-coded decimal)",
         },
         Demux: {
             tooltip: template("Démultiplexeur ${from} vers ${to}"),
@@ -815,6 +816,9 @@ const Strings_fr = {
                 ParamTouch: "Avec sortie tactile",
             },
         },
+        TrafficLights: {
+            tooltip: "Feux de circulation. Affiche les feux rouge, orange et vert selon les entrées.",
+        },
         GateArray: {
             tooltip: {
                 title: "Porte multiple",
@@ -961,6 +965,7 @@ const Strings_en: Strings = {
             DisplayAscii: ["ASCII Character (7-Bit) Display", "Character"],
             DisplayBar: ["Bit Display as a Light Bar", "Bar"],
             Pixel: ["Pixel with adjustable color", "Pixel"],
+            TrafficLights: ["Traffic Lights with 3 Lights", "Tr. Lights"],
             ShiftDisplay: ["Display with Shift Buffer", "Shift Displ."],
 
             Passthrough1: ["Passthrough", "Passthrough"],
@@ -1036,7 +1041,7 @@ const Strings_en: Strings = {
             RAM: ["RAM Module", "RAM"],
             ROM: ["ROM Module", "ROM"],
 
-            Counter: ["4-Bit Counter", "Counter"],
+            Counter: ["Counter", "Counter"],
             Decoder: ["Binary to One-of-N Decoder", "Decoder"],
             Decoder7Seg: ["7-Segment Decoder", "7-Seg. Dec."],
             Decoder16Seg: ["ASCII-to-16-Segment Decoder", "16-Seg. Dec."],
@@ -1383,7 +1388,7 @@ const Strings_en: Strings = {
         Counter: {
             tooltip: {
                 title: "Counter",
-                desc: "4-bit counter.",
+                desc: "Counter.",
             },
             contextMenu: {
                 DisplayTempl: template("${desc} Display"),
@@ -1404,8 +1409,8 @@ const Strings_en: Strings = {
         Decoder16Seg: {
             tooltip: "7-Bit ASCII to 16-Segment Decoder",
         },
-        DecoderBCD4: {
-            tooltip: "4-Bit to BCD (Binary-Coded Decimal) Decoder",
+        DecoderBCD: {
+            tooltip: "Binary to BCD (Binary-Coded Decimal) Decoder",
         },
         Demux: {
             tooltip: template("${from}-to-${to} Demultiplexer"),
@@ -1710,6 +1715,9 @@ const Strings_en: Strings = {
                 ParamGrayscale: "Grayscale Only",
                 ParamTouch: "With Touch Output",
             },
+        },
+        TrafficLights: {
+            tooltip: "Traffic Lights. Displays red, orange and green lights that can be set with the inputs.",
         },
         GateArray: {
             tooltip: {

@@ -45,6 +45,7 @@ import { RectangleDef } from "./components/Rectangle"
 import { RegisterDef } from "./components/Register"
 import { ShiftDisplayDef } from "./components/ShiftDisplay"
 import { ShiftRegisterDef } from "./components/ShiftRegister"
+import { TrafficLightsDef } from "./components/TrafficLights"
 import { TristateBufferDef } from "./components/TristateBuffer"
 import { TristateBufferArrayDef } from "./components/TristateBufferArray"
 import { a, button, cls, div, emptyMod, raw, span, style, title, type } from "./htmlgen"
@@ -93,6 +94,7 @@ const componentsMenu: Array<Section> = [{
         OutputDef.button({ bits: 1 }, "Output1"),
         DisplayBarDef.button("DisplayBar", { compat: "out.bar", visible: withButton }),
         PixelDef.button({ bits: 2, gray: false, touch: false }, "Pixel", { visible: withButton }),
+        TrafficLightsDef.button("TrafficLights", { visible: withButton }),
         ClockDef.button("Clock"),
 
         InputDef.button({ bits: 4 }, ["InputN", "Input4"], { compat: "in.nibble" }),

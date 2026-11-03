@@ -106,6 +106,7 @@ import Rectangle from '../img/Rectangle.svg'; // @ts-ignore
 import Register from '../img/Register.svg'; // @ts-ignore
 import ShiftDisplay from '../img/ShiftDisplay.svg'; // @ts-ignore
 import ShiftRegister from '../img/ShiftRegister.svg'; // @ts-ignore
+import TrafficLights from '../img/TrafficLights.svg'; // @ts-ignore
 import TristateBufferArray from '../img/TristateBufferArray.svg'; // @ts-ignore
 import and from '../img/and.svg'; // @ts-ignore
 import and3 from '../img/and3.svg'; // @ts-ignore
@@ -253,6 +254,7 @@ const images = {
     ROM,
     Register,
     ShiftRegister,
+    TrafficLights,
     ControlledInverter,
     tri,
     TristateBufferArray,

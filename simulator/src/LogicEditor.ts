@@ -738,7 +738,7 @@ export class LogicEditor extends HTMLElement implements DrawableParent {
         }
 
         const showkeyinfoAttr = this.getAttribute(ATTRIBUTE_NAMES.showkeyinfo)
-        if (!isFalsyString(showkeyinfoAttr)) {
+        if (showkeyinfoAttr !== null && !isFalsyString(showkeyinfoAttr)) {
             this._keyInfoPanel = new KeyInfoPanel(this)
         }
 
