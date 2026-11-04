@@ -818,6 +818,9 @@ const Strings_fr = {
         },
         TrafficLights: {
             tooltip: "Feux de circulation. Affiche les feux rouge, orange et vert selon les entrées.",
+            contextMenu: {
+                ParamOnly2: "Seulement 2 feux",
+            },
         },
         GateArray: {
             tooltip: {
@@ -1718,6 +1721,9 @@ const Strings_en: Strings = {
         },
         TrafficLights: {
             tooltip: "Traffic Lights. Displays red, orange and green lights that can be set with the inputs.",
+            contextMenu: {
+                ParamOnly2: "Only 2 Lights",
+            },
         },
         GateArray: {
             tooltip: {

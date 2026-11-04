@@ -94,7 +94,7 @@ const componentsMenu: Array<Section> = [{
         OutputDef.button({ bits: 1 }, "Output1"),
         DisplayBarDef.button("DisplayBar", { compat: "out.bar", visible: withButton }),
         PixelDef.button({ bits: 2, gray: false, touch: false }, "Pixel", { visible: withButton }),
-        TrafficLightsDef.button("TrafficLights", { visible: withButton }),
+        TrafficLightsDef.button({ only2: false }, "TrafficLights", { visible: withButton }),
         ClockDef.button("Clock"),
 
         InputDef.button({ bits: 4 }, ["InputN", "Input4"], { compat: "in.nibble" }),

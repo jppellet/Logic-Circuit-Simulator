@@ -1,43 +1,60 @@
-import { COLOR_UNKNOWN, TextVAlign, fillTextVAlign } from "../drawutils"
+import * as t from "io-ts"
+import { COLOR_UNKNOWN, GRID_STEP, TextVAlign, fillTextVAlign } from "../drawutils"
 import { mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
-import { FixedArray, FixedArrayFillWith, LogicValue, isHighImpedance, isUnknown } from "../utils"
-import { ComponentBase, Repr, defineComponent } from "./Component"
-import { DrawContext, DrawableParent, GraphicsRendering } from "./Drawable"
+import { FixedArray, FixedArrayFillWith, LogicValue, isHighImpedance, isUnknown, typeOrUndefined } from "../utils"
+import { ParametrizedComponentBase, Repr, ResolvedParams, defineParametrizedComponent, paramBool } from "./Component"
+import { DrawContext, DrawableParent, GraphicsRendering, MenuItems } from "./Drawable"
 
 
 export const TrafficLightsDef =
-    defineComponent("tl", true, false, {
+    defineParametrizedComponent("tl", true, false, {
+        variantName: ({ only2 }) => `tl-${only2 ? "2" : ""}`,
         idPrefix: "tl",
         button: { imgWidth: 32 },
-        repr: {},
-        valueDefaults: {
-            full: true,
+        repr: {
+            only2: typeOrUndefined(t.boolean),
         },
-        size: () => ({
+        valueDefaults: {},
+        params: {
+            only2: paramBool(),
+        },
+        validateParams: params => params,
+        size: ({ only2 }) => ({
             gridWidth: 3,
-            gridHeight: 9,
+            gridHeight: only2 ? 6 : 9,
         }),
-        makeNodes: () => ({
-            ins: {
-                r: [-2, -2, "w"],
-                o: [-2, 0, "w"],
-                g: [-2, 2, "w"],
-            },
-        }),
+        makeNodes: ({ only2 }) => {
+            const rgOffset = only2 ? 1 : 2
+            return {
+                ins: {
+                    r: [-2.5, -rgOffset, "w"],
+                    ...(only2 ? {} : { o: [-2.5, 0, "w"] }),
+                    g: [-2.5, rgOffset, "w"],
+                },
+            }
+        },
         initialValue: (): FixedArray<LogicValue, 3> => FixedArrayFillWith(false, 3),
     })
 
 export type TrafficLightsRepr = Repr<typeof TrafficLightsDef>
+export type TrafficLightsParams = ResolvedParams<typeof TrafficLightsDef>
 
-export class TrafficLights extends ComponentBase<TrafficLightsRepr, FixedArray<LogicValue, 3>> {
+export class TrafficLights extends ParametrizedComponentBase<TrafficLightsRepr> {
 
-    public constructor(parent: DrawableParent, saved?: TrafficLightsRepr) {
-        super(parent, TrafficLightsDef.from(parent), saved)
+    public readonly only2: boolean
+
+    public constructor(parent: DrawableParent, params: TrafficLightsParams, saved?: TrafficLightsRepr) {
+        super(parent, TrafficLightsDef.with(params), saved)
+
+        this.only2 = params.only2
     }
 
     public toJSON() {
-        return this.toJSONBase()
+        return {
+            ...this.toJSONBase(),
+            only2: this.only2 ? true : undefined,
+        }
     }
 
     public override makeTooltip() {
@@ -46,7 +63,7 @@ export class TrafficLights extends ComponentBase<TrafficLightsRepr, FixedArray<L
     }
 
     protected doRecalcValue(): FixedArray<LogicValue, 3> {
-        return [this.inputs.r.value, this.inputs.o.value, this.inputs.g.value]
+        return [this.inputs.r.value, this.inputs.o?.value ?? false, this.inputs.g.value]
     }
 
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
@@ -54,15 +71,18 @@ export class TrafficLights extends ComponentBase<TrafficLightsRepr, FixedArray<L
 
         const [r_, o_, g_] = this.value
         const { left, top, width, height } = this.bounds()
+        const radius = GRID_STEP * 1.2
 
         for (const [i, onColor, value] of [
             [0, "red", r_],
             [1, "orange", o_],
             [2, "green", g_],
         ] as const) {
-            const y = top + (i + 0.5) * height / 3
+            if (i === 1 && this.only2) {
+                continue
+            }
+            const y = top + ((i - (this.only2 && i > 1 ? 1 : 0)) + 0.5) * height / (this.only2 ? 2 : 3)
             const x = left + width / 2
-            const radius = height / 8
             const unknown = isUnknown(value) || isHighImpedance(value)
             const color = unknown ? COLOR_UNKNOWN : value ? onColor : "black"
             g.beginPath()
@@ -76,6 +96,13 @@ export class TrafficLights extends ComponentBase<TrafficLightsRepr, FixedArray<L
                 fillTextVAlign(g, TextVAlign.middle, "?", x, y)
             }
         }
+    }
+
+    public override makeComponentSpecificContextMenuItems(): MenuItems {
+        const s = S.Components.TrafficLights.contextMenu
+        return [
+            this.makeChangeBooleanParamsContextMenuItem(s.ParamOnly2, this.only2, "only2"),
+        ]
     }
 }
 TrafficLightsDef.impl = TrafficLights
