@@ -531,7 +531,7 @@ export class XRay implements DrawableParent {
     }
 
     public constant(validatedId: string, value: LogicValue, x: number | HasPosition, y: number | HasPosition, orient?: Orientation) {
-        const input = InputDef.makeSpawned(this, validatedId, x, y, orient, { bits: 1 })
+        const input = InputDef.makeSpawned(this, validatedId, x, y, orient, { bits: 1, switch: false })
         input.doSetIsConstant(true)
         input.setValue([value])
         return input

@@ -19,7 +19,9 @@ export const OutputDef =
             name: ComponentNameRepr,
         },
         valueDefaults: {},
-        params: InputDef.paramDefs,
+        params: {
+            bits: InputDef.paramDefs.bits,
+        },
         validateParams: ({ bits }) => ({
             numBits: bits,
         }),

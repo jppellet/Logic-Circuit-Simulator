@@ -52,6 +52,7 @@ const Strings_fr = {
         },
         Components: RichStringEnum.withProps<ComponentStrings>()({
             Input1: ["Entrée", "IN"],
+            InputSwitch: ["Entrée en tant qu’interrupteur", "Interrupt."],
             InputN: ["Entrée multiple", "IN mult."],
             Input8: ["Entrée octet (8 bits)", "IN 8 bits"],
             Clock: ["Générateur de signal d’horloge", "Horloge"],
@@ -611,6 +612,7 @@ const Strings_fr = {
                 ToggleButton: "Commutateur",
                 ReplaceWithClock: "Remplacer par horloge",
                 InputSetFromOutside: "Entrée contrôlée depuis l’extérieur",
+                ParamSwitch: "Apparence d’interrupteur",
             },
         },
         Random: {
@@ -954,6 +956,7 @@ const Strings_en: Strings = {
         },
         Components: RichStringEnum.withProps<ComponentStrings>()({
             Input1: ["Input", "IN"],
+            InputSwitch: ["Input as Switch", "Switch"],
             InputN: ["Multiple Inputs", "IN Mult."],
             Input8: ["Byte (8-Bit) Input", "IN (8-Bit)"],
             Clock: ["Clock Generator", "Clock"],
@@ -1513,6 +1516,7 @@ const Strings_en: Strings = {
                 ToggleButton: "Toggle Button",
                 ReplaceWithClock: "Replace With Clock",
                 InputSetFromOutside: "Input set from outside",
+                ParamSwitch: "Show As Switch",
             },
         },
         Random: {

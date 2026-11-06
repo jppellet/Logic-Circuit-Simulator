@@ -4,7 +4,7 @@ import { mods, tooltipContent } from "../htmlgen"
 import { S } from "../strings"
 import { ArrayFillWith, ComponentTypeInput, HighImpedance, InputOutputValueRepr, InteractionResult, LogicValue, Mode, Orientation, Unknown, reprForLogicValues, toLogicValueRepr, typeOrUndefined, valuesFromReprForInput } from "../utils"
 import { ClockDef, ClockRepr } from "./Clock"
-import { Component, ComponentName, ComponentNameRepr, ExtractParamDefs, ExtractParams, InstantiatedComponentDef, NodesIn, NodesOut, ParametrizedComponentBase, Repr, ResolvedParams, SomeParametrizedComponentDef, defineParametrizedComponent, groupVertical, param } from "./Component"
+import { Component, ComponentName, ComponentNameRepr, ExtractParamDefs, ExtractParams, InstantiatedComponentDef, NodesIn, NodesOut, ParametrizedComponentBase, Repr, ResolvedParams, SomeParametrizedComponentDef, defineParametrizedComponent, groupVertical, param, paramBool } from "./Component"
 import { DrawContext, DrawableParent, GraphicsRendering, MenuData, MenuItems, PointerOverMode } from "./Drawable"
 import { Node, NodeIn, NodeOut } from "./Node"
 
@@ -41,7 +41,7 @@ export abstract class InputBase<
     }
 
     public override isOver(x: number, y: number) {
-        if (this.numBits === 1) {
+        if (this.numBits === 1 && !this.doShowAsSwitch) {
             return distSquared(x, y, this.posX, this.posY) < (INPUT_OUTPUT_DIAMETER / 2) ** 2
         }
         return inRect(this.posX, this.posY, this.width, this.height, x, y)
@@ -69,6 +69,8 @@ export abstract class InputBase<
         return true
     }
 
+    protected abstract get doShowAsSwitch(): boolean
+
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
         if (this.numBits === 1) {
             this.doDrawSingle(g, ctx, this.outputs.Out[0])
@@ -93,34 +95,123 @@ export abstract class InputBase<
                 g.strokeStyle = COLOR_COMPONENT_BORDER
                 g.fillStyle = COLOR_COMPONENT_BORDER
             }
-            g.lineWidth = COMPONENT_OUTLINE_THICKNESS
-            g.beginPath()
-            const triangleLeft = this.posX + INPUT_OUTPUT_DIAMETER / 2 - 1
-            const triangleRight = this.posX + INPUT_OUTPUT_DIAMETER / 2 + 5
-            const triangleVOffset = 6.75
-            triangle(g,
-                triangleLeft, this.posY + triangleVOffset,
-                triangleRight, this.posY,
-                triangleLeft, this.posY - triangleVOffset,
-            )
-            g.lineWidth = 2
-            g.fill()
-            g.stroke()
 
-            g.fillStyle = colorForLogicValue(displayValue)
-            g.lineWidth = 4
-            g.beginPath()
-            circle(g, this.posX, this.posY, INPUT_OUTPUT_DIAMETER)
-            g.fill()
-            g.stroke()
+            if (this.doShowAsSwitch) {
+
+                const { left, top, right, bottom, height } = this.bounds()
+                const posX = this.posX
+                const midY = this.posY
+                const shearTop = displayValue === false
+                const shearBottom = displayValue === true
+                const showSingleSwitchValue = !shearTop && !shearBottom
+                const oldCap = g.lineCap
+
+                g.lineWidth = COMPONENT_OUTLINE_THICKNESS
+                g.lineCap = "butt"
+
+                g.beginPath()
+                g.moveTo(left, bottom)
+                g.lineTo(left, top)
+                g.lineTo(right, top)
+                g.lineTo(right, bottom)
+                g.closePath()
+                if (showSingleSwitchValue) {
+                    g.fillStyle = colorForLogicValue(displayValue)
+                    g.fill()
+                    drawValueTextCentered(g, displayValue, this)
+                } else {
+                    g.fillStyle = colorForLogicValue(false)
+                    g.fill()
+                }
+                g.stroke()
+
+                if (!showSingleSwitchValue) {
+                    const currentAlpha = g.globalAlpha
+                    const alphaFactor = 0.4
+                    const shearFactorX = 0.3
+                    const shearFactorY = 0.8
+
+                    const path1 = new Path2D()
+                    path1.moveTo(left, midY)
+                    path1.lineTo(left, top)
+                    path1.lineTo(right, top)
+                    path1.lineTo(right, midY)
+                    g.save()
+                    if (shearTop) {
+                        g.translate(left, midY)
+                        g.transform(1, 0, -shearFactorX, shearFactorY, 0, 0)
+                        g.translate(-left, -midY)
+                    }
+                    g.fillStyle = COLOR_BACKGROUND
+                    g.fill(path1)
+                    if (shearTop) {
+                        g.globalAlpha *= alphaFactor
+                    }
+                    g.fillStyle = colorForLogicValue(true)
+                    g.fill(path1)
+                    drawValueTextCentered(g, true, { posX, posY: midY - height / 4 })
+                    g.globalAlpha = currentAlpha
+                    g.stroke(path1)
+                    g.restore()
+
+                    const path0 = new Path2D()
+                    path0.moveTo(left, midY)
+                    path0.lineTo(left, bottom)
+                    path0.lineTo(right, bottom)
+                    path0.lineTo(right, midY)
+                    g.save()
+                    if (shearBottom) {
+                        g.translate(left, midY)
+                        g.transform(1, 0, shearFactorX, shearFactorY, 0, 0)
+                        g.translate(-left, -midY)
+                    }
+                    g.fillStyle = COLOR_BACKGROUND
+                    g.fill(path0)
+                    if (shearBottom) {
+                        g.globalAlpha *= alphaFactor
+                    }
+                    g.fillStyle = colorForLogicValue(false)
+                    g.fill(path0)
+                    drawValueTextCentered(g, false, { posX, posY: midY + height / 4 })
+                    g.globalAlpha = currentAlpha
+                    g.stroke(path0)
+                    g.restore()
+                }
+
+                g.lineCap = oldCap
+
+            } else {
+                g.lineWidth = COMPONENT_OUTLINE_THICKNESS
+                g.beginPath()
+                const triangleLeft = this.posX + INPUT_OUTPUT_DIAMETER / 2 - 1
+                const triangleRight = this.posX + INPUT_OUTPUT_DIAMETER / 2 + 5
+                const triangleVOffset = 6.75
+                triangle(g,
+                    triangleLeft, this.posY + triangleVOffset,
+                    triangleRight, this.posY,
+                    triangleLeft, this.posY - triangleVOffset,
+                )
+                g.lineWidth = 2
+                g.fill()
+                g.stroke()
+
+                g.fillStyle = colorForLogicValue(displayValue)
+                g.lineWidth = 4
+                g.beginPath()
+                circle(g, this.posX, this.posY, INPUT_OUTPUT_DIAMETER)
+                g.fill()
+                g.stroke()
+            }
         }
 
         ctx.inNonTransformedFrame(ctx => {
             if (this._name !== undefined) {
                 drawComponentName(g, ctx, this._name, toLogicValueRepr(displayValue), this, false)
             }
-            const forcedFillStyle = !shouldDrawBorder ? g.fillStyle = COLOR_COMPONENT_BORDER : undefined
-            drawValueTextCentered(g, displayValue, this, { fillStyle: forcedFillStyle })
+            if (!this.doShowAsSwitch) {
+                const forcedFillStyle = !shouldDrawBorder ? g.fillStyle = COLOR_COMPONENT_BORDER : undefined
+                drawValueTextCentered(g, displayValue, this, { fillStyle: forcedFillStyle })
+            }
         })
     }
 
@@ -240,12 +331,13 @@ export abstract class InputBase<
 
 export const InputDef =
     defineParametrizedComponent(ComponentTypeInput, false, true, {
-        variantName: ({ bits }) => `in-${bits}`,
+        variantName: ({ bits, switch: switch_ }) => !switch_ ? `in-${bits}` : `switch`,
         idPrefix: "in",
         button: { imgWidth: 32 },
         repr: {
             bits: typeOrUndefined(t.number),
             val: typeOrUndefined(InputOutputValueRepr),
+            switch: typeOrUndefined(t.boolean),
             isPushButton: typeOrUndefined(t.boolean),
             isConstant: typeOrUndefined(t.boolean),
             name: ComponentNameRepr,
@@ -256,23 +348,29 @@ export const InputDef =
         },
         params: {
             bits: param(1, [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 16, 24, 32]),
+            switch: paramBool(),
         },
-        validateParams: ({ bits }) => ({
+        validateParams: ({ bits, switch: switch_ }) => ({
             numBits: bits,
+            showAsSwitch: bits === 1 && switch_,
         }),
-        size: ({ numBits }) => {
+        size: ({ numBits, showAsSwitch }) => {
             if (numBits === 1) {
-                const d = INPUT_OUTPUT_DIAMETER / GRID_STEP
-                return { gridWidth: d, gridHeight: d }
+                if (showAsSwitch) {
+                    return { gridWidth: 2, gridHeight: 4 }
+                } else {
+                    const d = INPUT_OUTPUT_DIAMETER / GRID_STEP
+                    return { gridWidth: d, gridHeight: d }
+                }
             }
             return {
                 gridWidth: 2,
                 gridHeight: useCompact(numBits) ? numBits : 2 * numBits,
             }
         },
-        makeNodes: ({ numBits, isXRay }) => ({
+        makeNodes: ({ numBits, showAsSwitch, isXRay }) => ({
             outs: {
-                Out: groupVertical("e", (numBits === 1 ? 3 : 2) - (isXRay ? 1 : 0), 0, numBits, undefined, { hasTriangle: numBits !== 1 }),
+                Out: groupVertical("e", (numBits === 1 ? 3 : 2) - (isXRay || showAsSwitch ? 1 : 0), 0, numBits, undefined, { hasTriangle: numBits !== 1 }),
             },
         }),
         initialValue: (saved, { numBits }) => {
@@ -286,6 +384,7 @@ export type InputParams = ResolvedParams<typeof InputDef>
 export class Input extends InputBase<InputRepr> {
 
     public readonly numBits: number
+    public readonly showAsSwitch: boolean
     private _isPushButton: boolean
     private _isConstant: boolean
     public isCustomComponentInput: boolean = false
@@ -294,6 +393,7 @@ export class Input extends InputBase<InputRepr> {
         super(parent, InputDef.with(params), saved)
 
         this.numBits = params.numBits
+        this.showAsSwitch = params.showAsSwitch
 
         this._isPushButton = saved?.isPushButton ?? InputDef.aults.isPushButton
         this._isConstant = saved?.isConstant ?? InputDef.aults.isConstant
@@ -304,6 +404,7 @@ export class Input extends InputBase<InputRepr> {
             ...this.toJSONBase(),
             bits: this.numBits === InputDef.aults.bits ? undefined : this.numBits,
             val: this.contentRepr(true),
+            switch: this.showAsSwitch ? true : undefined,
             isPushButton: (this._isPushButton !== InputDef.aults.isPushButton) ? this._isPushButton : undefined,
             isConstant: (this._isConstant !== InputDef.aults.isConstant) ? this._isConstant : undefined,
         }
@@ -311,6 +412,10 @@ export class Input extends InputBase<InputRepr> {
 
     public get isConstant() {
         return this._isConstant
+    }
+
+    protected get doShowAsSwitch() {
+        return this.showAsSwitch && !this._isConstant
     }
 
     public contentRepr<AllowUndefined extends boolean>(undefinedIfTrivial: AllowUndefined) {
@@ -477,6 +582,10 @@ export class Input extends InputBase<InputRepr> {
         const newItems: MenuItems = [
             ["mid", makeItemBehaveAs(s.ToggleButton, false)],
             ["mid", makeItemBehaveAs(s.PushButton, true)],
+            ["mid", MenuData.sep()],
+            ...(this.numBits !== 1 ? [] : [
+                this.makeChangeBooleanParamsContextMenuItem(s.ParamSwitch, this.showAsSwitch, "switch"),
+            ]),
             ["mid", MenuData.sep()],
             this.makeChangeParamsContextMenuItem("outputs", S.Components.Generic.contextMenu.ParamNumBits, this.numBits, "bits"),
             ["mid", MenuData.sep()],

@@ -89,6 +89,7 @@ import IncDec from '../img/IncDec.svg'; // @ts-ignore
 import Input1 from '../img/Input1.svg'; // @ts-ignore
 import Input4 from '../img/Input4.svg'; // @ts-ignore
 import Input8 from '../img/Input8.svg'; // @ts-ignore
+import InputSwitch from '../img/InputSwitch.svg'; // @ts-ignore
 import Label from '../img/Label.svg'; // @ts-ignore
 import LatchD from '../img/LatchD.svg'; // @ts-ignore
 import LatchSR from '../img/LatchSR.svg'; // @ts-ignore
@@ -218,6 +219,7 @@ const images = {
     IncDec,
     imply,
     Input1,
+    InputSwitch,
     Input4,
     Input8,
     Random,

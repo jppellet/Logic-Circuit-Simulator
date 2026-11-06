@@ -120,6 +120,10 @@ export class Clock extends InputBase<ClockRepr> {
         }
     }
 
+    protected get doShowAsSwitch(): boolean {
+        return false
+    }
+
     protected override doDraw(g: GraphicsRendering, ctx: DrawContext) {
         super.doDraw(g, ctx)
 
@@ -191,7 +195,7 @@ export class Clock extends InputBase<ClockRepr> {
 
         const replaceWithInputItem =
             MenuData.item("replace", s.ReplaceWithInput, () => {
-                this.replaceWithComponent(InputDef.make(this.parent, { bits: 1 }))
+                this.replaceWithComponent(InputDef.make(this.parent, { bits: 1, switch: false }))
             })
 
         return [
