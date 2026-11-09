@@ -91,19 +91,20 @@ const componentsMenu: Array<Section> = [{
     nameKey: "InputOutput",
     items: [
         InputDef.button({ bits: 1, switch: false }, "Input1"),
-        InputDef.button({ bits: 1, switch: true }, "InputSwitch", {visible: withButton}),
-        OutputDef.button({ bits: 1 }, "Output1"),
+        OutputDef.button({ bits: 1, bulb: false }, "Output1"),
+        InputDef.button({ bits: 1, switch: true }, "InputSwitch", { visible: withButton }),
+        OutputDef.button({ bits: 1, bulb: true }, "OutputBulb", { visible: withButton }),
         DisplayBarDef.button("DisplayBar", { compat: "out.bar", visible: withButton }),
         PixelDef.button({ bits: 2, gray: false, touch: false }, "Pixel", { visible: withButton }),
         TrafficLightsDef.button({ only2: false }, "TrafficLights", { visible: withButton }),
         ClockDef.button("Clock"),
 
         InputDef.button({ bits: 4, switch: false }, ["InputN", "Input4"], { compat: "in.nibble" }),
-        OutputDef.button({ bits: 4 }, ["OutputN", "Output4"], { compat: "out.nibble" }),
+        OutputDef.button({ bits: 4, bulb: false }, ["OutputN", "Output4"], { compat: "out.nibble" }),
         DisplayDef.button({ bits: 4 }, ["DisplayN", "Display4"], { compat: "out.nibble-display" }),
 
         InputDef.button({ bits: 8, switch: false }, "Input8", { compat: "in.byte", visible: ifShowOnly }),
-        OutputDef.button({ bits: 8 }, "Output8", { compat: "out.byte", visible: ifShowOnly }),
+        OutputDef.button({ bits: 8, bulb: false }, "Output8", { compat: "out.byte", visible: ifShowOnly }),
         DisplayDef.button({ bits: 8 }, "Display8", { compat: "out.byte-display", visible: ifShowOnly }),
 
         Display7SegDef.button("Display7Seg", { compat: "out.7seg", visible: withButton }),

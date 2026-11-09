@@ -58,6 +58,7 @@ const Strings_fr = {
             Clock: ["Générateur de signal d’horloge", "Horloge"],
             Random: ["Entrée aléatoire", "Aléatoire"],
             Output1: ["Sortie", "OUT"],
+            OutputBulb: ["Sortie en tant qu’ampoule", "Ampoule"],
             OutputN: ["Sortie multiple", "OUT mult."],
             Output8: ["Sortie octet (8 bits)", "OUT 8 bits"],
             DisplayN: ["Afficheur d’une valeur", "Afficheur"],
@@ -707,6 +708,9 @@ const Strings_fr = {
             tooltip: {
                 title: template("Sortie (${numBits} bit$s{numBits})"),
             },
+            contextMenu: {
+                ParamBulb: "Apparence d’ampoule",
+            },
         },
         Display7Seg: {
             tooltip: "Afficheur 7 segments",
@@ -962,6 +966,7 @@ const Strings_en: Strings = {
             Clock: ["Clock Generator", "Clock"],
             Random: ["Random Input", "Random"],
             Output1: ["Output", "OUT"],
+            OutputBulb: ["Output as Light Bulb", "Bulb"],
             OutputN: ["Multiple Outputs", "OUT Mult."],
             Output8: ["Byte (8-Bit) Output", "OUT (8-Bit)"],
             DisplayN: ["Value Display", "Display"],
@@ -1610,6 +1615,9 @@ const Strings_en: Strings = {
         Output: {
             tooltip: {
                 title: template("Output (${numBits}-Bit)"),
+            },
+            contextMenu: {
+                ParamBulb: "Show As Bulb",
             },
         },
         Display7Seg: {

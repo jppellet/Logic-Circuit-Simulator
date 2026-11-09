@@ -131,7 +131,7 @@ export abstract class InputBase<
                     const shearFactorX = 0.3
                     const shearFactorY = 0.8
 
-                    const path1 = new Path2D()
+                    const path1 = g.createPath()
                     path1.moveTo(left, midY)
                     path1.lineTo(left, top)
                     path1.lineTo(right, top)
@@ -154,7 +154,7 @@ export abstract class InputBase<
                     g.stroke(path1)
                     g.restore()
 
-                    const path0 = new Path2D()
+                    const path0 = g.createPath()
                     path0.moveTo(left, midY)
                     path0.lineTo(left, bottom)
                     path0.lineTo(right, bottom)
@@ -404,7 +404,7 @@ export class Input extends InputBase<InputRepr> {
             ...this.toJSONBase(),
             bits: this.numBits === InputDef.aults.bits ? undefined : this.numBits,
             val: this.contentRepr(true),
-            switch: this.showAsSwitch ? true : undefined,
+            switch: this.showAsSwitch === InputDef.aults.switch ? undefined : this.showAsSwitch,
             isPushButton: (this._isPushButton !== InputDef.aults.isPushButton) ? this._isPushButton : undefined,
             isConstant: (this._isConstant !== InputDef.aults.isConstant) ? this._isConstant : undefined,
         }

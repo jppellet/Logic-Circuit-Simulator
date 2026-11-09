@@ -97,6 +97,7 @@ import Mux from '../img/Mux.svg'; // @ts-ignore
 import Output1 from '../img/Output1.svg'; // @ts-ignore
 import Output4 from '../img/Output4.svg'; // @ts-ignore
 import Output8 from '../img/Output8.svg'; // @ts-ignore
+import OutputBulb from '../img/OutputBulb.svg'; // @ts-ignore
 import Passthrough1 from '../img/Passthrough1.svg'; // @ts-ignore
 import PassthroughN from '../img/PassthroughN.svg'; // @ts-ignore
 import Pixel from '../img/Pixel.svg'; // @ts-ignore
@@ -219,9 +220,9 @@ const images = {
     IncDec,
     imply,
     Input1,
-    InputSwitch,
     Input4,
     Input8,
+    InputSwitch,
     Random,
     Rectangle,
     Label,
@@ -242,6 +243,7 @@ const images = {
     Output1,
     Output4,
     Output8,
+    OutputBulb,
     Display7Seg,
     Display16Seg,
     DisplayAscii,
